@@ -1,0 +1,243 @@
+/* ==========================================================================
+   FIT-HCMUS Academic LaTeX Paper Styling for Markdown PDF
+   Matches HCMUS LaTeX article format (Times New Roman, Justified, Booktabs)
+   ========================================================================== */
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 22mm 20mm;
+}
+
+body {
+  font-family: "Times New Roman", Times, "Latin Modern Roman", "Nimbus Roman", serif !important;
+  font-size: 10.5pt !important;
+  line-height: 1.45 !important;
+  color: #000000 !important;
+  text-align: justify !important;
+  text-justify: inter-word !important;
+  background-color: #ffffff !important;
+}
+
+/* Paper Title Block */
+.paper-title {
+  font-size: 15pt !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  text-align: left !important;
+  margin-top: 4pt !important;
+  margin-bottom: 10pt !important;
+  line-height: 1.3 !important;
+}
+
+.author-block {
+  font-size: 9.5pt !important;
+  line-height: 1.45 !important;
+  margin-bottom: 12pt !important;
+}
+
+.author-block .email {
+  font-family: "Courier New", Courier, monospace !important;
+  font-size: 9pt !important;
+}
+
+/* Abstract Section */
+.abstract-box {
+  margin: 12pt 24pt !important;
+  text-align: justify !important;
+  font-size: 9.5pt !important;
+  line-height: 1.42 !important;
+}
+
+.abstract-title {
+  text-align: center !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  font-size: 10pt !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 6pt !important;
+}
+
+.academic-hr {
+  border: none !important;
+  border-top: 0.75pt solid #000000 !important;
+  margin: 10pt 0 !important;
+}
+
+/* Table of Contents (Dotted Leaders) */
+.contents-box {
+  margin: 10pt 0 16pt 0 !important;
+  font-size: 9.5pt !important;
+  line-height: 1.5 !important;
+}
+
+.contents-title {
+  text-align: left !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  font-size: 10pt !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 6pt !important;
+}
+
+.toc-item {
+  display: flex !important;
+  align-items: baseline !important;
+  margin: 2pt 0 !important;
+}
+
+.toc-subitem {
+  display: flex !important;
+  align-items: baseline !important;
+  margin: 1.5pt 0 1.5pt 14pt !important;
+}
+
+.toc-dots {
+  flex: 1 !important;
+  border-bottom: 1pt dotted #444444 !important;
+  margin: 0 4pt !important;
+  position: relative !important;
+  top: -3px !important;
+}
+
+/* Section Headings */
+h1 {
+  font-size: 14pt !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-top: 20pt !important;
+  margin-bottom: 8pt !important;
+  border-bottom: none !important;
+}
+
+h2 {
+  font-size: 11.5pt !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  margin-top: 16pt !important;
+  margin-bottom: 6pt !important;
+  border-bottom: none !important;
+}
+
+h3 {
+  font-size: 10.5pt !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  margin-top: 12pt !important;
+  margin-bottom: 4pt !important;
+}
+
+h4 {
+  font-size: 10pt !important;
+  font-weight: bold !important;
+  margin-top: 10pt !important;
+  margin-bottom: 3pt !important;
+}
+
+h5, h6 {
+  font-size: 9.5pt !important;
+  font-weight: bold !important;
+}
+
+p {
+  margin-top: 4pt !important;
+  margin-bottom: 6pt !important;
+}
+
+/* Academic Booktabs Table Style */
+table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 12pt 0 !important;
+  border-top: 1.5pt solid #000000 !important;
+  border-bottom: 1.5pt solid #000000 !important;
+  border-left: none !important;
+  border-right: none !important;
+  font-size: 9pt !important;
+  background-color: transparent !important;
+}
+
+table th {
+  border-top: none !important;
+  border-bottom: 0.75pt solid #000000 !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 5px 6px !important;
+  font-weight: bold !important;
+  text-align: left !important;
+  background-color: transparent !important;
+}
+
+table td {
+  border: none !important;
+  padding: 4px 6px !important;
+  background-color: transparent !important;
+  vertical-align: top !important;
+}
+
+table tr {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+table tr:nth-child(2n) {
+  background-color: transparent !important;
+}
+
+/* Captions */
+.caption, .figure-caption {
+  font-size: 9pt !important;
+  text-align: center !important;
+  margin-top: 4pt !important;
+  margin-bottom: 8pt !important;
+}
+
+/* Code & Monospace */
+code {
+  font-family: "Courier New", Courier, monospace !important;
+  font-size: 8.5pt !important;
+  background-color: #f7f7f7 !important;
+  padding: 1px 3pt !important;
+  border-radius: 2px !important;
+  border: 0.5pt solid #e0e0e0 !important;
+}
+
+pre {
+  background-color: #fafafa !important;
+  border: 0.5pt solid #cccccc !important;
+  padding: 6pt 8pt !important;
+  font-size: 8.5pt !important;
+  border-radius: 2px !important;
+  overflow-x: auto !important;
+}
+
+pre code {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Blockquotes */
+blockquote {
+  border-left: 2pt solid #000000 !important;
+  padding: 4pt 10pt !important;
+  margin: 8pt 0 !important;
+  background-color: #fafafa !important;
+  color: #111111 !important;
+}
+
+/* Images & Mermaid Diagrams */
+img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Page Break Utility */
+.page-break {
+  page-break-before: always !important;
+}

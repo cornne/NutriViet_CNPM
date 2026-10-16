@@ -1,8 +1,218 @@
-# NutriViet: Smart Personalized Nutrition & Food Allergy Warning Mobile Application
-**Course:** CS300 - CSC13002 - Introduction to Software Engineering  
-**Project Assignment:** PA1 - Project Proposal, Existing App Survey, Team Contract, and Setup  
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 20mm 22mm 20mm;
+  }
+  body {
+    font-family: "Times New Roman", Times, "Latin Modern Roman", "Nimbus Roman", serif !important;
+    font-size: 10.5pt !important;
+    line-height: 1.45 !important;
+    color: #000000 !important;
+    text-align: justify !important;
+    text-justify: inter-word !important;
+    background-color: #ffffff !important;
+  }
+  .paper-title {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    text-align: left !important;
+    margin-top: 6pt !important;
+    margin-bottom: 12pt !important;
+    line-height: 1.35 !important;
+  }
+  .author-block {
+    font-size: 9.5pt !important;
+    line-height: 1.45 !important;
+    margin-bottom: 12pt !important;
+  }
+  .author-block .email {
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 9pt !important;
+  }
+  .abstract-box {
+    margin: 12pt 20pt !important;
+    text-align: justify !important;
+    font-size: 9.5pt !important;
+    line-height: 1.42 !important;
+  }
+  .abstract-title {
+    text-align: center !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-size: 10pt !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 6pt !important;
+  }
+  .academic-hr {
+    border: none !important;
+    border-top: 0.75pt solid #000000 !important;
+    margin: 10pt 0 !important;
+  }
+  .contents-box {
+    margin: 10pt 0 16pt 0 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.5 !important;
+  }
+  .contents-title {
+    text-align: left !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-size: 10pt !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 6pt !important;
+  }
+  .toc-item {
+    display: flex !important;
+    align-items: baseline !important;
+    margin: 2.5pt 0 !important;
+  }
+  .toc-subitem {
+    display: flex !important;
+    align-items: baseline !important;
+    margin: 1.5pt 0 1.5pt 14pt !important;
+  }
+  .toc-dots {
+    flex: 1 !important;
+    border-bottom: 1pt dotted #444444 !important;
+    margin: 0 4pt !important;
+    position: relative !important;
+    top: -3px !important;
+  }
+  h1 {
+    font-size: 13.5pt !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-top: 18pt !important;
+    margin-bottom: 8pt !important;
+    border-bottom: none !important;
+  }
+  h2 {
+    font-size: 11.5pt !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.3px !important;
+    margin-top: 16pt !important;
+    margin-bottom: 6pt !important;
+    border-bottom: none !important;
+  }
+  h3 {
+    font-size: 10.5pt !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    margin-top: 12pt !important;
+    margin-bottom: 4pt !important;
+  }
+  h4 {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    margin-top: 10pt !important;
+    margin-bottom: 3pt !important;
+  }
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 12pt 0 !important;
+    border-top: 1.5pt solid #000000 !important;
+    border-bottom: 1.5pt solid #000000 !important;
+    border-left: none !important;
+    border-right: none !important;
+    font-size: 9pt !important;
+    background-color: transparent !important;
+  }
+  table th {
+    border-top: none !important;
+    border-bottom: 0.75pt solid #000000 !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 5px 6px !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    background-color: transparent !important;
+  }
+  table td {
+    border: none !important;
+    padding: 4px 6px !important;
+    background-color: transparent !important;
+    vertical-align: top !important;
+  }
+  table tr {
+    background-color: transparent !important;
+    border: none !important;
+  }
+  table tr:nth-child(2n) {
+    background-color: transparent !important;
+  }
+  blockquote {
+    border-left: 2pt solid #000000 !important;
+    padding: 4pt 10pt !important;
+    margin: 8pt 0 !important;
+    background-color: #fafafa !important;
+    color: #111111 !important;
+  }
+  code {
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 8.5pt !important;
+    background-color: #f7f7f7 !important;
+    padding: 1px 3pt !important;
+    border-radius: 2px !important;
+    border: 0.5pt solid #e0e0e0 !important;
+  }
+  pre {
+    background-color: #fafafa !important;
+    border: 0.5pt solid #cccccc !important;
+    padding: 6pt 8pt !important;
+    font-size: 8.5pt !important;
+    border-radius: 2px !important;
+  }
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+</style>
 
----
+<div class="paper-title">
+  NUTRIVIET: SMART PERSONALIZED NUTRITION & FOOD ALLERGY WARNING MOBILE APPLICATION
+</div>
+
+<div class="author-block">
+  <strong>Student Group: Group 07 - NutriViet Team</strong><br/>
+  Course: CS300 - CSC13002 - Introduction to Software Engineering<br/>
+  Faculty of Information Technology, VNU-HCM University of Science (HCMUS)<br/>
+  Team Leader: Ngo Tien Binh (24127004) &nbsp;|&nbsp; <span class="email">ntbinh2419@clc.fitus.edu.vn</span><br/>
+  Team Members: Le Tat Nam (23127432), Luong Hoang Nam (24127456), Nguyen Hoang Phuc Thinh (24127242), Truong Gia Linh (24127438)
+</div>
+
+<div class="abstract-box">
+  <div class="abstract-title">ABSTRACT</div>
+  <p>Food allergies and diet-related chronic health conditions pose severe, life-threatening risks to Vietnamese consumers, yet packaged food labels frequently present obscure terminology, complex chemical additives (E-numbers), and microscopic font sizes. In this project assignment report, our team presents <strong>NutriViet</strong>, an intelligent mobile food safety platform developed with Flutter for Android. NutriViet bypasses traditional barcode lookup constraints by utilizing direct smartphone camera Optical Character Recognition (OCR), integrated with <strong>Levenshtein Fuzzy Matching</strong> for typo-tolerant label extraction and a <strong>FoodOn Semantic Ontology Knowledge Graph</strong> for recursive hidden allergen lineage inference (e.g., Sodium Caseinate &rarr; Casein &rarr; Cow's Milk &rarr; Milk Allergy). We present the comprehensive empirical benchmark against international market leaders (Yuko and Soosee), establish the team governance contract, and formalize our Scrum agile development methodology for the CS300 Software Engineering curriculum.</p>
+</div>
+
+<hr class="academic-hr"/>
+
+<div class="contents-box">
+  <div class="contents-title">CONTENTS</div>
+  <div class="toc-item"><span><strong>1 &nbsp; Group Registration & Team Leadership Roster</strong></span><span class="toc-dots"></span><span>2</span></div>
+  <div class="toc-subitem"><span>1.1 &nbsp; Team Identification and Leadership Responsibilities</span><span class="toc-dots"></span><span>2</span></div>
+  <div class="toc-item"><span><strong>2 &nbsp; Project Proposal & Core Architecture</strong></span><span class="toc-dots"></span><span>2</span></div>
+  <div class="toc-subitem"><span>2.1 &nbsp; Introduction & Practical Value</span><span class="toc-dots"></span><span>2</span></div>
+  <div class="toc-subitem"><span>2.2 &nbsp; Target Users (2 System Actors) & Operational Environments</span><span class="toc-dots"></span><span>2</span></div>
+  <div class="toc-subitem"><span>2.3 &nbsp; Key Features & Functional Groups (FG1 – FG8)</span><span class="toc-dots"></span><span>3</span></div>
+  <div class="toc-subitem"><span>2.4 &nbsp; Proposed AI Feature Specification (Fuzzy Matching + FoodOn)</span><span class="toc-dots"></span><span>4</span></div>
+  <div class="toc-item"><span><strong>3 &nbsp; Existing App Survey & Competitive Benchmark</strong></span><span class="toc-dots"></span><span>4</span></div>
+  <div class="toc-subitem"><span>3.1 &nbsp; Surveyed Application 1: Yuko App (Screens & Architecture)</span><span class="toc-dots"></span><span>4</span></div>
+  <div class="toc-subitem"><span>3.2 &nbsp; Surveyed Application 2: Soosee App (Screens & Architecture)</span><span class="toc-dots"></span><span>6</span></div>
+  <div class="toc-subitem"><span>3.3 &nbsp; Synthesis & Comprehensive Comparative Analysis</span><span class="toc-dots"></span><span>8</span></div>
+  <div class="toc-item"><span><strong>4 &nbsp; Team Contract & Working Agreements</strong></span><span class="toc-dots"></span><span>9</span></div>
+  <div class="toc-item"><span><strong>5 &nbsp; Development Environment & Scrum Setup Evidence</strong></span><span class="toc-dots"></span><span>11</span></div>
+</div>
+
+<div style="page-break-before: always;"></div>
 
 ## A - Group Registration
 
