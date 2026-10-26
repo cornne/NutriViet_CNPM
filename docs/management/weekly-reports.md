@@ -1,165 +1,189 @@
-# NutriViet: Weekly Scrum Reports & Meeting Minutes
-
+# NutriViet: Weekly Scrum & AI Usage Reports (Sprint 2)
+**Agile Meeting Minutes, Trello Tracking & Generative AI Disclosure**  
 **Course:** CS300 - CSC13002 - Introduction to Software Engineering  
-**Project:** NutriViet (Smart Android Nutrition & Food Allergy Warning App)  
-**Group:** Group 01 - NutriViet Team  
-**Process Methodology:** Scrum  
-**Sprint 1 Period:** 12/10/2026 – 17/10/2026 (Official Deadline: Saturday, 17/10/2026)  
-**Deliverable:** Project Assignment 1 (Proposal, Team Contract, Tool Setup)  
+**Project Assignment:** PA2-2026 (Part D Deliverable)  
+**Group:** Group 07 - NutriViet Team  
+**Sprint 2 Cadence:** 18/10/2026 – 31/10/2026  
 
 ---
 
-## 1. Scrum Process Overview
+## 1. Weekly Scrum Meeting Minutes
+*Performed by: Truong Gia Linh | Reviewed by: Ngo Tien Binh | Edited by: Le Tat Nam*
 
-- **Sprint Duration:** 1 week (12/10/2026 – 17/10/2026).
-- **Meeting Cadence:**
-  1. **Sprint Planning (12/10):** Decompose PA1 requirements, assign tasks on Trello, set deadlines.
-  2. **Weekly Scrum 1 (14/10):** Mid-week progress check answering 3 mandatory questions.
-  3. **Weekly Scrum 2 (16/10):** Pre-submission quality check answering 3 mandatory questions.
-  4. **Sprint Review & Retrospective (17/10):** Review submission and evaluate sprint performance.
+### =========== 18/10, Sprint 2 ===========
 
----
+**Team members present:**
+- Ngo Tien Binh
+- Le Tat Nam
+- Luong Hoang Nam
+- Nguyen Hoang Phuc Thinh
+- Truong Gia Linh
 
-## 2. Sprint 1 Meeting Minutes (12/10 – 17/10/2026)
-
-```
-Timeline: [12/10] Planning  -->  [14/10] Scrum 1  -->  [16/10] Scrum 2  -->  [17/10] Review & Retro
-```
+**Team members absent:**
+- None
 
 ---
 
-### 2.1. Sprint 1 Planning Meeting (Monday, 12/10/2026)
+### Status reports:
 
-- **Date & Time:** Monday, 12/10/2026 | 20:00 – 20:45  
-- **Platform:** Google Meet  
-- **Attendees:** All members present (Ngo Tien Binh, Le Tat Nam, Luong Hoang Nam, Nguyen Hoang Phuc Thinh, Truong Gia Linh).  
+#### Ngo Tien Binh (PM & AI Lead)
+* **Completed tasks:**
+  - Reviewed PA2 requirements and decomposed assignment scope into 14 distinct sprint tasks.
+  - Initialized team Trello Kanban board with Scrum columns: *In Progress*, *To Do*, and *Done*.
+* **To-do Tasks:**
+  - Task TASK-01: Set up GitHub Spec Kit repository scaffolding (`specify init`), configure `.specify/`, and author `constitution.md`.
+  - Task TASK-07: Draft Project Plan goals, boundaries, scope, and deliverables (`project-plan.md`).
+  - Task TASK-09: Define the 5-Sprint schedule and 4-tier software build plan.
+  - Task TASK-13: Consolidate AI usage disclosures for Sprint 2.
+* **Issues/Obstacles:**
+  - Need to ensure Spec Kit installation works cleanly on Windows PowerShell environments without path permission issues.
 
-#### Objectives:
-1. Review PA1 requirements: Proposal (A, B), Team Contract (D), Tool Setup (E).
-2. Split work into individual cards on Trello (`NV-01` to `NV-11`).
-3. Set internal milestone to Friday 16/10 to leave Saturday for review and PDF export.
+#### Le Tat Nam (Backend & Architecture Lead)
+* **Completed tasks:**
+  - Analyzed PA1 feedback and reviewed required Vision Document positioning table structures.
+* **To-do Tasks:**
+  - Task TASK-03: Draft Problem Statement and Product Position Statement tables for `vision.md` (Section 2).
+  - Task TASK-08: Author the Project Plan risk management section with 4 categorized risks and concrete mitigation plans.
+  - Cross-review TASK-06 (Quantifiable NFRs) and TASK-11 (FoodOn schema design).
+* **Issues/Obstacles:**
+  - Need to strictly adhere to the exact required table formats (`the problem of / affects / ...` and `For / Who / ...`).
 
-#### Task Assignments:
+#### Luong Hoang Nam (UI/UX & Flutter Lead)
+* **Completed tasks:**
+  - Outlined Flutter Android project structure and reviewed Google ML Kit Flutter integration docs.
+* **To-do Tasks:**
+  - Task TASK-05: Write detailed 3–5 sentence explanatory paragraphs for FG1–FG8 and construct 2 Mermaid workflow diagrams in `vision.md`.
+  - Task TASK-10: Conduct technical spike testing Google ML Kit camera text recognition on physical food packages.
+* **Issues/Obstacles:**
+  - Need physical packaging samples with curved and glossy surfaces to test optical character recognition boundaries.
 
-| Task ID | Task Description | Assignee | Target Due Date |
-|:---:|:---|:---|:---:|
-| **NV-01** | Create GitHub repo, basic folder structure, and `.gitignore` | Ngo Tien Binh | 12/10/2026 |
-| **NV-02** | Set up Trello Kanban board with Scrum workflow columns | Ngo Tien Binh | 12/10/2026 |
-| **NV-03** | Draft Team Contract (8 Working Agreements) | Ngo Tien Binh | 13/10/2026 |
-| **NV-04** | Write Project Intro & Practical Value (Section B.1) | Nguyen Hoang Phuc Thinh | 13/10/2026 |
-| **NV-05** | Define Target Users (2 Actors) & Environments (Section B.2) | Nguyen Hoang Phuc Thinh | 13/10/2026 |
-| **NV-06** | Design Core Functional Groups FG1–FG5 (Section B.3.1) | Nguyen Hoang Phuc Thinh | 14/10/2026 |
-| **NV-07** | Design Additional & Admin Functional Groups FG6–FG8 (Section B.3.2) | Le Tat Nam | 14/10/2026 |
-| **NV-08** | Propose AI Feature (Fuzzy Matching + FoodOn Ontology) (Section B.4) | Ngo Tien Binh & Le Tat Nam | 15/10/2026 |
-| **NV-09** | Detail Flutter Android UI Architecture (Section B.2) | Luong Hoang Nam | 15/10/2026 |
-| **NV-10** | Review English text, format Markdown, and test Mermaid diagrams | Truong Gia Linh | 16/10/2026 |
-| **NV-11** | Take setup screenshots and export final `proposal.pdf` | Ngo Tien Binh & Truong Gia Linh | 16/10/2026 |
+#### Nguyen Hoang Phuc Thinh (Database & Git Lead)
+* **Completed tasks:**
+  - Verified Git repository synchronization and clean `main` branch state.
+* **To-do Tasks:**
+  - Task TASK-06: Formulate quantifiable, measurable Non-Functional Requirements in `vision.md`.
+  - Task TASK-11: Investigate FoodOn OWL ontology graph structures and draft preliminary PostgreSQL schemas.
+  - Task TASK-14: Manage Trello evidence captures, Git log exports, and final `PA2-Group07.zip` packaging.
+* **Issues/Obstacles:**
+  - Avoiding subjective NFR metrics (e.g., "fast") by ensuring all performance and scalability items are numeric.
 
----
-
-### 2.2. Weekly Scrum Meeting 1 (Wednesday, 14/10/2026)
-
-### ==================== 14/10, Sprint 1 ====================
-- **Meeting Type:** Weekly Scrum Meeting 1 (Mid-Sprint Progress Check)  
-- **Date & Time:** Wednesday, 14/10/2026 | 21:00 – 21:20  
-- **Platform:** Google Meet  
-- **Moderator:** Ngo Tien Binh (Leader)  
-- **Attendees:** All 5 members present (Ngo Tien Binh, Le Tat Nam, Luong Hoang Nam, Nguyen Hoang Phuc Thinh, Truong Gia Linh).  
-
-#### Status Reports:
-
-**1. Ngo Tien Binh (Team Leader / AI & Setup)**
-- *Done:* Created GitHub repository and initialized Trello board. Drafted Team Contract (Section D).
-- *To-do:* Write Section B.4 (AI Feature: Fuzzy Matching) and take screenshots for Section E.
-- *Obstacles:* Deciding between complex deep learning models vs OCR with Fuzzy Matching; chose Fuzzy Matching to keep the mobile app lightweight and responsive.
-
-**2. Le Tat Nam (Backend & Architecture)**
-- *Done:* Outlined system boundaries between Standard Users and Admins. Sketched system flowchart.
-- *To-do:* Write Section B.3.2 for Additional Groups FG6–FG8 (Shopping List, Product Contribution, Admin Dictionary).
-- *Obstacles:* Handling OCR scan mistakes; added an admin correction tool in FG8.
-
-**3. Luong Hoang Nam (UI/UX & Mobile)**
-- *Done:* Researched Android 10+ hardware requirements and basic user navigation flow.
-- *To-do:* Document role-based UI screens and high-contrast red/green allergy alert standards.
-- *Obstacles:* None.
-
-**4. Nguyen Hoang Phuc Thinh (Database & Requirements)**
-- *Done:* Completed drafts for Section B.1 (Intro & Value) and Section B.2 (User personas).
-- *To-do:* Write Section B.3.1 for Core Functional Groups FG1 to FG5.
-- *Obstacles:* Deciding which features are core; organized into 5 core groups (FG1–FG5) and 3 admin/community groups (FG6–FG8).
-
-**5. Truong Gia Linh (QA & Documentation)**
-- *Done:* Created documentation directory structure (`/docs`) and initialized `proposal.md`.
-- *To-do:* Check English grammar, verify teammates' drafts, and test Mermaid diagram syntax.
-- *Obstacles:* Different naming across members' notes; unified project name as *NutriViet*.
-
-#### Actions & Summary:
-All tasks are on schedule. Team members will finish writing drafts by Thursday night (15/10) to prepare for final review on Friday.
+#### Truong Gia Linh (QA & Documentation Lead)
+* **Completed tasks:**
+  - Established document templates for `vision.md` and `project-plan.md` in `/docs`.
+* **To-do Tasks:**
+  - Task TASK-04: Author stakeholder personas, supermarket environmental constraints, and competitor quadrant chart in `vision.md`.
+  - Task TASK-12: Document meeting minutes and maintain Scrum records.
+  - Coordinate the Spec Kit training completion log (`training-log.md`) across all 5 members.
+* **Issues/Obstacles:**
+  - Verifying that all section headers include the mandatory Author/Reviewer/Editor metadata.
 
 ---
 
-### 2.3. Weekly Scrum Meeting 2 (Friday, 16/10/2026)
+### Actions (if any)
+1. Ngo Tien Binh to execute `specify init` and commit the ratified `constitution.md` to GitHub.
+2. All members to watch the official Spec Kit YouTube tutorials and submit 3–4 sentence takeaways for `training-log.md`.
+3. Le Tat Nam and Luong Hoang Nam to begin initial drafting of `vision.md` sections.
+4. Next sync: Mid-Sprint Progress Check (Weekly Scrum 1) on Wednesday, 21/10/2026.
 
-### ==================== 16/10, Sprint 1 ====================
-- **Meeting Type:** Weekly Scrum Meeting 2 (Pre-Submission Review)  
-- **Date & Time:** Friday, 16/10/2026 | 21:00 – 21:25  
-- **Platform:** Google Meet  
-- **Moderator:** Ngo Tien Binh (Leader)  
-- **Attendees:** All 5 members present (Ngo Tien Binh, Le Tat Nam, Luong Hoang Nam, Nguyen Hoang Phuc Thinh, Truong Gia Linh).  
-
-#### Status Reports:
-
-**1. Ngo Tien Binh (Team Leader / AI & Setup)**
-- *Done:* Finished Section B.4 (AI Feature), Team Contract, and added Trello & GitHub screenshots to Section E.
-- *To-do:* Assemble master `proposal.md` and export clean `proposal.pdf` for submission.
-- *Obstacles:* None.
-
-**2. Le Tat Nam (Backend & Architecture)**
-- *Done:* Completed Section B.3.2 (FG6–FG8) and verified architecture flowchart in Section B.1.
-- *To-do:* Review exported PDF pages to make sure tables and diagrams fit properly.
-- *Obstacles:* None.
-
-**3. Luong Hoang Nam (UI/UX & Mobile)**
-- *Done:* Completed Android Flutter specifications and UI alert criteria in Section B.2.
-- *To-do:* Help proofread overall document layout.
-- *Obstacles:* None.
-
-**4. Nguyen Hoang Phuc Thinh (Database & Requirements)**
-- *Done:* Completed Section B.3.1 (Core Groups FG1–FG5: Auth, Allergy Profile, Scanner, Instant Alert, Journal).
-- *To-do:* Check GitHub repository to ensure `main` branch is clean.
-- *Obstacles:* None.
-
-**5. Truong Gia Linh (QA & Documentation)**
-- *Done:* Proofread English across all sections and verified that all Mermaid diagrams render cleanly without error.
-- *To-do:* Perform final check on `proposal.pdf` before uploading to Moodle.
-- *Obstacles:* Fixed a small Mermaid syntax warning regarding line breaks in diagram labels.
-
-#### Actions & Summary:
-All PA1 content is complete and reviewed. Internal deadline met on 16/10. Ready for final PDF export and submission on Saturday.
+### Summary of the meeting
+The team held the Sprint 2 Planning meeting on Google Meet from 20:00 to 21:00 on Sunday, 18/10/2026. All 5 members attended. The group reviewed the PA2 assignment guidelines, enforced the mandatory **1 Doer + 1 Reviewer** rule, and populated 14 task cards on Trello (`TASK-01` to `TASK-14`). An internal milestone of Friday, 30/10/2026 was established to guarantee a 24-hour buffer before the official 31/10/2026 deadline.
 
 ---
 
-### 2.4. Sprint 1 Review & Retrospective Meeting (Saturday, 17/10/2026)
+### Trello Board Progress Evidence (Sprint 2)
+![NutriViet Sprint 2 Trello Kanban Board](../assets/setup/trello-board.png)
 
-- **Date & Time:** Saturday, 17/10/2026 | 20:00 – 20:30  
-- **Platform:** Google Meet  
-- **Attendees:** All 5 members present (Ngo Tien Binh, Le Tat Nam, Luong Hoang Nam, Nguyen Hoang Phuc Thinh, Truong Gia Linh).  
+*Figure 1.1: NutriViet Sprint 2 Scrum Board on Trello showing active task assignments and workflow progression across In Progress, To Do, and Done columns.*
 
-#### Sprint 1 Results:
-- Completed all 11 Trello tasks on time.
-- Assembled and finalized `proposal.md` with Sections A, B, D, and E.
-- Successfully exported `proposal.pdf` and submitted to Moodle ahead of the deadline.
+---
 
-#### Retrospective:
-1. **What went well:**
-   - Clear division of writing sections enabled parallel work without duplicate effort.
-   - Good team communication on Zalo; questions were resolved quickly.
-   - Setting the 16/10 internal deadline gave the team a comfortable buffer before the official 17/10 due date.
-2. **What went wrong & Obstacles:**
-   - Selecting the right AI feature took extra discussion on Day 2.
-   - Exporting Mermaid diagrams to PDF had some formatting hiccups that needed manual fixes.
-3. **What can be done differently in Sprint 2 (PA2):**
-   - Keep the 1-day early internal deadline rule for subsequent assignments.
-   - Start UI mockups on Figma earlier to speed up design alignment.
-4. **Lessons learned:**
-   - Breaking the assignment into small, clear Trello cards on Day 1 is the best way for a student team to avoid rushing before the deadline.
+### =========== 26/10, Sprint 2 ===========
+
+**Team members present:**
+- Ngo Tien Binh
+- Le Tat Nam
+- Luong Hoang Nam
+- Nguyen Hoang Phuc Thinh
+- Truong Gia Linh
+
+**Team members absent:**
+- None
+
+---
+
+### Status reports:
+
+#### Ngo Tien Binh (PM & AI Lead)
+* **Completed tasks:**
+  - Task TASK-01: Completed GitHub Spec Kit setup, initialized `.specify/` infrastructure, and ratified `constitution.md`.
+  - Task TASK-02: Completed Spec Kit YouTube training tutorial and authored personal learning log.
+  - Reviewed and approved TASK-03 (Vision Doc Positioning) and TASK-05 (Vision Doc Features & Mermaid).
+* **To-do Tasks:**
+  - Task TASK-07: Finalize Project Plan goals, boundaries, scope, and deliverables (currently In Progress).
+  - Task TASK-09: Draft 5-Sprint Scrum schedule and 4-tier software build plan.
+  - Review TASK-10 (Flutter Camera OCR spike).
+* **Issues/Obstacles:**
+  - Balancing mid-sprint documentation review with Project Plan drafting; on track to meet internal deadline on 30/10.
+
+#### Le Tat Nam (Backend & Architecture Lead)
+* **Completed tasks:**
+  - Task TASK-02: Completed Spec Kit self-training module on `/speckit-plan`.
+  - Task TASK-03: Completed Section 2 of Vision Document (Problem Statement & Product Position Statement tables).
+  - Reviewed TASK-06 (Quantifiable NFRs) authored by Thinh.
+* **To-do Tasks:**
+  - Task TASK-08: Author Project Plan Risk Management section with 4 categorized risks and concrete mitigation strategies.
+  - Review TASK-09 (5-Sprint schedule) and TASK-11 (FoodOn schema design).
+* **Issues/Obstacles:**
+  - Ensuring ontology lookup query latency risk is properly quantified and paired with indexed relational caching.
+
+#### Luong Hoang Nam (UI/UX & Flutter Lead)
+* **Completed tasks:**
+  - Task TASK-02: Completed Spec Kit training on `/speckit-specify` and acceptance criteria.
+  - Task TASK-05: Completed Section 5 of Vision Document (8 refined feature descriptions with 3–5 sentence paragraphs and 2 Mermaid workflow diagrams).
+  - Reviewed TASK-04 (Stakeholders & Survey) authored by Linh.
+* **To-do Tasks:**
+  - Task TASK-10: Continue Flutter ML Kit camera OCR text recognition spike (currently In Progress).
+  - Measure extraction latency on physical packaging under varying lighting conditions.
+* **Issues/Obstacles:**
+  - High-reflection cellophane packaging occasionally causes character drops; tuning contrast preprocessing parameters in ML Kit sandbox.
+
+#### Nguyen Hoang Phuc Thinh (Database & Git Lead)
+* **Completed tasks:**
+  - Task TASK-02: Completed Spec Kit training on `/speckit-tasks` decomposition.
+  - Task TASK-06: Completed Section 6 of Vision Document (Quantifiable Non-Functional Requirements covering latency, security, and scalability).
+  - Reviewed TASK-01 (Spec Kit setup and Git sync) by Binh.
+* **To-do Tasks:**
+  - Task TASK-11: Draft preliminary PostgreSQL relational schema for FoodOn allergen lineages and ingredient lexicons.
+  - Task TASK-13: Compile Sprint 2 AI usage disclosure logs.
+  - Task TASK-14: Prepare PDF conversion scripts and packaging checklist.
+* **Issues/Obstacles:**
+  - None; Git repository is clean and synchronized.
+
+#### Truong Gia Linh (QA & Documentation Lead)
+* **Completed tasks:**
+  - Task TASK-02: Completed Spec Kit training on `/speckit-clarify` and QA checklist quality gates.
+  - Task TASK-04: Completed Section 3 of Vision Document (Stakeholder personas, supermarket constraints, and competitor quadrant chart).
+  - Consolidated member training summaries into `src/speckit/training-log.md`.
+* **To-do Tasks:**
+  - Task TASK-12: Document meeting minutes for Meeting 2 (26/10) and prepare final sprint review templates.
+  - Review TASK-07 (Project Plan Scope) authored by Binh.
+* **Issues/Obstacles:**
+  - Need to ensure all Markdown tables and Mermaid diagrams render without overflow in PDF export.
+
+---
+
+### Actions (if any)
+1. Ngo Tien Binh to finalize TASK-07 (Project Plan Scope) and advance to TASK-09 (5-Sprint Schedule).
+2. Le Tat Nam to begin TASK-08 (Risk Management) and Nguyen Hoang Phuc Thinh to begin TASK-11 (FoodOn Schema Design).
+3. Luong Hoang Nam to complete ML Kit benchmark measurements for TASK-10.
+4. Next sync: Pre-submission Integration Check on Friday, 30/10/2026.
+
+### Summary of the meeting
+The team held Weekly Scrum Meeting 2 via Google Meet on Monday, 26/10/2026 from 20:00 to 20:35 with all 5 members present. The team reviewed mid-sprint progress: 6 out of 14 tasks are fully completed (all Vision Document and Spec Kit setup tasks), 2 tasks are actively In Progress (Project Plan Scope and Flutter OCR Spike), and the remaining 6 tasks are queued in To Do. The project is well ahead of schedule and fully on track to achieve the internal freeze milestone on 30/10/2026.
+
+---
+
+### Trello Board Progress Evidence (Mid-Sprint - 26/10)
+![NutriViet Sprint 2 Trello Board (26/10)](../assets/setup/trello-meeting2.png)
+
+*Figure 1.2: NutriViet Sprint 2 Scrum Board on Trello as of 26/10/2026 showing 6 completed tasks in Done, 2 tasks In Progress, and 6 remaining tasks in To Do.*
