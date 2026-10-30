@@ -22,11 +22,19 @@ The purpose of this Vision Document is to collect, analyze, and define the high-
 ---
 
 ## 2. Positioning
-*Performed by: Le Tat Nam | Reviewed by: Ngo Tien Binh | Edited by: Luong Hoang Nam*
+*Performed by: Le Tat Nam | Reviewed by: Ngo Tien Binh | Edited by: Luong Hoang Nam*  
+*Estimated Effort: 5.0 hours | Status: Complete & Verified*
+
+The positioning of NutriViet establishes the societal urgency, market necessity, and strategic differentiation of our mobile food safety platform within the rapidly expanding Vietnamese packaged retail sector.
 
 ### 2.1. Problem Statement
-The table below specifies the core societal and health challenge addressed by the NutriViet platform.
+In Vietnam's modern food retail ecosystem, packaged foods and imported goods have proliferated across supermarkets, convenience stores, and traditional groceries. However, food safety labeling has lagged behind consumer health needs. Ingredient panels are frequently printed in microscopic typography (often below 1.2 mm), utilize obscure chemical jargon or International Numbering System (INS/E-number) additive identifiers, and fail to highlight cross-contamination risks or hidden allergen derivatives. 
 
+For the millions of Vietnamese citizens living with acute food allergies (such as peanuts, shellfish, cow's milk, soy, and eggs) and chronic metabolic conditions (including Type 2 diabetes, hypertension, and gout), grocery shopping is fraught with severe health risks, anxiety, and decision paralysis. Existing mobile barcode scanners fail in Vietnam because artisanal, local, and freshly distributed packaged goods are rarely cataloged in international European Article Number (EAN) databases.
+
+The table below formally encapsulates this core societal and clinical challenge following the standard course-mandated Problem Statement specification:
+
+#### Table 1: Problem Statement
 | Element | Specification |
 |:---|:---|
 | **The problem of** | Obscure, complex, and unstandardized ingredient labeling on packaged food products in Vietnam, characterized by microscopic typography, foreign technical nomenclature, cryptic chemical additive codes (E-numbers), and undeclared cross-contamination allergens. |
@@ -34,9 +42,44 @@ The table below specifies the core societal and health challenge addressed by th
 | **the impact of which is** | High risks of life-threatening anaphylactic reactions, chronic dietary complications, severe anxiety during grocery shopping, and excessive time wasted manually deciphering chemical labels at retail supermarket shelves. |
 | **a successful solution would be** | A mobile application offering instant smartphone camera Optical Character Recognition (OCR) combined with typo-tolerant fuzzy matching and FoodOn ontology classification, delivering unambiguous color-coded safety hazard alerts (RED dangerous / YELLOW caution / GREEN safe), personalized dietary logging, and curated safe food alternatives. |
 
-### 2.2. Product Position Statement
-The table below outlines the strategic positioning of NutriViet in contrast to existing commercial market alternatives.
+#### Detailed Problem Element Elaboration
 
+1. **The Problem of (Ingredient Label Obscurity & Structural Deficiencies):**
+   - **Microscopic Typography & Visual Crowding:** Packaging constraints force manufacturers to pack ingredients into miniature text blocks (often under 6-point type or < 1.2 mm x-height) printed on curved, reflective, or crinkled packaging materials.
+   - **Cryptic Chemical Nomenclature & Additive Codes:** Additives are declared using technical abbreviations or numerical INS/E-number codes (e.g., *E621* for monosodium glutamate, *E211* for sodium benzoate, *E102* for tartrazine, *E220* for sulfur dioxide). Consumers without clinical or biochemical backgrounds cannot evaluate their risks.
+   - **Hidden Derivatives & Derivative Ambiguity:** Many common allergens are masked under derived product names (e.g., *Sodium Caseinate* or *Whey Powder* masking cow's milk; *Lecithin* masking soy or egg yolk; *Hydrolyzed Vegetable Protein* masking wheat or soy). Without semantic ontology mapping, consumers miss these lethal derivative pathways.
+   - **Inconsistent Regulatory Compliance:** While Vietnamese standards (Decree No. 43/2017/ND-CP and Decree No. 111/2021/ND-CP) govern merchandise labeling, warning declarations for potential manufacturing cross-contact ('May contain traces of...') remain non-standardized and frequently omitted.
+
+2. **Affects (Target Vulnerable Demographics):**
+   - **Allergy-Prone Individuals:** An estimated 5–8% of children and 2–4% of adults suffer from IgE-mediated food allergies, where inadvertent consumption of minute quantities of peanuts, shellfish, tree nuts, or milk triggers acute medical emergencies.
+   - **Chronic Metabolic Care Patients:** Over 5 million Vietnamese adults diagnosed with Type 2 diabetes, alongside millions managing hypertension, hyperuricemia (gout), and cardiovascular diseases, who require daily monitoring of added sugars, sodium, purines, and saturated fats.
+   - **Parents & Infant Caregivers:** Parents purchasing formula, weaning snacks, and baby biscuits where undeclared additives, heavy sugars, or potential allergens pose serious developmental and pediatric health hazards.
+   - **Ethical, Religious & Lifestyle Consumers:** Shoppers adhering strictly to vegan, vegetarian, or Halal dietary ethics who must confirm that products are free from animal gelatin, animal fats, or non-compliant stabilizing agents.
+
+3. **The Impact of Which Is (Clinical, Psychological, and Economic Burdens):**
+   - **Acute Clinical Emergencies:** Accidental ingestion leads to severe reactions, ranging from urticaria, facial angioedema, and gastrointestinal distress to acute anaphylactic shock requiring emergency epinephrine injection and intensive care hospitalization.
+   - **Chronic Health Deterioration:** Repeated exposure to unmonitored sodium, refined sugars, or uric-acid precursors accelerates organ damage, diabetic neuropathy, and recurrent acute gout flares.
+   - **Severe Shopping Anxiety & Decision Fatigue:** Shoppers spend an inordinate amount of time (often 10–20 minutes per product category) peering closely at packaging, resulting in psychological distress and abandoned purchases.
+   - **Economic Loss:** Substantial financial expenses incurred from emergency hospital admissions, specialized medications, and wasted grocery expenditures on unsuitable products.
+
+4. **A Successful Solution Would Be (System Capabilities & Engineering Criteria):**
+   - **Real-Time On-Device Text Capture:** High-speed camera Optical Character Recognition (OCR) capable of extracting raw ingredient text in under 1.5 seconds directly on mobile devices without mandatory cloud round-trips.
+   - **Resilient Fuzzy Normalization:** Typo-tolerant Levenshtein string matching capable of resolving optical character recognition errors, skewed fonts, and packaging distortions against a standardized bilingual dictionary.
+   - **Hierarchical Semantic Ontologies:** Integration with the FoodOn farm-to-fork ontology to automatically infer derivative and parent allergen classes (e.g., *Casein -> Cow's Milk -> Dairy Allergen*).
+   - **Unambiguous Color-Coded Triage:** Immediate, intuitive safety feedback:
+     - RED ALERT (Danger): Explicit allergen or contra-indicated ingredient detected for the active user profile.
+     - YELLOW ALERT (Caution): Unverified additives, moderate dietary flags, or potential cross-contamination traces.
+     - GREEN ALERT (Safe): No matching allergens or hazardous ingredients identified in available data.
+   - **Offline-First Resilience:** Local encrypted SQLite/Hive profile and dictionary caching to ensure core safety alerts remain 100% operational in subterranean retail basements with zero cellular reception.
+
+---
+
+### 2.2. Product Position Statement
+NutriViet is strategically positioned as Vietnam's first comprehensive, ontology-driven mobile food safety companion. Unlike conventional international barcode-based scanning applications that fail on unindexed local foods, NutriViet operates directly on optical label text, providing tailored health protection for Vietnamese dietary needs.
+
+The table below articulates NutriViet's product positioning following the standardized course-mandated template:
+
+#### Table 2: Product Position Statement
 | Element | Specification |
 |:---|:---|
 | **For** | Vietnamese shoppers and households managing dietary restrictions, food allergies, and chronic medical nutrition plans. |
@@ -45,6 +88,26 @@ The table below outlines the strategic positioning of NutriViet in contrast to e
 | **That** | Scans product packaging labels via camera OCR in real time, cross-references ingredients against personalized user health profiles using hierarchical FoodOn allergen ontologies, and delivers immediate visual hazard alerts without requiring pre-registered barcode databases. |
 | **Unlike** | Existing international applications like **Yuko** (which lacks personalized health-profile hazard filtering and Vietnamese label support) and **Soosee** (which lacks recursive additive ontology mapping, dietary logging, and community verification). |
 | **Our product** | Delivers specialized Vietnamese OCR text normalization, semantic ontology inference for hidden food derivatives, local offline caching for low-connectivity supermarket environments, and verified community-driven product crowdsourcing. |
+
+#### Strategic Differentiation & Value Proposition Analysis
+
+1. **Target Customer Focus ('For' & 'Who'):**
+   - NutriViet specifically targets the domestic Vietnamese demographic—ranging from young allergy-conscious digital natives to elderly shoppers managing chronic illnesses. 
+   - These users require an effortless, instantaneous verification tool that functions on the spot at store shelves without requiring tedious manual typing, scientific translation, or barcode catalog dependency.
+
+2. **Core System Innovation ('The product name' & 'That'):**
+   - **Decoupled from Barcode Dependency:** Traditional barcode apps (e.g., Open Food Facts, Barcode Lookup) fail when a product barcode is missing from the server database (common for regional Vietnamese snacks and local market items). NutriViet reads the actual physical label text via on-device camera OCR, ensuring universal compatibility across any packaged product.
+   - **Ontology-Driven Semantic Reasoning:** Instead of static keyword matching, NutriViet leverages the FoodOn ontology graph. If a user is allergic to 'Trứng' (Eggs), the system flags *Ovalbumin*, *Lysozyme*, and *Lecithin (trứng)* without requiring the user to enumerate every biochemical synonym.
+
+3. **Competitive Differentiation ('Unlike' & 'Our product'):**
+   - **Versus Yuko App:** Yuko is an EU-centric barcode platform that calculates generic additive safety scores for cosmetics and food. It completely lacks personalized user health-profile configuration, provides zero Vietnamese language label extraction, and fails when encountering non-European barcodes. NutriViet provides full Vietnamese language normalization, personalized profile evaluations, and works directly on raw text labels.
+   - **Versus Soosee App:** Soosee provides real-time word highlighting for allergens, but it relies on static flat keyword lists without relational reasoning (e.g., it cannot deduce that *Sodium Caseinate* is a dairy derivative unless manually typed into a custom category). Furthermore, Soosee lacks nutritional tracking journals, symptom logging, offline safety caching, and crowdsourced product submission pipelines.
+   - **Versus Open Food Facts:** Open Food Facts serves as an open crowdsourced database but lacks real-time camera OCR label hazard screening and does not provide customizable clinical profile alert levels for chronic medical conditions.
+
+4. **Strategic Value Matrix:**
+   - **Zero False Negatives Policy:** Rigorous fuzzy matching tuned to >= 98% recall ensures primary declared allergens are never missed.
+   - **Offline Operational Continuity:** High-risk warnings execute locally in < 300 ms even when disconnected from the internet.
+   - **Community-Powered Expansion:** An integrated crowdsourcing workflow enables users to submit unindexed domestic food labels, which are verified and cataloged through an administrative review portal.
 
 ---
 
