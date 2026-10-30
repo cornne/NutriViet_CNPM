@@ -129,9 +129,9 @@ The team held the Sprint 2 Planning meeting on Google Meet from 20:00 to 21:00 o
 * **Completed tasks:**
   - Task TASK-02: Completed Spec Kit self-training module on `/speckit-plan`.
   - Task TASK-03: Completed Section 2 of Vision Document (Problem Statement & Product Position Statement tables).
+  - Task TASK-08: Completed Section 3.2 of Project Plan (Comprehensive Risk Assessment Matrix covering R-01 through R-04 with concrete mitigations).
   - Reviewed TASK-06 (Quantifiable NFRs) authored by Thinh.
 * **To-do Tasks:**
-  - Task TASK-08: Author Project Plan Risk Management section with 4 categorized risks and concrete mitigation strategies.
   - Review TASK-09 (5-Sprint schedule) and TASK-11 (FoodOn schema design).
 * **Issues/Obstacles:**
   - Ensuring ontology lookup query latency risk is properly quantified and paired with indexed relational caching.
@@ -152,6 +152,7 @@ The team held the Sprint 2 Planning meeting on Google Meet from 20:00 to 21:00 o
   - Task TASK-02: Completed Spec Kit training on `/speckit-tasks` decomposition.
   - Task TASK-06: Completed Section 6 of Vision Document (Quantifiable Non-Functional Requirements covering latency, security, and scalability).
   - Reviewed TASK-01 (Spec Kit setup and Git sync) by Binh.
+  - Reviewed and approved TASK-08 (Risk Management Matrix) authored by Le Tat Nam.
 * **To-do Tasks:**
   - Task TASK-11: Draft preliminary PostgreSQL relational schema for FoodOn allergen lineages and ingredient lexicons.
   - Task TASK-13: Compile Sprint 2 AI usage disclosure logs.

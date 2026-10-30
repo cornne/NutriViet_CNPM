@@ -74,29 +74,101 @@ NutriViet adopts a collaborative Agile team structure where all 5 members act as
 | **Truong Gia Linh** | **24127438** | `tglinh2437@clc.fitus.edu.vn` | **Quality Assurance (QA) & Documentation Lead** | Test planning and test case authoring, weekly Scrum report documentation, meeting moderation, academic formatting compliance, and audit logs. |
 
 ### 3.2. Risk Management
-The team has identified 4 critical project risks spanning technical, operational, and scope dimensions, and formulated concrete mitigation strategies for each:
+*Performed by: Le Tat Nam | Reviewed by: Nguyen Hoang Phuc Thinh | Edited by: Truong Gia Linh*  
+*Estimated Effort: 4.0 hours | Status: Complete & Verified*
+
+Risk management is central to ensuring that NutriViet meets its rigorous safety benchmarks (>= 98% recall on declared allergens), sub-2-second latency constraints, and academic semester delivery milestones. The team utilizes a proactive, quantitative risk assessment model rooted in SEI/CMMI risk management principles.
+
+#### 3.2.1. Risk Assessment Framework & Quantification
+Each identified risk is evaluated across two orthogonal dimensions on a 3-point ordinal scale:
+1. **Likelihood of Occurrence (L):**
+   - **Low (1 - Unlikely):** Probability < 20%. Rare occurrence given existing safeguards.
+   - **Medium (2 - Possible):** Probability 20% to 50%. Moderate chance under typical operating conditions.
+   - **High (3 - Probable):** Probability > 50%. High likelihood of occurrence unless actively mitigated.
+2. **Impact Severity (I):**
+   - **Low (1 - Minor):** Negligible impact on safety or timeline; minor cosmetic or secondary UX inconvenience.
+   - **Medium (2 - Significant):** Component-level degradation, localized sprint delays (<= 48h), or fallback execution required.
+   - **High (3 - Critical):** Threat to user health safety (e.g., false-negative allergen misclassification), core architectural failure, or major milestone deadline breach.
+
+The **Risk Exposure Score ($R_E$)** is computed as the product of Likelihood and Impact ($R_E = L \times I$), yielding three risk priority tiers:
+- **Critical Risk ($R_E \ge 6$):** Requires mandatory engineering mitigation, automated fallbacks, and weekly executive oversight.
+- **Moderate Risk ($3 \le R_E < 6$):** Requires proactive preventive procedures and pre-allocated contingency action plans.
+- **Low Risk ($R_E < 3$):** Monitored routinely during bi-weekly Scrum standups.
+
+#### 3.2.2. Risk Assessment Quadrant Chart
 
 ```mermaid
 quadrantChart
-    title Project Risk Assessment Matrix
+    title Project Risk Assessment Matrix: Likelihood vs Impact
     x-axis Low Likelihood --> High Likelihood
     y-axis Low Impact --> High Impact
     quadrant-1 High Risk (Critical Focus)
     quadrant-2 Moderate Risk (Contingency Required)
     quadrant-3 Low Risk (Monitor Routinely)
     quadrant-4 Moderate Risk (Actionable Prevention)
-    R-01 OCR Accuracy on Glossy Labels: [0.75, 0.88]
-    R-02 Team Member Unavailability / Exam Conflicts: [0.65, 0.70]
-    R-03 Scope Creep & Feature Bloat: [0.55, 0.78]
-    R-04 FoodOn Ontology Parsing Latency: [0.40, 0.60]
+    R-01 OCR Accuracy on Glossy Labels: [0.78, 0.90]
+    R-02 Member Unavailability / Exam Conflicts: [0.65, 0.72]
+    R-03 Scope Creep & Feature Bloat: [0.55, 0.80]
+    R-04 FoodOn Ontology Query Latency: [0.38, 0.65]
 ```
 
-| Risk ID | Risk Category | Risk Description | Severity | Likelihood | Mitigation & Contingency Strategy |
-|:---:|:---:|:---|:---:|:---:|:---|
-| **R-01** | Technical | **Degraded OCR Accuracy on Real-World Packaging:** Glossy cellophane, curved cans, and crinkled bags cause character dropouts and noise in text recognition. | **High** | **High** | 1. Implement client-side image contrast preprocessing and adaptive binarization before OCR.<br/>2. Apply Levenshtein fuzzy matching with a 75% similarity threshold against verified ingredient dictionaries.<br/>3. Provide an intuitive on-screen manual text correction interface so users can amend ambiguous tokens in 1 tap. |
-| **R-02** | Operational | **Team Member Unavailability during Midterms:** Illness or academic midterm examination crunches could stall critical task paths. | **High** | **Medium** | 1. Strict adherence to the **"1 Doer + 1 Reviewer"** rule ensures at least 2 members are fully familiar with every piece of code and documentation.<br/>2. All work-in-progress code must be committed to Git feature branches daily to prevent progress lockup.<br/>3. Re-allocate non-critical research tasks if a member experiences an emergency. |
-| **R-03** | Scope | **Scope Creep / Feature Bloat:** Expanding into e-commerce, meal ordering, or complex medical lab data could prevent on-time project completion. | **High** | **Medium** | 1. Strictly enforce the boundaries defined in the Project Scope (Section 2.2).<br/>2. Freeze feature specifications at the conclusion of Sprint 2 (PA2).<br/>3. Classify all "nice-to-have" enhancements (e.g., social feed, gamification badges) as *Priority-3 Backlog* items that will only be touched if core deliverables pass QA ahead of schedule. |
-| **R-04** | Technical / Architecture | **FoodOn Ontology Query Latency:** Complex recursive graph lookups for hidden allergen lineage could exceed the 2.0s latency threshold over the network. | **Medium** | **Low** | 1. Flatten and precompute primary allergen lineage paths into indexed relational lookup tables in PostgreSQL.<br/>2. Cache the top 500 most frequent Vietnamese packaged food additives directly in Redis and local device storage.<br/>3. Bound recursive ontology lookups to a maximum depth of 4 relationship hops. |
+#### 3.2.3. Comprehensive Risk Assessment Matrix
+
+The table below synthesizes the 4 primary project risks, their quantified exposure levels, preventive engineering controls, fallback contingencies, and designated leads:
+
+| Risk ID | Category | Risk Description & Failure Mode | Likelihood ($L$) | Impact ($I$) | Risk Exposure ($R_E$) | Mitigation & Preventive Strategy | Contingency & Fallback Action Plan | Owner / Lead |
+|:---:|:---:|:---|:---:|:---:|:---:|:---|:---|:---:|
+| **R-01** | Technical / AI | **Degraded OCR Accuracy on Real-World Packaging:** High-glare BOPP cellophane, metallic foils, cylindrical beverage cans, and crinkled bags cause character dropouts, misrecognized diacritics, and optical noise. | **High (3)** | **High (3)** | **9 (Critical)** | 1. Implement client-side image contrast preprocessing (CLAHE, adaptive thresholding, perspective unwarping).<br/>2. Apply Levenshtein fuzzy string matching with a **75% similarity threshold** against curated Vietnamese ingredient dictionaries.<br/>3. Auto-prompt flashlight activation when ambient lux drops below threshold. | Provide an intuitive on-screen **1-tap manual text correction interface** with suggested replacement chips so users can amend ambiguous tokens in 1 tap without typing full words. | Luong Hoang Nam (UI/UX) & Ngo Tien Binh (AI) |
+| **R-02** | Operational / Resource | **Team Member Unavailability during Midterm Exams:** Academic midterm examination crunches, university project deadlines, or unforeseen illness could stall critical task paths and sprint deliverables. | **Medium (2)** | **High (3)** | **6 (Critical)** | 1. Strict adherence to the **"1 Doer + 1 Reviewer"** pairing rule ensures at least 2 team members possess end-to-end domain knowledge of every code module and document.<br/>2. Enforce **mandatory daily Git branch commits and pushes** to prevent work-in-progress lockup on local machines.<br/>3. Maintain an active availability calendar on the team Discord workspace. | Re-allocate non-critical research tasks if a member experiences an emergency; designated reviewer immediately assumes doer status with zero onboarding lag. | Truong Gia Linh (QA) & Ngo Tien Binh (PM) |
+| **R-03** | Scope / Process | **Scope Creep & Feature Bloat:** Expanding system scope into e-commerce checkouts, meal ordering APIs, clinical blood-test parsing, or social gamification threatens on-time completion of core safety deliverables. | **Medium (2)** | **High (3)** | **6 (Critical)** | 1. Strictly enforce the functional boundaries defined in the Project Scope (Section 2.2).<br/>2. Enforce a **formal feature freeze** at the conclusion of Sprint 2 (PA2).<br/>3. Apply strict **MoSCoW backlog prioritization**; classify all non-essential enhancements (social feeds, community badges) as *Priority-3 Backlog*. | Priority-3 Backlog items are completely deferred until core features (FG1–FG4) pass QA testing with >= 80% automated unit test coverage. | Ngo Tien Binh (PM) & Le Tat Nam (Arch) |
+| **R-04** | Technical / Architecture | **FoodOn Ontology Query Latency:** Recursive semantic graph traversals for deep allergen lineage (e.g., *Casein -> Cow's Milk -> Dairy*) could exceed the strict < 2.0s scan response threshold over degraded cellular networks. | **Low (1)** | **Medium (2)** | **2 (Low)** | 1. Flatten and precompute primary allergen lineage paths into indexed, materialized relational lookup tables in PostgreSQL.<br/>2. Cache the top 500 most frequent Vietnamese packaged food additives and synonyms directly in Redis and local device storage.<br/>3. Bound recursive ontology graph traversals to a **maximum depth of 4 relationship hops**. | In low-connectivity or high-latency scenarios, fall back immediately to on-device encrypted SQLite/Hive cache evaluation, delivering guaranteed baseline warnings in < 300 ms. | Le Tat Nam (Backend) & Nguyen Hoang Phuc Thinh (DB) |
+
+#### 3.2.4. Detailed Risk Analysis & Actionable Engineering Plans
+
+##### Risk R-01: Degraded OCR Accuracy on Real-World Packaging
+* **Engineering Challenge:** In real-world retail shopping, consumers scan items under uneven fluorescent lighting, through transparent reflective shrink-wraps, and over curved surfaces (e.g., cylindrical aluminum beverage cans). Optical noise frequently causes diacritic stripping (e.g., recognizing *"đậu phộng"* as *"dau phong"* or *"trứng"* as *"trung"*), which could lead to disastrous false-negative allergen detection.
+* **Concrete Technical Mitigation:**
+  1. *Contrast & Preprocessing Pipeline:* Before passing images to Google ML Kit, the Flutter camera layer executes client-side OpenCV-based adaptive contrast equalization (CLAHE) and Otsu binarization to eliminate surface glare.
+  2. *75% Fuzzy Match Threshold:* Extracted text tokens are normalized (lowercased, diacritics preserved, punctuation stripped) and evaluated against normalized lexicons using Levenshtein distance:
+     $$\text{Similarity}(s_1, s_2) = 1 - \frac{\text{Levenshtein}(s_1, s_2)}{\max(|s_1|, |s_2|)} \ge 0.75$$
+     This guarantees that minor OCR substitutions (e.g., *"0"* for *"O"*, *"1"* for *"l"*) match verified allergens.
+  3. *1-Tap Manual Correction Interface:* If an extracted token scores between 0.60 and 0.74 against an allergen candidate, the UI renders an inline cautionary prompt with a 1-tap chip (e.g., *"Did you mean Đậu phộng?"*), eliminating manual keyboard retyping.
+* **Success Metric:** Achieve >= 98% recall on declared primary food allergens (NFR-REL-01) and < 1.5s preprocessing latency (NFR-PERF-01).
+
+##### Risk R-02: Team Member Unavailability during Midterm Exams
+* **Operational Challenge:** The academic semester schedule concentrates major midterm exams, laboratory deliverables, and university commitments in late October and November (coinciding with Sprint 2 and Sprint 3). A single member's absence could stall dependent architecture modules or document reviews.
+* **Concrete Operational Mitigation:**
+  1. *Enforced "1 Doer + 1 Reviewer" Governance:* Every project work item is explicitly assigned to one primary performer and one designated reviewer. The reviewer actively participates in design discussions, reads commit diffs, and understands code logic in real time.
+  2. *Mandatory Daily Git Branch Pushes:* Team members must commit and push all work-in-progress code to remote feature branches at the end of each working day. No unfinished work may remain stranded on private local drives.
+  3. *Asynchronous Emergency Handover:* If a team member notifies the PM of unavailability due to exams or illness, the designated reviewer immediately assumes the doer role without requiring lengthy knowledge-transfer sessions. Non-critical tasks (e.g., styling tweaks, secondary documentation) are frozen or rescheduled to later sprints.
+* **Success Metric:** Zero critical path task blocked for more than 48 hours throughout Sprint 2 through Sprint 5.
+
+##### Risk R-03: Scope Creep and Feature Bloat
+* **Process Challenge:** As the product vision develops, enthusiasm for extra features (e.g., integrating third-party grocery store price comparisons, social meal journals, automated blood-test profile imports, or multi-language speech output) creates severe scope creep, jeopardizing foundational requirements.
+* **Concrete Process Mitigation:**
+  1. *Formal Scope Freeze at Sprint 2 (PA2):* The system boundary established in Project Scope (Section 2.2) is formally locked at the conclusion of PA2. No new feature requests may be introduced into the Sprint 3–5 backlog without unanimous consent from all 5 leads and formal TA approval.
+  2. *Strict MoSCoW Prioritization:* Backlog items are strictly segregated:
+     - **Must-Have (P1):** Camera OCR scanning, Fuzzy matching, FoodOn allergen classification, RED/YELLOW/GREEN hazard alert UI, offline profile storage.
+     - **Should-Have (P2):** Nutrition/reaction diary, safe alternative recommender, community product crowdsourcing, admin moderation portal.
+     - **Could-Have / Won't-Have (P3):** Social sharing, gamification badges, barcode scanner integration, barcode database sync.
+  3. *Quality Gate Dependency:* P3 backlog items are strictly barred from active development until all P1 and P2 deliverables pass integration tests with >= 80% test coverage.
+* **Success Metric:** 100% adherence to defined functional groups FG1–FG8; zero scope deviation on core deliverables.
+
+##### Risk R-04: FoodOn Semantic Ontology Query Latency
+* **Architectural Challenge:** The FoodOn ontology graph contains tens of thousands of classes and extensive multi-hop taxonomic relationships. Querying remote ontology endpoints over public mobile internet (often 3G or degraded 4G in supermarket basements) could introduce network round-trip latencies > 3.0s, directly violating NFR-PERF-02 (< 2.5s total scan response).
+* **Concrete Architectural Mitigation:**
+  1. *Materialized Relational Paths in PostgreSQL:* Rather than executing live recursive SPARQL/OWL graph queries during scan evaluation, the database precomputes and materializes all ancestor-descendant allergen lineage paths into an indexed relational table (`foodon_allergen_closure`). Query execution drops from recursive multi-second graph traversals to a single indexed SQL lookup:
+     $$\text{Execution Time} \le 50\text{ ms}$$
+  2. *Top-500 In-Memory Additive Cache:* The top 500 most frequently consumed Vietnamese packaged additives and primary allergen keywords are cached in Redis on the server and embedded in an encrypted SQLite/Hive local database on the mobile client.
+  3. *Bounded Recursion (Max Depth 4 Hops):* Any runtime graph query is strictly bounded to a maximum depth of 4 hops, pruning esoteric taxonomic ancestors that do not contribute to clinical consumer warnings.
+  4. *Offline Local Triage Fallback:* If network latency exceeds 800 ms or connection is severed, the client executes local offline triage against cached profiles in < 300 ms (NFR-PERF-03).
+* **Success Metric:** Database lookup latency <= 50 ms (NFR-SCAL-03); end-to-end hazard alert rendered in < 2.0s over 4G connections.
+
+#### 3.2.5. Continuous Risk Monitoring & Review Cadence
+Risk management is an active operational discipline embedded into regular Scrum ceremonies:
+1. **Weekly Scrum Standups:** Every Tuesday and Friday standup includes a dedicated 5-minute risk check where members report newly emerging technical blockers or academic conflicts.
+2. **Sprint Retrospective Risk Audit:** At the end of each sprint, the QA Lead (Truong Gia Linh) and PM (Ngo Tien Binh) review the risk quadrant chart, reassess likelihood and impact scores, and log mitigated risks in `docs/management/weekly-reports.md`.
+3. **Escalation Protocol:** Any risk whose exposure score escalates to >= 6 triggers an immediate architectural sync meeting within 24 hours to execute contingency procedures.
 
 ---
 
@@ -165,7 +237,7 @@ In accordance with course guidelines, every task represents a concrete project a
 | **TASK-05** | **Vision Doc - Features & Mermaid:** Author detailed 3–5 sentence paragraphs for FG1–FG8 (What, Why, Who); draw 2 Mermaid workflow diagrams. | **Luong Hoang Nam** | Ngo Tien Binh | 22/10 | 26/10 | 8h | **To Do** |
 | **TASK-06** | **Vision Doc - Quantifiable NFRs:** Define measurable thresholds for latency (< 2.0s), security (AES-256, TLS 1.3), scalability, and reliability. | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 22/10 | 26/10 | 4h | **To Do** |
 | **TASK-07** | **Project Plan - Goals & Scope:** Draft project goals, boundaries, assumptions, deliverables, and team organization matrix. | **Ngo Tien Binh** | Truong Gia Linh | 24/10 | 27/10 | 5h | **To Do** |
-| **TASK-08** | **Project Plan - Risk Management:** Analyze 4 technical and operational risks (OCR degradation, midterm absences, scope creep, ontology latency) + mitigations. | **Le Tat Nam** | Nguyen Hoang Phuc Thinh | 24/10 | 29/10 | 4h | **To Do** |
+| **TASK-08** | **Project Plan - Risk Management:** Analyze 4 technical and operational risks (OCR degradation, midterm absences, scope creep, ontology latency) + mitigations. | **Le Tat Nam** | Nguyen Hoang Phuc Thinh | 24/10 | 29/10 | 4h | **Done** |
 | **TASK-09** | **Project Plan - Schedule & Build Plan:** Formalize 5-Sprint schedule, milestone build outputs, and task rules; align with Trello board. | **Ngo Tien Binh** | Le Tat Nam | 25/10 | 28/10 | 6h | **To Do** |
 | **TASK-10** | **Tech Spike - Flutter Camera OCR:** Benchmark Google ML Kit Text Recognition on sample Vietnamese packaged foods; measure token extraction speed. | **Luong Hoang Nam** | Ngo Tien Binh | 21/10 | 28/10 | 8h | **In Progress** |
 | **TASK-11** | **Tech Spike - FoodOn Schema Design:** Analyze FoodOn OWL graph structures and draft normalized relational schema for ingredients and allergen hierarchies. | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 23/10 | 28/10 | 6h | **To Do** |
