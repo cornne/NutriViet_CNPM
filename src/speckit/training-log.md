@@ -23,7 +23,7 @@ The training covered:
 * **Training Status:** Completed (20/10/2026)
 * **Modules Covered:** Overview of Spec Kit, Repository Scaffolding, and Constitution Formulation.
 * **Key Learning Takeaways:**
-  > *"I learned how Spec Kit prevents AI drift by establishing an immutable Constitution in `.specify/memory/constitution.md`. In NutriViet, by anchoring our food safety rules, 80% test coverage minimum, and Clean Architecture standards into the constitution, any subsequent command executed by team members or AI agents will automatically enforce these quality gates without repetitive manual prompt engineering."*
+  > *"Before watching the tutorial, I thought a constitution file was just a formality that nobody reads. But I realized that the constitution is actually the single source of truth that guides every AI command in the project. When we write down our project rules clearly in constitution.md, such as the coding standards, testing requirements, and architecture decisions, the AI tools will follow those rules consistently across all team members. This means we do not need to repeat the same instructions every time we use an AI assistant, because the constitution already defines what is acceptable and what is not."*
 
 ---
 
@@ -31,7 +31,7 @@ The training covered:
 * **Training Status:** Completed (21/10/2026)
 * **Modules Covered:** `/speckit-plan` Architectural Scaffolding, Data Modeling, and API Contract Definitions.
 * **Key Learning Takeaways:**
-  > *"The `/speckit-plan` workflow demonstrated how to translate user-facing specifications into concrete architectural decisions (such as FastAPI endpoints, PostgreSQL schemas, and Docker configs) before writing a single line of application code. This ensures our backend data models and FoodOn graph lookups are fully architected upfront, reducing expensive refactoring downstream."*
+  > *"What I found most useful about /speckit-plan is that it forces you to think about the technical design before jumping into coding. The command takes a finished specification and helps you outline which components are needed, how data flows between them, and what technologies to use. For our project, this means I can plan out the API endpoints, database tables, and service structure on paper first instead of discovering problems halfway through implementation. I think this approach will save us a lot of time because rewriting a plan is much cheaper than rewriting actual code."*
 
 ---
 
@@ -39,7 +39,7 @@ The training covered:
 * **Training Status:** Completed (21/10/2026)
 * **Modules Covered:** `/speckit-specify` Requirements Capture and Acceptance Criteria Structuring.
 * **Key Learning Takeaways:**
-  > *"The tutorial emphasized that specs must focus purely on user value and observable behaviors rather than technical implementation details. Writing clear User Scenarios and Given-When-Then acceptance criteria using `/speckit-specify` will allow me to design Flutter BLoC states and camera scanner interactions that map directly to verified user requirements."*
+  > *"I learned that /speckit-specify command transforms a natural language idea into a structured feature specification that focuses on what the system should do and why, rather than how it should be implemented. I also learned that clear acceptance criteria define measurable and testable conditions for determining whether a feature meets its requirements. A good specification should describe user needs, expected behaviour, and relevant edge cases to reduce ambiguity before implementation. This process helps the development team maintain a shared understanding of requirements and provides a clear foundation for planning, task decomposition and testing."*
 
 ---
 
@@ -47,7 +47,7 @@ The training covered:
 * **Training Status:** Completed (22/10/2026)
 * **Modules Covered:** `/speckit-tasks` Decomposition and Git Integration.
 * **Key Learning Takeaways:**
-  > *"I observed how `/speckit-tasks` systematically breaks a high-level technical plan into ordered, atomic, and testable tasks with defined file paths. This directly streamlines our Scrum workflow: we can convert these tasks straight into our Trello board cards with explicit assignees, ensuring every Git commit and PR maps to a verified spec task."*
+  > *"The /speckit-tasks command is probably the most practical one for daily work. It takes a technical plan and breaks it down into small, concrete tasks that you can actually assign to people and track on a board. Each task has a clear description of what needs to be done and which files are involved, so there is no confusion about what finished looks like. I can see how this connects directly to our Trello workflow, because instead of writing vague task cards, we can generate specific ones that match exactly what the specification requires."*
 
 ---
 
@@ -55,7 +55,7 @@ The training covered:
 * **Training Status:** Completed (22/10/2026)
 * **Modules Covered:** `/speckit-clarify` Ambiguity Reduction and `/speckit-checklist` Quality Gates.
 * **Key Learning Takeaways:**
-  > *"The `/speckit-clarify` and `/speckit-checklist` skills are powerful QA mechanisms. Before implementation starts, the AI acts as a devil's advocate, identifying blind spots, edge cases (such as offline handling or poor camera lighting), and conflicting constraints. This will allow our team to eliminate ambiguities during the design phase rather than finding defects during final testing."*
+  > *"I was impressed by how /speckit-clarify works as a review tool. Instead of waiting until testing to find problems, this command asks tough questions about the specification before any code is written. It helps identify things that the team might have overlooked, like what happens when there is no internet connection or when a user enters unexpected input. For my QA role, this is very helpful because catching these issues early in the design phase is much easier than fixing bugs after the feature is already built. The checklist feature also gives a clear list of items to verify before considering a task complete."*
 
 ---
 

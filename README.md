@@ -14,13 +14,13 @@
 **Group:** Group 07 - NutriViet Team  
 **Institution:** Faculty of Information Technology, VNU-HCM University of Science (HCMUS)
 
-| No. | Student ID | Full Name | Academic Email | Project Role & Primary Responsibilities |
-|:---:|:---:|:---|:---|:---|
-| 1 | **24127004** | **Ngo Tien Binh** | `ntbinh2419@clc.fitus.edu.vn` | **Project Manager (PM) & AI Lead** / Full-Stack Engineer |
-| 2 | **23127432** | **Le Tat Nam** | `ltnam23@clc.fitus.edu.vn` | **Backend & System Architecture Lead** / Full-Stack Engineer |
-| 3 | **24127456** | **Luong Hoang Nam** | `lhnam2434@clc.fitus.edu.vn` | **UI/UX & Flutter Lead** / Full-Stack Engineer |
-| 4 | **24127242** | **Nguyen Hoang Phuc Thinh** | `nhpthinh2416@clc.fitus.edu.vn` | **Database & Git Repository Lead** / Full-Stack Engineer |
-| 5 | **24127438** | **Truong Gia Linh** | `tglinh2437@clc.fitus.edu.vn` | **Quality Assurance (QA) & Documentation Lead** / Full-Stack Engineer |
+| No. | Student ID | Full Name | Project Role & Primary Responsibilities |
+|:---:|:---:|:---|:---|
+| 1 | **24127004** | **Ngo Tien Binh** | **Project Manager (PM) & AI Lead** / Full-Stack Engineer |
+| 2 | **23127432** | **Le Tat Nam** | **Backend & System Architecture Lead** / Full-Stack Engineer |
+| 3 | **24127456** | **Luong Hoang Nam** | **UI/UX & Flutter Lead** / Full-Stack Engineer |
+| 4 | **24127242** | **Nguyen Hoang Phuc Thinh** | **Database & DevOps Lead** / Full-Stack Engineer |
+| 5 | **24127438** | **Truong Gia Linh** | **QA & Test Automation Lead** / Full-Stack Engineer |
 
 ---
 
@@ -93,7 +93,7 @@ NutriViet/
 * [Project Plan (`docs/management/project-plan.md`)](./docs/management/project-plan.md):
   * Goals, project boundaries (in-scope vs out-of-scope), and deliverables.
   * **Risk Management Matrix:** 4 categorized risks (OCR degradation, midterm crunch, scope creep, latency) + concrete mitigations.
-  * **5-Sprint Scrum Schedule & Build Plan:** 14 detailed Sprint 2 tasks (1 doer + 1 reviewer), later sprint tasks, and 4-tier build releases (Build 0.1 to Build 1.0 Demo).
+  * **5-Sprint Scrum Schedule:** 14 detailed Sprint 2 tasks (1 doer + 1 reviewer) and upcoming sprint task roadmaps.
 * [Spec Kit Initialization & Governance (`src/constitution.md`)](./src/constitution.md):
   * Ratified project constitution detailing Clean Architecture, food safety zero-ambiguity standards, and test-first policies.
   * [Spec Kit Training Completion Log (`src/speckit/training-log.md`)](./src/speckit/training-log.md): Individual learning takeaways for all 5 members.

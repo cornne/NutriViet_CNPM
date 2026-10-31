@@ -58,8 +58,8 @@ The key stakeholders invested in the development, operation, and outcome of the 
 |:---|:---|:---|
 | **Course Instructors & TAs** | Academic supervisors & quality evaluators | Adherence to Scrum process, Spec-Driven Development, quantifiable NFRs, traceability, and code quality. |
 | **Development Team (Group 07)** | System designers, full-stack engineers, QA | Scalable Clean Architecture, robust OCR accuracy, test coverage $\ge 80\%$, on-time sprint deliverables. |
-| **Health-Restricted Consumers** | Primary end-users | Zero false negatives on severe allergens, instant scanning response (< 2s), clear visual indicators. |
-| **Medical Dietitians / Nutritionists** | Domain advisors | Accuracy of dietary calculations, safe macro/micronutrient thresholds, proper medical disclaimer visibility. |
+| **Health-Restricted Consumers** | Primary end-users | Zero false negatives on severe allergens, instant scanning response (< 3s), clear visual indicators. |
+| **Medical Dietitians / Nutritionists** | External domain advisors (non-system users) | Accuracy of dietary calculations, safe macro/micronutrient thresholds, proper medical disclaimer visibility. |
 | **System Administrators** | Operational managers | Intuitive moderation portal, data integrity in ontology tables, fast resolution of OCR correction flags. |
 
 ### 3.2. User Summary
@@ -81,9 +81,9 @@ The key stakeholders invested in the development, operation, and outcome of the 
 |:---:|:---:|:---|:---|:---|
 | **N-01** | High | Instant allergen hazard detection without manual typing. | Decoding microscopic label text is exhausting and error-prone. | Camera OCR + Instant Visual Alert (FG1, FG2) |
 | **N-02** | High | Identification of obscure chemical additives & hidden allergens. | Additives like "E621" or "Sodium Caseinate" hide dairy/MSG origins. | FoodOn Ontology & Additive Dictionary (FG3) |
-| **N-03** | High | Full functionality in offline supermarket basements. | Cloud-only apps fail completely when cellular signal is lost. | On-Device OCR & Offline Health Cache (FG1, FG7) |
+| **N-03** | High | Full functionality in offline supermarket basements. | Cloud-only apps fail completely when cellular signal is lost. | On-Device OCR & Offline Health Cache (FG1, FG3) |
 | **N-04** | Medium | Tracking daily nutritional consumption against medical targets. | Generic calorie counters do not track allergy hazard histories. | Daily Nutritional Diary & Health Metrics (FG4) |
-| **N-05** | Medium | Finding safe alternative foods when a scanned item is dangerous. | Shoppers leave empty-handed after discovering an allergen. | Safe Dietary Alternative Recommender (FG5) |
+| **N-05** | Medium | Finding safe alternative foods when a scanned item is dangerous. | Shoppers leave empty-handed after discovering an allergen. | Safe Dietary Alternative Recommender (FG4) |
 | **N-06** | Medium | Community contributions for unindexed local Vietnamese snacks. | Barcode databases omit artisanal and local market products. | Crowdsourced Food Product Submission (FG6) |
 | **N-07** | High | Rigorous moderation to ensure crowdsourced data accuracy. | Unverified community data could lead to severe health accidents. | Admin Portal & Ingredient Audit System (FG8) |
 
@@ -92,17 +92,17 @@ Refining the empirical competitive survey conducted in PA1, NutriViet benchmarks
 
 ```mermaid
 quadrantChart
-    title Market Positioning Matrix: Allergen Intelligence vs Vietnamese Localization
-    x-axis Low Vietnamese Food Support --> High Vietnamese Food Support
-    y-axis Basic Additive Lookup --> Advanced Hierarchical Allergen AI
-    quadrant-1 Specialized Local Leaders (NutriViet Target)
-    quadrant-2 International Scientific Scanners
-    quadrant-3 Rudimentary Barcode Apps
-    quadrant-4 Generic Localized Trackers
-    Yuko App: [0.25, 0.45]
-    Soosee App: [0.38, 0.72]
-    Open Food Facts: [0.35, 0.50]
-    NutriViet: [0.88, 0.85]
+    title Market Positioning Matrix
+    x-axis Low Local Support --> High Local Support
+    y-axis Basic Additive Lookup --> Advanced Allergen AI
+    quadrant-1 NutriViet Target
+    quadrant-2 Global Scanners
+    quadrant-3 Barcode Apps
+    quadrant-4 Basic Trackers
+    "Yuko App": [0.18, 0.20]
+    "Open Food Facts": [0.38, 0.28]
+    "Soosee App": [0.30, 0.75]
+    "NutriViet": [0.82, 0.80]
 ```
 
 1. **Yuko App (Germany/EU):** Excels in evaluating cosmetics and standardized European food additive health scores. However, it relies heavily on pre-registered European EAN barcodes and completely lacks individual allergy customization and Vietnamese packaging text extraction.
@@ -143,10 +143,10 @@ This section refines the 8 Functional Groups (FG1–FG8) established in PA1 into
 * **Description:** NutriViet enables users to create and manage personal profiles containing known food allergens, such as seafood, peanuts, milk, eggs, gluten, and soy, as well as dietary conditions such as diabetes, high blood pressure, hyperlipidemia, and gout. This feature is necessary because different people have different allergies and dietary restrictions, so food safety assessments must be personalized. The profile serves as the reference for evaluating ingredients detected during food scanning. Individuals with food allergies, people with dietary restrictions, and caregivers managing family members' profiles benefit from more personalized food safety information.
 
 #### FG3: Packaging OCR Scanner
-* **Description:** NutriViet allows users to capture food packaging with a smartphone camera and extract ingredient lists and nutritional information using Optical Character Recognition (OCR). This feature is needed because ingredient labels often contain small text that is difficult to read manually, especially while shopping. By converting images into machine-readable text and coupling with fuzzy matching to correct optical misreadings, the application makes ingredient analysis faster and more convenient. Consumers, particularly those who need to check many ingredients before purchasing food, benefit from a simpler and more efficient scanning process.
+* **Description:** NutriViet allows users to capture food packaging with a smartphone camera and extract ingredient lists and nutritional information using Optical Character Recognition (OCR). This feature is needed because ingredient labels often contain small text that is difficult to read manually, especially while shopping. By converting images into machine-readable text and coupling with fuzzy matching to correct optical misreadings, the application makes ingredient analysis faster and more convenient. Each completed scan is automatically saved to the user's scan history, allowing them to review previously checked products without rescanning. Consumers, particularly those who need to check many ingredients before purchasing food, benefit from a simpler and more efficient scanning process.
 
-#### FG4: Instant Evaluation and Allergy Alert
-* **Description:** NutriViet compares the ingredients extracted by the OCR scanner against the user's personal allergy profile and FoodOn ontology rules, displaying a clear color-coded safety result. A red alert indicates that a relevant hazard or allergen has been detected, a yellow alert signals caution or unverified additives, while a green result indicates that no known hazard was detected in the available data. This feature is needed to help users identify potential food risks quickly before consuming or purchasing a product. People with food allergies and their caregivers benefit from timely warnings that reduce the risk of accidental allergen exposure; however, a green result does not guarantee that a product is completely safe.
+#### FG4: Instant Evaluation, Allergy Alert, and Safe Alternative Suggestion
+* **Description:** NutriViet compares the ingredients extracted by the OCR scanner against the user's personal allergy profile and FoodOn ontology rules, displaying a clear color-coded safety result. Refining the two-level classification (RED/GREEN) introduced in PA1, this specification adds a YELLOW cautionary tier: a red alert indicates that a relevant hazard or major allergen has been detected, a yellow alert signals caution due to unverified additives or ambiguous ingredient matches, while a green result indicates that no known hazard was detected in the available data. When a red or yellow alert is triggered, the application also suggests safe alternative food products from the verified catalog that match the user's dietary profile. This feature is needed to help users identify potential food risks quickly before consuming or purchasing a product and to provide actionable next steps rather than leaving shoppers empty-handed. People with food allergies and their caregivers benefit from timely warnings that reduce the risk of accidental allergen exposure and from curated safe substitute suggestions; however, a green result does not guarantee that a product is completely safe.
 
 #### FG5: Dietary and Reaction Journal
 * **Description:** NutriViet allows users to record the foods they consume, monitor daily calorie and macronutrient intake, and log symptoms such as itching, hives, or stomach cramps after meals. This feature is needed because users may have difficulty remembering which foods they consumed before experiencing a reaction or tracking their dietary habits over time. Keeping these records can help users recognize patterns and provide useful information when discussing symptoms with healthcare professionals. People managing allergies, dietary restrictions, or nutrition goals benefit from having their food intake and reported reactions organized in one place.
@@ -164,84 +164,26 @@ This section refines the 8 Functional Groups (FG1–FG8) established in PA1 into
 
 ### 5.2. System Workflow Diagrams
 
-<style>
-  .mermaid svg {
-    max-width: 60% !important;
-    height: auto !important;
-    margin: 0 auto !important;
-    display: block !important;
-  }
-</style>
+
+<div style="page-break-before: always;"></div>
 
 #### Workflow Diagram 1: Mobile Camera OCR Scanning & Hazard Alert Workflow
 The workflow diagram below illustrates the end-to-end user journey during food label capture, text extraction, risk calculation, and visual hazard alerting.
 
-```mermaid
-flowchart TD
-    Start([Start]) --> Scan[Open NutriViet & Select Scanner]
-    Scan --> Perm{Camera Permission?}
-    
-    Perm -- No --> ReqPerm[Request Permission]
-    ReqPerm --> PermGranted{Granted?}
-    PermGranted -- No --> ManualFallback["Show Permission Error / Manual Entry"] --> EndScan([End])
-    PermGranted -- Yes --> Cam
-    Perm -- Yes --> Cam[Open Camera & Capture Food Label]
+<p align="center">
+  <img src="./assets/workflow_diagram_1.png" alt="Workflow Diagram 1: Mobile Camera OCR Scanning & Hazard Alert Workflow" height="650" style="max-height: 650px; max-width: 90%; width: auto;" />
+</p>
 
-    Cam --> QualityCheck{Image Clear & Readable?}
-    QualityCheck -- No --> Retake[Show Retake Tips] --> Cam
-    QualityCheck -- Yes --> OCR[Preprocess Image & Run On-Device OCR]
-
-    OCR --> OCROk{Text Extracted?}
-    OCROk -- No --> RetryPrompt{Retry Capture?}
-    RetryPrompt -- Yes --> Cam
-    RetryPrompt -- No --> ManualEntry[Allow Manual Ingredient Entry] --> Match
-    OCROk -- Yes --> Match[Extract, Normalize & Match with Database]
-
-    Match --> CheckRules[Check Allergen Taxonomy & FoodOn Rules]
-    CheckRules --> ProfileCheck[Cross-Reference with User Health Profile]
-    ProfileCheck --> RiskCalc{Highest Applicable Risk Level?}
-
-    RiskCalc -- High Risk --> Red["RED ALERT: Danger / Major Allergen"]
-    RiskCalc -- Caution --> Yellow["YELLOW: Caution / Unverified Additive"]
-    RiskCalc -- Safe --> Green["GREEN: Safe / No Known Hazard"]
-
-    Red --> SaveHistory[Display Details & Save Scan to History]
-    Yellow --> SaveHistory
-    Green --> SaveHistory
-
-    SaveHistory --> DetailsPrompt{View Full Ingredient Drilldown?}
-    DetailsPrompt -- Yes --> ViewDetails[Open Ingredient Details & Evidence Sources] --> Done([Finish Scan])
-    DetailsPrompt -- No --> Done
-```
+<div style="page-break-before: always;"></div>
 
 #### Workflow Diagram 2: Community Food Crowdsourcing & Admin Verification Pipeline
 The workflow diagram below illustrates the data lifecycle and administrative moderation pipeline for user-submitted food products.
 
-```mermaid
-flowchart TD
-    Start([Start]) --> Sub[User Submits Food Product Info & Label Photos]
-    Sub --> Validate{Required Fields Complete?}
-    Validate -- No --> Error[Show Validation Errors] --> Sub
-    Validate -- Yes --> Staging[Create Record with PENDING Status]
+<p align="center">
+  <img src="./assets/workflow_diagram_2.png" alt="Workflow Diagram 2: Community Food Crowdsourcing & Admin Verification Pipeline" height="620" style="max-height: 620px; max-width: 90%; width: auto;" />
+</p>
 
-    Staging --> DupCheck{Duplicate Detected?}
-    DupCheck -- Yes --> FlagDup[Link to Existing Record & Flag Duplicate] --> AdminQueue
-    DupCheck -- No --> AutoCheck{Pass Automated Format Checks?}
-    AutoCheck -- No --> FlagData[Flag Missing or Invalid Data] --> AdminQueue
-    AutoCheck -- Yes --> ReadyQueue[Mark Ready for Review] --> AdminQueue[Add to Admin Moderation Queue]
-
-    AdminQueue --> Review[Admin Reviews Product Details & Evidence Photos]
-    Review --> Decision{Data Accurate & Evidence Sufficient?}
-
-    Decision -- Needs Fix --> CanFix{Contributor Can Fix?}
-    CanFix -- Yes --> RequestInfo[Request Corrections & Notify Contributor]
-    RequestInfo --> ReSubmit[Contributor Edits & Resubmits] --> Staging
-    CanFix -- No --> Reject["Reject Submission with Reason & Notify Contributor"] --> EndAudit([End])
-
-    Decision -- Approved --> Approve["Approve & Promote to NutriViet Food Catalog"]
-    Approve --> UpdateDB[Update Master DB & Log Admin Audit Trail]
-    UpdateDB --> Live[Make Data Available for OCR Matching & Notify User] --> Done([End])
-```
+<div style="page-break-before: always;"></div>
 
 ---
 
@@ -252,13 +194,13 @@ All non-functional requirements are explicitly quantifiable to ensure unambiguou
 
 ### 6.1. Performance & Responsiveness
 * **NFR-PERF-01 (OCR Latency):** The complete on-device OCR extraction and preprocessing pipeline must execute in **less than 1.5 seconds** on mid-range Android devices (tested on Snapdragon 680 or equivalent with 4GB RAM) for labels containing up to 150 words.
-* **NFR-PERF-02 (End-to-End Hazard Evaluation):** From camera shutter capture to rendering the visual hazard alert (RED/YELLOW/GREEN), total elapsed time must be **under 2.5 seconds** over a standard 4G cellular connection (ping $\le 50\text{ ms}$).
+* **NFR-PERF-02 (End-to-End Hazard Evaluation):** From camera shutter capture to rendering the visual hazard alert (RED/YELLOW/GREEN), total elapsed time must be **under 3.0 seconds** over a standard 4G cellular connection (ping $\le 50\text{ ms}$). OCR extraction, fuzzy matching, and ontology queries are pipelined in parallel where possible to maximize throughput within this budget.
 * **NFR-PERF-03 (Offline Evaluation Latency):** In offline fallback mode, evaluating extracted tokens against the local encrypted allergy cache must complete in **less than 300 milliseconds**.
 * **NFR-PERF-04 (Camera Frame Rate):** The active camera preview interface must maintain a smooth refresh rate of **at least 30 frames per second (fps)** without UI jank or freezing.
 
 ### 6.2. Scalability & Availability
 * **NFR-SCAL-01 (Concurrent Workload):** The backend API service must sustain **at least 150 concurrent active scanning requests** with an average response latency $\le 500\text{ ms}$ and a 99th percentile latency $\le 1200\text{ ms}$.
-* **NFR-SCAL-02 (Service Availability):** The cloud backend and database infrastructure must guarantee **99.5% operational uptime** per calendar month, excluding scheduled maintenance windows announced 24 hours in advance.
+* **NFR-SCAL-02 (Service Availability):** The cloud backend and database infrastructure must target **99.5% operational uptime** per calendar month, excluding scheduled maintenance windows announced 24 hours in advance. Verification is performed via automated health-check endpoint monitoring logged over the sprint demonstration period.
 * **NFR-SCAL-03 (Catalog Capacity):** The PostgreSQL database schema and indexing must support querying over a catalog of **at least 100,000 product records and 5,000 additive definitions** with indexed query execution times $\le 50\text{ ms}$.
 
 ### 6.3. Security & Data Protection
@@ -273,6 +215,6 @@ All non-functional requirements are explicitly quantifiable to ensure unambiguou
 * **NFR-PLAT-03 (Installation Package Size):** The compiled Android Application Package (APK) release size must **not exceed 45 megabytes (MB)** to enable rapid downloading on mobile cellular networks.
 
 ### 6.5. Reliability & Accuracy
-* **NFR-REL-01 (Allergen Detection Recall):** On clear, standardized packaging text, the fuzzy matching algorithm must achieve **at least 98% recall (zero allowable false negatives)** for primary declared allergens (peanuts, tree nuts, shellfish, milk, eggs, wheat, soybeans).
+* **NFR-REL-01 (Allergen Detection Recall):** On clear, standardized packaging text, the fuzzy matching algorithm must achieve **at least 98% recall** for primary declared allergens (peanuts, tree nuts, shellfish, milk, eggs, wheat, soybeans). False negatives on these seven major allergen categories are treated as critical severity defects requiring immediate remediation.
 * **NFR-REL-02 (Offline Storage Footprint):** The local offline database and emergency cache must consume **less than 40 megabytes (MB)** of device storage space.
 * **NFR-REL-03 (Graceful Degradation):** In the event of OCR failure due to severe packaging distortion or poor lighting, the application must never crash; it must notify the user within 1.0 second with guidance to activate the flashlight or input manual text.

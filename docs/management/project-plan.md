@@ -13,7 +13,7 @@
 **NutriViet** is an intelligent, camera-driven mobile application engineered for the Android platform that delivers personalized food allergen warnings and comprehensive nutrition management for Vietnamese consumers. By integrating on-device Optical Character Recognition (OCR), Levenshtein fuzzy matching, and the FoodOn semantic food ontology, NutriViet empowers individuals suffering from severe allergies (peanuts, seafood, gluten, cow's milk) and chronic metabolic conditions to instantly evaluate packaged food labels in retail environments. The application eliminates the dependency on pre-existing barcode databases through direct camera text extraction, while providing structured daily nutritional logging, safe product alternative recommendations, and a moderated crowdsourcing ecosystem for local food products.
 
 ### 1.2. Purpose of the Project Plan
-This Project Plan defines the operational roadmap, organizational structure, agile Scrum schedule, risk mitigation protocols, and software build strategy for the NutriViet development lifecycle across the semester. It coordinates the efforts of the 5 engineering team members, aligns task dependencies with the course milestones (PA1 through PA5), establishes transparent quality gates, and guarantees delivery of a fully validated, production-ready mobile application and demonstration by Sprint 5.
+This Project Plan defines the operational roadmap, organizational structure, agile Scrum schedule, and risk mitigation protocols for the NutriViet development lifecycle across the semester. It coordinates the efforts of the 5 engineering team members, aligns task dependencies with the course milestones (PA1 through PA5), establishes transparent quality gates, and guarantees delivery of a fully validated, production-ready mobile application and demonstration by Sprint 5.
 
 ---
 
@@ -41,18 +41,7 @@ This Project Plan defines the operational roadmap, organizational structure, agi
   * Automated medical diagnosis or prescription writing (NutriViet provides decision support, not medical treatment).
   * Native iOS build distribution during the academic semester (development focuses exclusively on Android; Flutter ensures cross-platform readiness for future releases).
 
-### 2.3. Project Deliverables
-The project deliverables are organized across the 5 course assignment milestones:
-
-| Deliverable ID | Milestone | Description | Target Delivery Date |
-|:---:|:---:|:---|:---:|
-| **DEL-01** | **PA1** | Project Proposal, Existing App Survey (Yuko & Soosee), Team Contract, Scrum & Git Setup | 12/10/2026 (Completed) |
-| **DEL-02** | **PA2** | Initial Vision Document, Initial Project Plan, Spec Kit Setup & Constitution, Sprint 2 Reports | 31/10/2026 (In Progress) |
-| **DEL-03** | **PA3** | Refined Vision Document, Revised Project Plan, Software Architecture Document (SAD), UI Prototypes | Mid-November 2026 |
-| **DEL-04** | **PA4** | Functional MVP Source Code, Unit & Integration Test Suites, API Contracts, Sprint 4 Reports | Late November 2026 |
-| **DEL-05** | **PA5** | Final Integrated Product, Test Reports, Complete Feature Demonstration, Deployment Package | Mid-December 2026 |
-
-### 2.4. Project Assumptions
+### 2.3. Project Assumptions
 1. **Developer Tooling & Access:** All 5 team members have functional Android development environments (Flutter SDK, Android Studio, VS Code, Git) and active GitHub student accounts.
 2. **Camera Hardware Availability:** Testing physical devices have operational autofocus cameras running Android 8.0 (API 26) or higher.
 3. **Scrum Discipline:** Every team member participates in required sprint ceremonies and logs task effort transparently on the shared Trello board.
@@ -65,13 +54,13 @@ The project deliverables are organized across the 5 course assignment milestones
 ### 3.1. Team Structure and Roles
 NutriViet adopts a collaborative Agile team structure where all 5 members act as Full-Stack Software Engineers while assuming designated functional leadership roles:
 
-| Member Name | Student ID | Academic Email | Functional Leadership Role | Primary Responsibilities |
-|:---|:---:|:---|:---|:---|
-| **Ngo Tien Binh** | **24127004** | `ntbinh2419@clc.fitus.edu.vn` | **Project Manager (PM) & AI Lead** | Overall sprint coordination, liaison with Course TAs, Spec Kit management, Fuzzy Matching & FoodOn ontology AI pipeline, final submission quality. |
-| **Le Tat Nam** | **23127432** | `ltnam23@clc.fitus.edu.vn` | **Backend & System Architecture Lead** | System architecture specifications, FastAPI backend services, RESTful API design, database data flow, and role-based access control. |
-| **Luong Hoang Nam** | **24127456** | `lhnam2434@clc.fitus.edu.vn` | **UI/UX & Flutter Lead** | Mobile UI/UX Figma design, Flutter Clean Architecture implementation, BLoC state management, camera OCR integration, responsive layout. |
-| **Nguyen Hoang Phuc Thinh** | **24127242** | `nhpthinh2416@clc.fitus.edu.vn` | **Database & Git Repository Lead** | PostgreSQL schema design, offline cache data models (SQLite/Hive), Git workflow management, CI/CD pipeline, and package archiving. |
-| **Truong Gia Linh** | **24127438** | `tglinh2437@clc.fitus.edu.vn` | **Quality Assurance (QA) & Documentation Lead** | Test planning and test case authoring, weekly Scrum report documentation, meeting moderation, academic formatting compliance, and audit logs. |
+| Member Name | Student ID | Functional Leadership Role | Primary Responsibilities |
+|:---|:---:|:---|:---|
+| **Ngo Tien Binh** | **24127004** | **Project Manager (PM) & AI Lead** / Full-Stack Engineer | Overall sprint coordination, liaison with Course TAs, Spec Kit management; AI algorithm development (Levenshtein fuzzy matching in Python/Dart, FoodOn ontology graph queries), and algorithm test verification. |
+| **Le Tat Nam** | **23127432** | **Backend & System Architecture Lead** / Full-Stack Engineer | System architecture specifications; FastAPI backend services implementation, RESTful API endpoints, user authentication/RBAC (User/Admin), and Docker service containerization. |
+| **Luong Hoang Nam** | **24127456** | **UI/UX & Flutter Lead** / Full-Stack Engineer | Mobile UI/UX Figma design; Flutter client development (Clean Architecture + BLoC), camera OCR text recognition pipeline (Google ML Kit integration), and visual hazard alert rendering (RED/YELLOW/GREEN). |
+| **Nguyen Hoang Phuc Thinh** | **24127242** | **Database & DevOps Lead** / Full-Stack Engineer | PostgreSQL schema design and migrations; client-side encrypted offline caching layer (SQLite/Hive in Flutter), Git workflow management, and automated GitHub Actions CI/CD pipelines. |
+| **Truong Gia Linh** | **24127438** | **QA & Test Automation Lead** / Full-Stack Engineer | Automated test suite development (Flutter unit & widget test scripts, backend pytest integration tests targeting $\ge 80\%$ coverage), Daily Dietary Diary feature development (FG5 logging & nutritional accumulation logic), and Scrum QA documentation. |
 
 ### 3.2. Risk Management
 The team has identified 4 critical project risks spanning technical, operational, and scope dimensions, and formulated concrete mitigation strategies for each:
@@ -81,14 +70,14 @@ quadrantChart
     title Project Risk Assessment Matrix
     x-axis Low Likelihood --> High Likelihood
     y-axis Low Impact --> High Impact
-    quadrant-1 High Risk (Critical Focus)
-    quadrant-2 Moderate Risk (Contingency Required)
-    quadrant-3 Low Risk (Monitor Routinely)
-    quadrant-4 Moderate Risk (Actionable Prevention)
-    R-01 OCR Accuracy on Glossy Labels: [0.75, 0.88]
-    R-02 Team Member Unavailability / Exam Conflicts: [0.65, 0.70]
-    R-03 Scope Creep & Feature Bloat: [0.55, 0.78]
-    R-04 FoodOn Ontology Parsing Latency: [0.40, 0.60]
+    quadrant-1 Critical Risk
+    quadrant-2 Contingency Plan
+    quadrant-3 Low Risk
+    quadrant-4 Actionable Risk
+    "R-01 Glossy Label OCR": [0.78, 0.86]
+    "R-02 Midterm Exam Crunch": [0.68, 0.68]
+    "R-03 Scope Creep": [0.60, 0.78]
+    "R-04 FoodOn Latency": [0.35, 0.55]
 ```
 
 | Risk ID | Risk Category | Risk Description | Severity | Likelihood | Mitigation & Contingency Strategy |
@@ -107,28 +96,12 @@ The project is structured into **5 consecutive Scrum Sprints**, each spanning 2 
 
 ### 4.1. 5-Sprint High-Level Roadmap
 
-```mermaid
-gantt
-    title NutriViet Semester Roadmap (5 Sprints = 5 PAs)
-    dateFormat  YYYY-MM-DD
-    section Sprint 1 (PA1)
-    Proposal, Survey, Team Contract, Setup :done, sp1, 2026-09-25, 2026-10-12
-    section Sprint 2 (PA2)
-    Vision Doc, Plan, Spec Kit, Spikes     :active, sp2, 2026-10-18, 2026-10-31
-    section Sprint 3 (PA3)
-    SAD Architecture, Wireframes, BLoC Core:        sp3, 2026-11-01, 2026-11-18
-    section Sprint 4 (PA4)
-    MVP Implementation, API, Integration   :        sp4, 2026-11-19, 2026-12-05
-    section Sprint 5 (PA5)
-    Testing, Bug Fixing, Polish, Full Demo :        sp5, 2026-12-06, 2026-12-22
-```
-
 1. **Sprint 1 (PA1 - Project Proposal & Setup):** *Completed (25/09/2026 – 12/10/2026)*
    * Established team roster, leadership roles, and working agreement contract.
    * Defined initial 8 Functional Groups, 2 system actors, and AI fuzzy matching concepts.
    * Conducted comprehensive competitive survey of Yuko and Soosee.
    * Configured Git repository, Trello Kanban board, and AI tooling disclosures.
-2. **Sprint 2 (PA2 - Vision Document, Project Plan & Spec Kit):** *In Progress (18/10/2026 – 31/10/2026)*
+2. **Sprint 2 (PA2 - Vision Document, Project Plan & Spec Kit):** *Completed (18/10/2026 – 31/10/2026)*
    * Author initial Vision Document (`vision.md`) with standardized tables and Mermaid workflows.
    * Author initial Project Plan (`project-plan.md`) with 5-Sprint schedule and risk management.
    * Integrate GitHub Spec Kit, ratify `constitution.md`, and complete member training.
@@ -151,27 +124,27 @@ gantt
 
 ---
 
-### 4.2. Detailed Upcoming Sprint Tasks (Sprint 2 / PA2)
+### 4.2. Sprint 2 Completed Tasks (PA2)
 *Duration: 18/10/2026 – 31/10/2026 (Synchronized with Trello Board)*
 
 In accordance with course guidelines, every task represents a concrete project activity, has **exactly one assigned performer**, and is **reviewed by another designated member**.
 
-| Task ID | Task Title & Specific Activity | Performer (Assignee) | Reviewer | Start Date | Due Date | Est. (h) | Status |
-|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **TASK-01** | **Spec Kit Repository Integration:** Install `specify-cli`, configure `.specify/` infrastructure, author NutriViet `constitution.md`, verify clean Git synchronization. | **Ngo Tien Binh** | Nguyen Hoang Phuc Thinh | 18/10 | 21/10 | 4h | **Done** |
-| **TASK-02** | **Spec Kit Training & Learning Notes:** Complete YouTube tutorial series on Spec-Driven Development; document individual learning takeaways. | **All 5 Members** *(Subtasks 02.1 - 02.5)* | Peer Cross-Review | 19/10 | 23/10 | 10h | **In Progress** |
-| **TASK-03** | **Vision Doc - Positioning Tables:** Formulate Problem Statement and Product Position Statement tables adhering to course formats. | **Le Tat Nam** | Ngo Tien Binh | 21/10 | 24/10 | 5h | **In Progress** |
-| **TASK-04** | **Vision Doc - Stakeholders & Survey:** Detail user personas, supermarket environmental constraints, update competitive analysis of Yuko & Soosee. | **Truong Gia Linh** | Luong Hoang Nam | 21/10 | 25/10 | 5h | **To Do** |
-| **TASK-05** | **Vision Doc - Features & Mermaid:** Author detailed 3–5 sentence paragraphs for FG1–FG8 (What, Why, Who); draw 2 Mermaid workflow diagrams. | **Luong Hoang Nam** | Ngo Tien Binh | 22/10 | 26/10 | 8h | **To Do** |
-| **TASK-06** | **Vision Doc - Quantifiable NFRs:** Define measurable thresholds for latency (< 2.0s), security (AES-256, TLS 1.3), scalability, and reliability. | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 22/10 | 26/10 | 4h | **To Do** |
-| **TASK-07** | **Project Plan - Goals & Scope:** Draft project goals, boundaries, assumptions, deliverables, and team organization matrix. | **Ngo Tien Binh** | Truong Gia Linh | 24/10 | 27/10 | 5h | **To Do** |
-| **TASK-08** | **Project Plan - Risk Management:** Analyze 4 technical and operational risks (OCR degradation, midterm absences, scope creep, ontology latency) + mitigations. | **Le Tat Nam** | Nguyen Hoang Phuc Thinh | 24/10 | 29/10 | 4h | **To Do** |
-| **TASK-09** | **Project Plan - Schedule & Build Plan:** Formalize 5-Sprint schedule, milestone build outputs, and task rules; align with Trello board. | **Ngo Tien Binh** | Le Tat Nam | 25/10 | 28/10 | 6h | **To Do** |
-| **TASK-10** | **Tech Spike - Flutter Camera OCR:** Benchmark Google ML Kit Text Recognition on sample Vietnamese packaged foods; measure token extraction speed. | **Luong Hoang Nam** | Ngo Tien Binh | 21/10 | 28/10 | 8h | **In Progress** |
-| **TASK-11** | **Tech Spike - FoodOn Schema Design:** Analyze FoodOn OWL graph structures and draft normalized relational schema for ingredients and allergen hierarchies. | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 23/10 | 28/10 | 6h | **To Do** |
-| **TASK-12** | **Weekly Report - Scrum Documentation:** Document Sprint Planning (18/10), standup meetings, and Sprint Review agendas in `weekly-reports.md`. | **Truong Gia Linh** | Ngo Tien Binh | 20/10 | 29/10 | 4h | **To Do** |
-| **TASK-13** | **AI Usage Logging & Disclosure:** Compile transparent log of AI tool queries (Copilot, Spec Kit, Gemini) for Sprint 2 with academic integrity statements. | **Ngo Tien Binh** | Truong Gia Linh | 28/10 | 30/10 | 3h | **To Do** |
-| **TASK-14** | **Packaging, Jira Export & PDF Assembly:** Capture final Trello screenshots, export Git commit history, convert documents to PDF, build `PA2-Group07.zip`. | **Nguyen Hoang Phuc Thinh** | Ngo Tien Binh | 30/10 | 31/10 | 4h | **To Do** |
+| Task ID | Task Title & Specific Activity | Performer (Assignee) | Reviewer | Start Date | Due Date | Status |
+|:---:|:---|:---:|:---:|:---:|:---:|:---:|
+| **TASK-01** | **Spec Kit Repository Integration:** Install `specify-cli`, configure `.specify/` infrastructure, author NutriViet `constitution.md`, verify clean Git synchronization. | **Ngo Tien Binh** | Nguyen Hoang Phuc Thinh | 18/10 | 21/10 | **Done** |
+| **TASK-02** | **Spec Kit Training & Learning Notes:** Complete YouTube tutorial series on Spec-Driven Development; document individual learning takeaways. | **All 5 Members** *(Subtasks 02.1 - 02.5)* | Peer Cross-Review | 19/10 | 23/10 | **Done** |
+| **TASK-03** | **Vision Doc - Positioning Tables:** Formulate Problem Statement and Product Position Statement tables adhering to course formats. | **Le Tat Nam** | Ngo Tien Binh | 21/10 | 24/10 | **Done** |
+| **TASK-04** | **Vision Doc - Stakeholders & Survey:** Detail user personas, supermarket environmental constraints, update competitive analysis of Yuko & Soosee. | **Truong Gia Linh** | Luong Hoang Nam | 21/10 | 25/10 | **Done** |
+| **TASK-05** | **Vision Doc - Features & Mermaid:** Author detailed 3–5 sentence paragraphs for FG1–FG8 (What, Why, Who); draw 2 Mermaid workflow diagrams. | **Luong Hoang Nam** | Ngo Tien Binh | 22/10 | 26/10 | **Done** |
+| **TASK-06** | **Vision Doc - Quantifiable NFRs:** Define measurable thresholds for latency (< 2.0s), security (AES-256, TLS 1.3), scalability, and reliability. | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 22/10 | 26/10 | **Done** |
+| **TASK-07** | **Project Plan - Goals & Scope:** Draft project goals, boundaries, assumptions, deliverables, and team organization matrix. | **Ngo Tien Binh** | Truong Gia Linh | 24/10 | 27/10 | **Done** |
+| **TASK-08** | **Project Plan - Risk Management:** Analyze 4 technical and operational risks (OCR degradation, midterm absences, scope creep, ontology latency) + mitigations. | **Le Tat Nam** | Nguyen Hoang Phuc Thinh | 24/10 | 29/10 | **Done** |
+| **TASK-09** | **Project Plan - Schedule & Sprint Roadmap:** Formalize 5-Sprint schedule, milestone deliverables, and task rules; align with Trello board. | **Ngo Tien Binh** | Le Tat Nam | 25/10 | 28/10 | **Done** |
+| **TASK-10** | **Tech Spike - Flutter Camera OCR:** Benchmark Google ML Kit Text Recognition on sample Vietnamese packaged foods; measure token extraction speed. | **Luong Hoang Nam** | Ngo Tien Binh | 21/10 | 28/10 | **Done** |
+| **TASK-11** | **Tech Spike - FoodOn Schema Design:** Analyze FoodOn OWL graph structures and draft normalized relational schema for ingredients and allergen hierarchies. | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 23/10 | 28/10 | **Done** |
+| **TASK-12** | **Weekly Report - Scrum Documentation:** Document Sprint Planning (18/10), standup meetings, and Sprint Review agendas in `weekly-reports.md`. | **Truong Gia Linh** | Ngo Tien Binh | 20/10 | 29/10 | **Done** |
+| **TASK-13** | **AI Usage Logging & Disclosure:** Compile transparent log of AI tool queries (Copilot, Spec Kit, Gemini) for Sprint 2 with academic integrity statements. | **Ngo Tien Binh** | Truong Gia Linh | 28/10 | 30/10 | **Done** |
+| **TASK-14** | **Packaging, Jira Export & PDF Assembly:** Capture final Trello screenshots, export Git commit history, convert documents to PDF, build `PA2-Group07.zip`. | **Nguyen Hoang Phuc Thinh** | Ngo Tien Binh | 30/10 | 31/10 | **Done** |
 
 ---
 
@@ -202,24 +175,3 @@ In accordance with course guidelines, every task represents a concrete project a
 * Profile and optimize mobile memory footprint, frame rate (stable $\ge 30\text{ fps}$), and battery consumption.
 * Finalize comprehensive user guide, API documentation, and presentation slide deck.
 * Conduct live product demonstration covering all 8 Functional Groups for course evaluation.
-
----
-
-## 5. Software Build Plan
-*Performed by: Nguyen Hoang Phuc Thinh | Reviewed by: Ngo Tien Binh | Edited by: Le Tat Nam*
-
-To ensure incremental verification and prevent big-bang integration failures, the engineering team schedules **4 planned software build releases** leading to the final demonstration in Sprint 5:
-
-```mermaid
-flowchart LR
-    B01["Build 0.1 (Sprint 2 Spike)<br/>ML Kit OCR Camera Sandbox"] --> B05["Build 0.5 (Sprint 3 Alpha)<br/>Clean Architecture + Scaffolding"]
-    B05 --> B08["Build 0.8 (Sprint 4 Beta)<br/>Core Scanning + Cloud AI + BLoC"]
-    B08 --> B10["Build 1.0 (Sprint 5 RC/Demo)<br/>Production Release APK + Full Demo"]
-```
-
-| Build Version | Release Milestone | Target Date | Included Capabilities & Verification Objective | Target Audience |
-|:---:|:---:|:---|:---|:---|
-| **Build 0.1 (Proof of Concept)** | End of Sprint 2 | 28/10/2026 | Standalone Flutter camera capture spike validating ML Kit text extraction speed and Vietnamese accent recognition. | Internal Engineering Team |
-| **Build 0.5 (Alpha Release)** | End of Sprint 3 | 18/11/2026 | Full Clean Architecture mobile shell, interactive mock screens for all 8 Functional Groups, local SQLite database initialized. | Internal Team & QA Lead |
-| **Build 0.8 (Beta Release)** | End of Sprint 4 | 05/12/2026 | Fully integrated client-server build: Camera OCR $\rightarrow$ FastAPI Fuzzy Matching $\rightarrow$ FoodOn Graph $\rightarrow$ Visual Hazard Alerts (RED/YELLOW/GREEN). Unit test suites integrated. | Development Team & Course TAs |
-| **Build 1.0 (Release Candidate / Final Demo)** | End of Sprint 5 | 20/12/2026 | Complete, hardened Android release APK: Full offline caching fallback, community crowdsourcing, admin moderation portal, polished UI animations, and finalized user documentation. Ready for live classroom demo. | Instructors, TAs & External Evaluators |

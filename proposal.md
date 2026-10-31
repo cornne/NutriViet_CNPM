@@ -12,13 +12,13 @@
 
 ### Team Members Roster
 
-| No. | Student ID | Full Name | Academic Email | Project Role & Primary Responsibilities |
-|:---:|:---:|:---|:---|:---|
-| 1 | **24127004** | **Ngo Tien Binh** | `ntbinh2419@clc.fitus.edu.vn` | **Project Manager (PM) & AI/OCR Lead** / Full-Stack Engineer |
-| 2 | **23127432** | **Le Tat Nam** | `ltnam23@clc.fitus.edu.vn` | **Backend & System Architecture Lead** / Full-Stack Engineer |
-| 3 | **24127456** | **Luong Hoang Nam** | `lhnam2434@clc.fitus.edu.vn` | **UI/UX & Flutter Lead** / Full-Stack Engineer |
-| 4 | **24127242** | **Nguyen Hoang Phuc Thinh** | `nhpthinh2416@clc.fitus.edu.vn` | **Database & Git Lead** / Full-Stack Engineer |
-| 5 | **24127438** | **Truong Gia Linh** | `tglinh2437@clc.fitus.edu.vn` | **Quality Assurance (QA) & Documentation Lead** / Full-Stack Engineer |
+| No. | Student ID | Full Name | Project Role & Primary Responsibilities |
+|:---:|:---:|:---|:---|
+| 1 | **24127004** | **Ngo Tien Binh** | **Project Manager (PM) & AI/OCR Lead** / Full-Stack Engineer |
+| 2 | **23127432** | **Le Tat Nam** | **Backend & System Architecture Lead** / Full-Stack Engineer |
+| 3 | **24127456** | **Luong Hoang Nam** | **UI/UX & Flutter Lead** / Full-Stack Engineer |
+| 4 | **24127242** | **Nguyen Hoang Phuc Thinh** | **Database & DevOps Lead** / Full-Stack Engineer |
+| 5 | **24127438** | **Truong Gia Linh** | **QA & Test Automation Lead** / Full-Stack Engineer |
 
 ---
 

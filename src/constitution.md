@@ -26,7 +26,7 @@ Quality gates are enforced prior to code integration:
 
 ### V. Performance & Offline Resilience
 Consumer grocery shopping often takes place in low-connectivity retail environments (e.g., supermarket basements):
-- OCR label processing and preliminary hazard alert latency must remain under 2.0 seconds.
+- OCR label processing and preliminary hazard alert latency must remain under 3.0 seconds.
 - User allergy profiles, core allergen rules, and recent scans must be cached locally (SQLite / Hive) to ensure baseline safety warnings function completely offline.
 
 ---
@@ -35,7 +35,7 @@ Consumer grocery shopping often takes place in low-connectivity retail environme
 
 ### 1. Technology Stack
 - **Client Application:** Flutter (Dart) targeting Android (min SDK 26) with cross-platform scalability.
-- **Backend Services:** Python 3.12+ (FastAPI) / Node.js with PostgreSQL for structured relational data.
+- **Backend Services:** Python 3.12+ (FastAPI) with PostgreSQL for structured relational data.
 - **OCR & AI Engine:** On-device Google ML Kit Text Recognition with backend fallback (Tesseract/PaddleOCR), fuzzy Levenshtein text matching, and FoodOn allergen ontology classification.
 - **Infrastructure & Containerization:** Docker, Docker Compose, GitHub Actions CI/CD.
 

@@ -12,13 +12,13 @@
 ### 1. Team Roles and Responsibilities
 All 5 team members act as Full-Stack Software Engineers, participating actively across all project stages while assuming primary leadership over specific domains:
 
-| No. | Member Name | Student ID | Primary Lead Role | Leadership Responsibilities |
+| No. | Member Name | Student ID | Primary Lead Role | Leadership & Engineering Responsibilities |
 |:---:|:---|:---:|:---|:---|
-| 1 | **Ngo Tien Binh** | 24127004 | **Project Manager (PM) & AI/OCR Lead** | Overall sprint coordination on Trello, liaison with Instructor/TA, AI feature integration (Fuzzy Matching + FoodOn), and final submission packaging. |
-| 2 | **Le Tat Nam** | 23127432 | **Backend & Architecture Lead** | Data flow design, core business logic, and role-based access control mechanisms (User/Admin). |
-| 3 | **Luong Hoang Nam** | 24127456 | **UI/UX & Flutter Lead** | Wireframes and visual UI design in Figma, and mobile frontend client development in Flutter for Android. |
-| 4 | **Nguyen Hoang Phuc Thinh** | 24127242 | **Database & Git Lead** | Relational database schema design, GitHub repository branch management, and PR merge assistance. |
-| 5 | **Truong Gia Linh** | 24127438 | **QA & Documentation Lead** | Quality assurance test planning, test case authoring, app precision testing, and Markdown/PDF document standardization. |
+| 1 | **Ngo Tien Binh** | 24127004 | **Project Manager (PM) & AI Lead** / Full-Stack Engineer | Sprint coordination on Trello, Spec Kit management, Levenshtein fuzzy matching algorithm development, and FoodOn ontology query pipeline. |
+| 2 | **Le Tat Nam** | 23127432 | **Backend & Architecture Lead** / Full-Stack Engineer | System architecture design, FastAPI RESTful backend services, user authentication/RBAC, and database data flow. |
+| 3 | **Luong Hoang Nam** | 24127456 | **UI/UX & Flutter Lead** / Full-Stack Engineer | Figma UI wireframes, Flutter Clean Architecture (BLoC) client development, and Google ML Kit camera OCR integration. |
+| 4 | **Nguyen Hoang Phuc Thinh** | 24127242 | **Database & DevOps Lead** / Full-Stack Engineer | PostgreSQL schema design, SQLite/Hive encrypted local caching layer in Flutter, Git workflow management, and CI/CD pipelines. |
+| 5 | **Truong Gia Linh** | 24127438 | **QA & Test Automation Lead** / Full-Stack Engineer | Automated test suite development (Flutter unit/widget tests, pytest backend tests), Daily Dietary Diary module development (FG5), and QA quality gates. |
 
 ### 2. Communication Plan
 - **Primary Communication Channels:**
