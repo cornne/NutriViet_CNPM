@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NutriViet - Interactive UI Prototype (PA3-2026)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="prototype-app">
+    <!-- Top Control Bar for Screen Navigation -->
+    <header class="prototype-nav">
+      <div class="brand">
+        <div class="brand-logo">NV</div>
+        <div class="brand-text">
+          <h1>NutriViet Prototype</h1>
+          <span class="badge">PA3-2026 Interactive System</span>
+        </div>
+      </div>
+      <div class="nav-controls">
+        <label for="screenSelector" class="nav-label">Select Screen / Use Case:</label>
+        <select id="screenSelector" class="screen-dropdown">
+          <optgroup label="FG1: Authentication (UC01, UC02, UC03)">
+            <option value="auth-login">UC02: Đăng nhập & Xác thực</option>
+            <option value="auth-register">UC01: Đăng ký tài khoản mới</option>
+          </optgroup>
+          <optgroup label="FG2: Health Profile (UC04, UC05)">
+            <option value="profile-allergens" selected>UC04 & UC05: Thiết lập Dị ứng & Bệnh lý nền</option>
+          </optgroup>
+          <optgroup label="FG3: OCR Scanner (UC06, UC07, UC08)">
+            <option value="scanner-camera">UC06: Camera OCR quét bao bì</option>
+            <option value="scanner-crop">UC07: Căn chỉnh & Cắt vùng nhãn</option>
+            <option value="scanner-history">UC08: Lịch sử quét & Tìm kiếm</option>
+          </optgroup>
+          <optgroup label="FG4: Hazard Alerts & Alternatives (UC09, UC10)">
+            <option value="alert-red">UC09: Cảnh báo ĐỎ (Nguy hiểm / Dị ứng)</option>
+            <option value="alert-yellow">UC09: Cảnh báo VÀNG (Thận trọng / Phụ gia)</option>
+            <option value="alert-green">UC09: Đánh giá XANH (An toàn)</option>
+            <option value="alternatives-view">UC10: Gợi ý sản phẩm thay thế an toàn</option>
+          </optgroup>
+          <optgroup label="FG5: Diary & Reactions (UC11, UC12)">
+            <option value="diary-nutrition">UC11: Nhật ký dinh dưỡng hằng ngày</option>
+            <option value="diary-reaction">UC12: Ghi nhận triệu chứng dị ứng</option>
+          </optgroup>
+          <optgroup label="FG6: Favorites & Shopping (UC13, UC14)">
+            <option value="shopping-list">UC13 & UC14: Danh sách mua sắm & Yêu thích</option>
+          </optgroup>
+          <optgroup label="FG7: Crowdsourcing (UC15, UC16)">
+            <option value="crowdsource-submit">UC15: Đóng góp sản phẩm mới</option>
+            <option value="crowdsource-report">UC16: Báo cáo sai lệch OCR</option>
+          </optgroup>
+          <optgroup label="FG8: Admin Moderation (UC17, UC18)">
+            <option value="admin-moderation">UC17: Admin - Duyệt đóng góp sản phẩm</option>
+            <option value="admin-dictionary">UC18: Admin - Quản lý từ điển phụ gia</option>
+          </optgroup>
+        </select>
+        <button id="toggleDeviceBtn" class="btn-toggle">Chế độ Xem: Mobile Frame</button>
+      </div>
+    </header>
+
+    <!-- Main Simulator Viewport -->
+    <main class="simulator-container">
+      <div class="device-frame" id="deviceFrame">
+        <!-- Phone Speaker & Camera Notch -->
+        <div class="phone-notch">
+          <div class="camera-lens"></div>
+          <div class="speaker-grill"></div>
+        </div>
+
+        <!-- Phone Screen Content View -->
+        <div class="phone-screen" id="phoneScreen">
+
+          <!-- ================= SCREEN 1: AUTH LOGIN ================= -->
+          <div class="screen-view hidden" id="view-auth-login">
+            <div class="app-header">
+              <span class="status-time">09:41</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="auth-card">
+              <div class="auth-icon-wrap">
+                <div class="shield-icon">🛡️</div>
+              </div>
+              <h2 class="auth-title">Chào mừng trở lại</h2>
+              <p class="auth-sub">Quét nhãn thực phẩm an toàn cùng <strong>NutriViet</strong></p>
+
+              <div class="form-group">
+                <label>Email hoặc Số điện thoại</label>
+                <input type="email" class="input-field" value="an.nguyen@nutriviet.vn" placeholder="nhap.email@example.com">
+              </div>
+
+              <div class="form-group">
+                <label>Mật khẩu</label>
+                <input type="password" class="input-field" value="••••••••••••" placeholder="Nhập mật khẩu">
+              </div>
+
+              <div class="auth-options">
+                <label class="checkbox-label"><input type="checkbox" checked> Ghi nhớ đăng nhập</label>
+                <a href="#" class="link-text">Quên mật khẩu?</a>
+              </div>
+
+              <button class="btn btn-primary" onclick="switchScreen('profile-allergens')">Đăng Nhập An Toàn</button>
+
+              <div class="divider"><span>HOẶC</span></div>
+
+              <button class="btn btn-google">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                Tiếp tục với Google
+              </button>
+
+              <p class="switch-auth">Chưa có tài khoản? <a href="#" onclick="switchScreen('auth-register')">Đăng ký ngay</a></p>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 2: AUTH REGISTER ================= -->
+          <div class="screen-view hidden" id="view-auth-register">
+            <div class="app-header">
+              <span class="status-time">09:41</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="auth-card">
+              <h2 class="auth-title">Đăng Ký Tài Khoản</h2>
+              <p class="auth-sub">Tạo hồ sơ bảo vệ sức khỏe cho bạn và gia đình</p>
+
+              <div class="form-group">
+                <label>Họ và tên</label>
+                <input type="text" class="input-field" value="Nguyễn Văn An" placeholder="Nhập họ tên">
+              </div>
+
+              <div class="form-group">
+                <label>Địa chỉ Email</label>
+                <input type="email" class="input-field" value="an.nguyen@nutriviet.vn" placeholder="email@example.com">
+              </div>
+
+              <div class="form-group">
+                <label>Mật khẩu (tối thiểu 8 ký tự)</label>
+                <input type="password" class="input-field" value="SecurePassword@2026">
+                <div class="pw-strength"><span class="bar strong"></span><span class="text">Độ mạnh: Rất mạnh</span></div>
+              </div>
+
+              <div class="form-group">
+                <label>Xác nhận mật khẩu</label>
+                <input type="password" class="input-field" value="SecurePassword@2026">
+              </div>
+
+              <label class="checkbox-label"><input type="checkbox" checked> Tôi đồng ý với Điều khoản & Cam kết bảo mật y tế</label>
+
+              <button class="btn btn-primary" onclick="switchScreen('profile-allergens')">Hoàn tất & Cài đặt Hồ sơ</button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 3: HEALTH PROFILE SETUP ================= -->
+          <div class="screen-view" id="view-profile-allergens">
+            <div class="app-header">
+              <span class="status-time">09:41</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn">←</button>
+              <h3>Hồ Sơ Sức Khỏe & Dị Ứng</h3>
+              <button class="save-link" onclick="switchScreen('scanner-camera')">Lưu</button>
+            </div>
+
+            <div class="profile-scroll">
+              <div class="profile-banner">
+                <div class="avatar-ring">👤</div>
+                <div>
+                  <h4 style="margin:0; font-size:15px; font-weight:700;">Nguyễn Văn An (22 tuổi)</h4>
+                  <span class="sub-badge">Hồ sơ cá nhân chính • Đang kích hoạt</span>
+                </div>
+              </div>
+
+              <!-- Section: Severe Allergens -->
+              <div class="setup-section">
+                <div class="section-head">
+                  <h4 class="section-title">🚨 Dị Ứng Thực Phẩm Cần Tránh</h4>
+                  <span class="count-tag">3 đã chọn</span>
+                </div>
+                <p class="section-desc">Hệ thống sẽ gắn cờ CẢNH BÁO ĐỎ tức thì khi phát hiện các chất này hoặc dẫn xuất FoodOn.</p>
+
+                <div class="chip-grid">
+                  <button class="chip chip-danger active">🥜 Đậu phộng (Lạc) <span class="badge-severe">Sốc phản vệ</span></button>
+                  <button class="chip chip-danger active">🦐 Hải sản / Giáp xác <span class="badge-severe">Nghiêm trọng</span></button>
+                  <button class="chip chip-danger active">🥛 Sữa bò (Casein/Whey) <span class="badge-med">Trung bình</span></button>
+                  <button class="chip">🌾 Gluten / Lúa mì</button>
+                  <button class="chip">🥚 Trứng gà</button>
+                  <button class="chip">🌱 Đậu nành (Soy)</button>
+                  <button class="chip">🌰 Hạt cây (Hạnh nhân, Óc chó)</button>
+                  <button class="chip">🌿 Mè (Vừng)</button>
+                </div>
+              </div>
+
+              <!-- Section: Sensitivity Setup -->
+              <div class="setup-section">
+                <div class="section-head">
+                  <h4 class="section-title">⚖️ Mức Độ Nhạy Cảm & Dẫn Xuất</h4>
+                </div>
+                <div class="setting-card">
+                  <div class="setting-row">
+                    <div>
+                      <strong>Quét dẫn xuất gián tiếp (FoodOn)</strong>
+                      <p class="setting-sub">Tự động nhận diện Casein, Lecithin, đạm Whey là sữa/đậu nành</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                  <div class="setting-row">
+                    <div>
+                      <strong>Cảnh báo dấu vết / Dây chuyền sản xuất</strong>
+                      <p class="setting-sub">Nhận diện câu cảnh báo: "Có thể chứa vết đậu phộng..."</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Chronic Conditions -->
+              <div class="setup-section">
+                <div class="section-head">
+                  <h4 class="section-title">🩺 Bệnh Lý Mãn Tính & Tiết Chế</h4>
+                </div>
+                <div class="chip-grid">
+                  <button class="chip chip-warn active">🩸 Gút / Axit Uric cao</button>
+                  <button class="chip chip-warn">🍬 Tiểu đường Type 2</button>
+                  <button class="chip chip-warn">🫀 Tăng huyết áp (Giảm Natri)</button>
+                  <button class="chip chip-warn">🥗 Giảm chất béo (Mỡ máu)</button>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" onclick="switchScreen('scanner-camera')">Xác Nhận & Bắt Đầu Quét Nhãn</button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 4: CAMERA SCANNER ================= -->
+          <div class="screen-view hidden" id="view-scanner-camera">
+            <div class="camera-viewport">
+              <div class="camera-overlay-top">
+                <button class="cam-btn" onclick="switchScreen('profile-allergens')">✕</button>
+                <div class="cam-mode-pill">📸 QUÉT NHÃN THÀNH PHẦN</div>
+                <button class="cam-btn active-torch">⚡ Bật Đèn</button>
+              </div>
+
+              <!-- Live OCR Bounding Boxes on Simulated Package -->
+              <div class="camera-target-box">
+                <div class="target-corner tl"></div>
+                <div class="target-corner tr"></div>
+                <div class="target-corner bl"></div>
+                <div class="target-corner br"></div>
+
+                <div class="scan-laser"></div>
+
+                <!-- Simulated Package Label with live boxes -->
+                <div class="simulated-label">
+                  <div class="label-header">THÀNH PHẦN / INGREDIENTS:</div>
+                  <div class="ocr-token-box danger">Đậu phộng (28%)</div>
+                  <div class="ocr-token-box">Bột mì</div>
+                  <div class="ocr-token-box">Đường</div>
+                  <div class="ocr-token-box warn">Sodium Caseinate (E469)</div>
+                  <div class="ocr-token-box">Dầu cọ</div>
+                  <div class="ocr-token-box warn">Bột ngọt (E621)</div>
+                  <div class="ocr-token-box">Muối i-ốt</div>
+                </div>
+              </div>
+
+              <div class="camera-tips">
+                <p>💡 Giữ máy cách nhãn 15-20cm, đảm bảo đủ ánh sáng</p>
+              </div>
+
+              <div class="camera-overlay-bottom">
+                <button class="cam-tool-btn" onclick="switchScreen('scanner-crop')">🖼️ Cắt ảnh</button>
+                <button class="shutter-btn" onclick="switchScreen('alert-red')">
+                  <div class="shutter-inner"></div>
+                </button>
+                <button class="cam-tool-btn" onclick="switchScreen('scanner-history')">📜 Lịch sử</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 5: OCR CROP & ADJUST ================= -->
+          <div class="screen-view hidden" id="view-scanner-crop">
+            <div class="app-header">
+              <span class="status-time">09:42</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn" onclick="switchScreen('scanner-camera')">←</button>
+              <h3>Căn Chỉnh Vùng Nhãn Chữ</h3>
+              <button class="save-link" onclick="switchScreen('alert-red')">Xong</button>
+            </div>
+            <div class="crop-container">
+              <div class="crop-image-area">
+                <div class="crop-box">
+                  <div class="crop-handle nw"></div>
+                  <div class="crop-handle ne"></div>
+                  <div class="crop-handle sw"></div>
+                  <div class="crop-handle se"></div>
+                  <div class="crop-text-preview">
+                    "Thành phần: Đậu phộng (28%), Bột mì, Đường, Sodium Caseinate, Dầu thực vật..."
+                  </div>
+                </div>
+              </div>
+              <div class="crop-controls">
+                <button class="filter-pill active">⚡ Tăng tương phản</button>
+                <button class="filter-pill">🔄 Xoay 90°</button>
+                <button class="filter-pill">☀️ Khử bóng lóa</button>
+              </div>
+              <button class="btn btn-primary" onclick="switchScreen('alert-red')">Trích Xuất Văn Bản OCR (1.2s)</button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 6: RED HAZARD ALERT ================= -->
+          <div class="screen-view hidden" id="view-alert-red">
+            <div class="app-header">
+              <span class="status-time">09:42</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="alert-screen red-alert">
+              <div class="alert-banner-hero">
+                <div class="alert-symbol-wrap">
+                  <span class="wcag-glyph">⛔</span>
+                </div>
+                <div class="alert-headline">
+                  <span class="badge-red-tag">[!X] NGUY HIỂM: PHÁT HIỆN DỊ ỨNG</span>
+                  <h2>KHÔNG NÊN SỬ DỤNG</h2>
+                  <p>Phát hiện <strong>2 chất gây dị ứng nghiêm trọng</strong> theo hồ sơ y tế của bạn.</p>
+                </div>
+              </div>
+
+              <div class="alert-card-body">
+                <div class="product-mini-meta">
+                  <span class="prod-tag">Bánh Quy Bơ Đậu Phộng Oishi</span>
+                  <span class="scan-time">Vừa quét lúc 09:42 • Độ chính xác 99.1%</span>
+                </div>
+
+                <div class="danger-box">
+                  <h4 class="danger-box-title">Thành phần phát hiện nguy cơ cao:</h4>
+                  <div class="hazard-item severe">
+                    <div class="hazard-badge-icon">🥜</div>
+                    <div class="hazard-text">
+                      <strong>Đậu phộng (Lạc) - 28%</strong>
+                      <p>Khớp 100% với dị ứng sốc phản vệ của bạn.</p>
+                    </div>
+                  </div>
+                  <div class="hazard-item severe">
+                    <div class="hazard-badge-icon">🥛</div>
+                    <div class="hazard-text">
+                      <strong>Sodium Caseinate (E469)</strong>
+                      <p>Phân tích FoodOn: Dẫn xuất protein chính từ <em>Sữa bò</em>.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="alert-actions">
+                  <button class="btn btn-action-safe" onclick="switchScreen('alternatives-view')">
+                    🥗 Xem 3 Sản Phẩm Thay Thế An Toàn
+                  </button>
+                  <button class="btn btn-outline" onclick="switchScreen('crowdsource-report')">
+                    🚩 Báo cáo sai lệch OCR nhãn
+                  </button>
+                  <button class="btn btn-ghost" onclick="switchScreen('scanner-camera')">
+                    📷 Quét sản phẩm khác
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 7: YELLOW HAZARD ALERT ================= -->
+          <div class="screen-view hidden" id="view-alert-yellow">
+            <div class="app-header">
+              <span class="status-time">09:45</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="alert-screen yellow-alert">
+              <div class="alert-banner-hero yellow">
+                <div class="alert-symbol-wrap yellow">
+                  <span class="wcag-glyph">⚠️</span>
+                </div>
+                <div class="alert-headline">
+                  <span class="badge-yellow-tag">[!?] CẢNH BÁO: CẦN THẬN TRỌNG</span>
+                  <h2>CHỨA CHẤT CẦN TIẾT CHẾ</h2>
+                  <p>Không có dị ứng nghiêm trọng, nhưng có phụ gia cảnh báo với bệnh nền <strong>Gút & Axit Uric</strong>.</p>
+                </div>
+              </div>
+
+              <div class="alert-card-body">
+                <div class="product-mini-meta">
+                  <span class="prod-tag">Mì Ăn Liền Hảo Hảo Tôm Chua Cay</span>
+                  <span class="scan-time">Quét lúc 09:45 • Khớp mờ Levenshtein 94%</span>
+                </div>
+
+                <div class="caution-box">
+                  <div class="hazard-item medium">
+                    <div class="hazard-badge-icon">🧂</div>
+                    <div class="hazard-text">
+                      <strong>Bột ngọt Monosodium Glutamate (E621)</strong>
+                      <p>Hàm lượng Natri & Purine cao, cần tiết chế theo hồ sơ bệnh gút.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="alert-actions">
+                  <button class="btn btn-primary" onclick="switchScreen('diary-nutrition')">
+                    📝 Vẫn dùng & Ghi vào Nhật ký bữa ăn
+                  </button>
+                  <button class="btn btn-action-safe" onclick="switchScreen('alternatives-view')">
+                    🥗 Xem mì ngũ cốc an toàn hơn
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 8: GREEN SAFE ALERT ================= -->
+          <div class="screen-view hidden" id="view-alert-green">
+            <div class="app-header">
+              <span class="status-time">09:50</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="alert-screen green-alert">
+              <div class="alert-banner-hero green">
+                <div class="alert-symbol-wrap green">
+                  <span class="wcag-glyph">✅</span>
+                </div>
+                <div class="alert-headline">
+                  <span class="badge-green-tag">[OK] AN TOÀN SỬ DỤNG</span>
+                  <h2>KHÔNG PHÁT HIỆN DỊ ỨNG</h2>
+                  <p>Sản phẩm không chứa Đậu phộng, Hải sản, Sữa hoặc dẫn xuất FoodOn đã khai báo.</p>
+                </div>
+              </div>
+
+              <div class="alert-card-body">
+                <div class="product-mini-meta">
+                  <span class="prod-tag">Bánh Gạo Lứt Hữu Cơ Nướng Giòn</span>
+                  <span class="scan-time">Chứng nhận danh mục an toàn NutriViet</span>
+                </div>
+
+                <div class="safe-box">
+                  <p>✔ 100% Gạo lứt huyết rồng tự nhiên</p>
+                  <p>✔ Không dầu cọ, không phụ gia E-number</p>
+                  <p>✔ Thích hợp cho người ăn kiêng & bệnh gút</p>
+                </div>
+
+                <div class="alert-actions">
+                  <button class="btn btn-primary" onclick="switchScreen('shopping-list')">
+                    ⭐ Thêm vào Mục Yêu Thích & Mua Sắm
+                  </button>
+                  <button class="btn btn-action-safe" onclick="switchScreen('diary-nutrition')">
+                    🍽️ Ghi nhận vào Nhật Ký Dinh Dưỡng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 9: SAFE ALTERNATIVES ================= -->
+          <div class="screen-view hidden" id="view-alternatives-view">
+            <div class="app-header">
+              <span class="status-time">09:52</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn" onclick="switchScreen('alert-red')">←</button>
+              <h3>Sản Phẩm Thay Thế An Toàn</h3>
+              <span></span>
+            </div>
+            <div class="alternatives-scroll">
+              <div class="alt-header-note">
+                <span class="sub-badge">Thay thế cho Bánh Quy Đậu Phộng</span>
+                <p>Gợi ý các loại bánh quy hạt an toàn 100% không chứa sữa, đậu phộng và hải sản:</p>
+              </div>
+
+              <div class="alt-product-card">
+                <div class="alt-card-header">
+                  <div class="alt-icon">🍪</div>
+                  <div>
+                    <h4 class="alt-title">Bánh Quy Hạt Yến Mạch Mè Đen</h4>
+                    <span class="alt-brand">Thương hiệu: Oaty Healthy Foods</span>
+                  </div>
+                  <span class="match-score">100% An toàn</span>
+                </div>
+                <div class="nutri-pills">
+                  <span>Calo: 120 kcal</span>
+                  <span>Đường: 2.1g</span>
+                  <span>Natri: 45mg</span>
+                </div>
+                <div class="alt-card-footer">
+                  <span class="price-text">35.000 đ</span>
+                  <button class="btn-sm" onclick="switchScreen('shopping-list')">+ Thêm Giỏ Mua Sắm</button>
+                </div>
+              </div>
+
+              <div class="alt-product-card">
+                <div class="alt-card-header">
+                  <div class="alt-icon">🌾</div>
+                  <div>
+                    <h4 class="alt-title">Bánh Gạo Lứt Nướng Rong Biển</h4>
+                    <span class="alt-brand">Thương hiệu: V-Rice Organic</span>
+                  </div>
+                  <span class="match-score">100% An toàn</span>
+                </div>
+                <div class="nutri-pills">
+                  <span>Calo: 95 kcal</span>
+                  <span>Đường: 0.5g</span>
+                  <span>Purine: Rất thấp</span>
+                </div>
+                <div class="alt-card-footer">
+                  <span class="price-text">28.000 đ</span>
+                  <button class="btn-sm" onclick="switchScreen('shopping-list')">+ Thêm Giỏ Mua Sắm</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 10: SCAN HISTORY ================= -->
+          <div class="screen-view hidden" id="view-scanner-history">
+            <div class="app-header">
+              <span class="status-time">09:55</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn" onclick="switchScreen('scanner-camera')">←</button>
+              <h3>Lịch Sử Quét Bao Bì</h3>
+              <button class="icon-btn">🔍</button>
+            </div>
+            <div class="history-list">
+              <div class="search-box">
+                <input type="text" placeholder="Tìm sản phẩm đã quét..." value="Bánh">
+              </div>
+
+              <div class="history-card danger-left" onclick="switchScreen('alert-red')">
+                <div class="hist-icon">⛔</div>
+                <div class="hist-info">
+                  <strong>Bánh Quy Bơ Đậu Phộng Oishi</strong>
+                  <span class="hist-sub">09:42 hôm nay • Phát hiện Đậu phộng</span>
+                </div>
+                <span class="status-badge danger">Cảnh báo Đỏ</span>
+              </div>
+
+              <div class="history-card warn-left" onclick="switchScreen('alert-yellow')">
+                <div class="hist-icon">⚠️</div>
+                <div class="hist-info">
+                  <strong>Mì Ăn Liền Hảo Hảo Tôm Chua Cay</strong>
+                  <span class="hist-sub">Hôm qua 18:30 • Natri & Bột ngọt E621</span>
+                </div>
+                <span class="status-badge warn">Cảnh báo Vàng</span>
+              </div>
+
+              <div class="history-card safe-left" onclick="switchScreen('alert-green')">
+                <div class="hist-icon">✅</div>
+                <div class="hist-info">
+                  <strong>Bánh Gạo Lứt Hữu Cơ Nướng Giòn</strong>
+                  <span class="hist-sub">31/10/2026 • 100% Hạt hữu cơ</span>
+                </div>
+                <span class="status-badge safe">An toàn</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 11: DIETARY & REACTION JOURNAL ================= -->
+          <div class="screen-view hidden" id="view-diary-nutrition">
+            <div class="app-header">
+              <span class="status-time">10:00</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn">←</button>
+              <h3>Nhật Ký Dinh Dưỡng & Triệu Chứng</h3>
+              <button class="icon-btn" onclick="switchScreen('diary-reaction')">⚠️ Báo Dị Ứng</button>
+            </div>
+            <div class="diary-scroll">
+              <div class="date-navigator">
+                <button>‹</button>
+                <span>Hôm nay, 02 Tháng 11, 2026</span>
+                <button>›</button>
+              </div>
+
+              <!-- Nutrition Meter Summary -->
+              <div class="nutrition-meters-card">
+                <div class="meter-col">
+                  <div class="circle-meter calo">1.450</div>
+                  <span class="meter-lbl">Calo (kcal)<br><strong>Mục tiêu: 2.000</strong></span>
+                </div>
+                <div class="meter-col">
+                  <div class="circle-meter sodium warn">1.820</div>
+                  <span class="meter-lbl">Natri (mg)<br><strong>Tối đa: 2.000</strong></span>
+                </div>
+                <div class="meter-col">
+                  <div class="circle-meter purine safe">110</div>
+                  <span class="meter-lbl">Purine (mg)<br><strong>An toàn gút</strong></span>
+                </div>
+              </div>
+
+              <!-- Meals Logged -->
+              <div class="meal-block">
+                <div class="meal-head">
+                  <strong>Bữa Sáng (08:15)</strong>
+                  <span>420 kcal</span>
+                </div>
+                <div class="meal-item">
+                  <span>🥣 Cháo yến mạch hạt chia</span>
+                  <span>320 kcal</span>
+                </div>
+                <div class="meal-item">
+                  <span>🥛 Sữa hạt óc chó Vinamilk</span>
+                  <span>100 kcal</span>
+                </div>
+              </div>
+
+              <div class="meal-block">
+                <div class="meal-head">
+                  <strong>Bữa Trưa (12:30)</strong>
+                  <span>680 kcal</span>
+                </div>
+                <div class="meal-item">
+                  <span>🍚 Cơm gạo lứt + Ức gà áp chảo</span>
+                  <span>550 kcal</span>
+                </div>
+                <div class="meal-item">
+                  <span>🥗 Canh bí đỏ thịt bằm</span>
+                  <span>130 kcal</span>
+                </div>
+              </div>
+
+              <button class="btn btn-outline" onclick="switchScreen('diary-reaction')">
+                🚨 Ghi Nhận Triệu Chứng Dị Ứng Bất Thường
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 12: ALLERGIC REACTION INCIDENT ================= -->
+          <div class="screen-view hidden" id="view-diary-reaction">
+            <div class="app-header">
+              <span class="status-time">10:05</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn" onclick="switchScreen('diary-nutrition')">←</button>
+              <h3>Báo Cáo Sự Cố Dị Ứng</h3>
+              <span></span>
+            </div>
+            <div class="incident-scroll">
+              <div class="incident-alert-banner">
+                <p>⚠️ Nếu có dấu hiệu khó thở, phù mặt, hãy liên hệ cấp cứu 115 ngay lập tức!</p>
+              </div>
+
+              <div class="form-group">
+                <label>Thời điểm xuất hiện triệu chứng</label>
+                <input type="text" class="input-field" value="02/11/2026 - 10:00 (15 phút sau ăn)">
+              </div>
+
+              <div class="form-group">
+                <label>Món ăn nghi vấn gây dị ứng</label>
+                <input type="text" class="input-field" value="Bánh quy tại tiệc trà văn phòng">
+              </div>
+
+              <div class="form-group">
+                <label>Các biểu hiện lâm sàng xuất hiện:</label>
+                <div class="chip-grid">
+                  <button class="chip chip-danger active">Ngứa rát môi/họng</button>
+                  <button class="chip chip-danger active">Nổi mề đay / Ban đỏ</button>
+                  <button class="chip">Đau thắt bụng / Buồn nôn</button>
+                  <button class="chip">Khó thở nhẹ</button>
+                  <button class="chip">Chóng mặt</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Mức độ nghiêm trọng (1 - 5):</label>
+                <input type="range" min="1" max="5" value="3" class="range-slider">
+                <div class="slider-labels"><span>1: Nhẹ</span><span>3: Trung bình</span><span>5: Khẩn cấp</span></div>
+              </div>
+
+              <div class="form-group">
+                <label>Ghi chú triệu chứng & Đơn thuốc đã dùng</label>
+                <textarea class="textarea-field" rows="3">Đã uống 1 viên Kháng Histamine Cetirizine 10mg lúc 10:05. Đang theo dõi tiến triển ban đỏ trên cánh tay.</textarea>
+              </div>
+
+              <button class="btn btn-primary" onclick="switchScreen('diary-nutrition')">Lưu Báo Cáo & Xuất File Y Tế</button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 13: SHOPPING LIST & FAVORITES ================= -->
+          <div class="screen-view hidden" id="view-shopping-list">
+            <div class="app-header">
+              <span class="status-time">10:10</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn">←</button>
+              <h3>Danh Sách Mua Sắm Siêu Thị</h3>
+              <button class="icon-btn">➕</button>
+            </div>
+            <div class="shopping-scroll">
+              <div class="shopping-progress-card">
+                <div>
+                  <strong>Tiến độ mua sắm tại Co.opmart</strong>
+                  <p>3 / 5 sản phẩm an toàn đã xác thực</p>
+                </div>
+                <div class="progress-ring">60%</div>
+              </div>
+
+              <div class="checklist-group">
+                <h4 class="group-title">Sản Phẩm Đã Xác Thực An Toàn:</h4>
+
+                <label class="check-item done">
+                  <input type="checkbox" checked>
+                  <div class="item-info">
+                    <span class="item-name">Bánh gạo lứt nướng hữu cơ</span>
+                    <span class="item-tag safe">Đã quét xác nhận an toàn</span>
+                  </div>
+                </label>
+
+                <label class="check-item done">
+                  <input type="checkbox" checked>
+                  <div class="item-info">
+                    <span class="item-name">Sữa hạt hạnh nhân không đường 1L</span>
+                    <span class="item-tag safe">Không có sữa bò / lactose</span>
+                  </div>
+                </label>
+
+                <label class="check-item done">
+                  <input type="checkbox" checked>
+                  <div class="item-info">
+                    <span class="item-name">Bánh quy yến mạch mè đen</span>
+                    <span class="item-tag safe">Thay thế bánh bơ đậu phộng</span>
+                  </div>
+                </label>
+
+                <label class="check-item">
+                  <input type="checkbox">
+                  <div class="item-info">
+                    <span class="item-name">Dầu olive nguyên chất Pomace</span>
+                    <span class="item-tag">Cần quét kiểm tra tại kệ hàng</span>
+                  </div>
+                </label>
+
+                <label class="check-item">
+                  <input type="checkbox">
+                  <div class="item-info">
+                    <span class="item-name">Hạt nêm nấm Shiitake hữu cơ</span>
+                    <span class="item-tag">Cần quét kiểm tra mã E621</span>
+                  </div>
+                </label>
+              </div>
+
+              <button class="btn btn-primary" onclick="switchScreen('scanner-camera')">
+                📷 Bật Camera Quét Xác Nhận Khi Mua
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 14: COMMUNITY PRODUCT SUBMIT ================= -->
+          <div class="screen-view hidden" id="view-crowdsource-submit">
+            <div class="app-header">
+              <span class="status-time">10:15</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn">←</button>
+              <h3>Đóng Góp Sản Phẩm Mới</h3>
+              <span></span>
+            </div>
+            <div class="crowd-scroll">
+              <p class="crowd-desc">Giúp cộng đồng người dị ứng Việt Nam có dữ liệu sản phẩm đầy đủ và chính xác hơn.</p>
+
+              <div class="form-group">
+                <label>Ảnh chụp bao bì sản phẩm (Mặt trước & Bảng thành phần)*</label>
+                <div class="photo-uploader">
+                  <div class="photo-thumb">📸 Ảnh mặt trước</div>
+                  <div class="photo-thumb">📸 Bảng thành phần</div>
+                  <div class="photo-add">+ Thêm ảnh</div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Mã vạch Barcode / EAN (nếu có)</label>
+                <div class="barcode-input-row">
+                  <input type="text" class="input-field" value="8934567891234">
+                  <button class="btn-sm">Quét mã</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Tên sản phẩm*</label>
+                <input type="text" class="input-field" value="Bánh Que Giòn Cay Ngũ Vị">
+              </div>
+
+              <div class="form-group">
+                <label>Nhà sản xuất / Thương hiệu</label>
+                <input type="text" class="input-field" value="Công ty TNHH Bánh Kẹo VinaFood">
+              </div>
+
+              <div class="form-group">
+                <label>Danh sách thành phần (gõ tay hoặc dán từ OCR)</label>
+                <textarea class="textarea-field" rows="4">Bột mì, dầu cọ, đường kính, muối ăn, ớt bột, bột ngọt (E621), hương tôm tổng hợp, màu caramel (E150c).</textarea>
+              </div>
+
+              <button class="btn btn-primary" onclick="alert('Cảm ơn bạn! Sản phẩm đã được gửi lên hàng đợi kiểm duyệt của Admin NutriViet.')">
+                Gửi Lên Kiểm Duyệt (Pending)
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 15: OCR DISCREPANCY REPORT ================= -->
+          <div class="screen-view hidden" id="view-crowdsource-report">
+            <div class="app-header">
+              <span class="status-time">10:18</span>
+              <div class="status-icons"><span>5G</span><span>100%</span></div>
+            </div>
+            <div class="top-bar">
+              <button class="icon-btn" onclick="switchScreen('alert-red')">←</button>
+              <h3>Báo Cáo Sai Lệch OCR</h3>
+              <span></span>
+            </div>
+            <div class="report-scroll">
+              <div class="report-info-card">
+                <strong>Sản phẩm: Bánh Quy Bơ Đậu Phộng Oishi</strong>
+                <p>Mã phiên bản: OCR-SCAN-#9281</p>
+              </div>
+
+              <div class="form-group">
+                <label>Loại lỗi bạn phát hiện:</label>
+                <select class="input-field">
+                  <option selected>Nhận diện sai từ vựng thành phần</option>
+                  <option>Bỏ sót thành phần trên nhãn</option>
+                  <option>Đánh giá nhầm mức độ dị ứng</option>
+                  <option>Ảnh nhãn bị mờ do ánh sáng</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Từ hệ thống OCR đọc được:</label>
+                <input type="text" class="input-field" value="Sodium Caseinate (E469)">
+              </div>
+
+              <div class="form-group">
+                <label>Từ đúng thực tế in trên bao bì:</label>
+                <input type="text" class="input-field" value="Sodium Caseinate (Protein sữa)">
+              </div>
+
+              <div class="form-group">
+                <label>Mô tả chi tiết bổ sung:</label>
+                <textarea class="textarea-field" rows="3">Bao bì mới tháng 10/2026 ghi rõ là protein sữa bò thay vì mã số E469 như mẫu cũ.</textarea>
+              </div>
+
+              <button class="btn btn-primary" onclick="alert('Báo cáo đã gửi thành công tới đội ngũ kiểm duyệt dữ liệu!'); switchScreen('alert-red');">
+                Gửi Báo Cáo Sai Lệch
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 16: ADMIN MODERATION ================= -->
+          <div class="screen-view hidden" id="view-admin-moderation">
+            <div class="admin-portal-header">
+              <div class="admin-brand">🛡️ NutriViet Admin Portal</div>
+              <div class="admin-user">Quản trị viên: Lê Tất Nam (Admin)</div>
+            </div>
+            <div class="admin-body">
+              <div class="admin-nav-tabs">
+                <button class="tab-btn active">Duyệt Đóng Góp (12 chờ)</button>
+                <button class="tab-btn" onclick="switchScreen('admin-dictionary')">Từ Điển Phụ Gia & FoodOn</button>
+                <button class="tab-btn">Báo Cáo Lỗi OCR</button>
+              </div>
+
+              <div class="admin-split-view">
+                <!-- Left: Original User Upload -->
+                <div class="admin-panel left">
+                  <h4>Ảnh Gốc Người Dùng Đăng Tải</h4>
+                  <div class="admin-mock-photo">
+                    <div class="photo-placeholder">
+                      <div class="pkg-box">
+                        <strong>BÁNH QUE GIÒN CAY</strong>
+                        <p style="font-size:10px; margin-top:4px;">Thành phần: Bột mì, Dầu cọ, Đường, Bột ngọt (E621), Hương tôm tổng hợp...</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sub-meta">Người đóng góp: <strong>an.nguyen (ID: 24127004)</strong> • Lúc 10:15</div>
+                </div>
+
+                <!-- Right: Parsed Data & Approval Actions -->
+                <div class="admin-panel right">
+                  <h4>Dữ Liệu Trích Xuất & Chuẩn Hóa</h4>
+                  <div class="form-group-sm">
+                    <label>Tên chuẩn:</label>
+                    <input type="text" class="input-sm" value="Bánh Que Giòn Cay Ngũ Vị">
+                  </div>
+                  <div class="form-group-sm">
+                    <label>Mã vạch:</label>
+                    <input type="text" class="input-sm" value="8934567891234">
+                  </div>
+                  <div class="form-group-sm">
+                    <label>Thành phần chuẩn hóa:</label>
+                    <textarea class="textarea-sm" rows="3">Bột mì [Gluten], Dầu cọ, Đường, Bột ngọt [E621], Hương tôm [Seafood-Allergen-Derived].</textarea>
+                  </div>
+                  <div class="admin-tags-row">
+                    <span class="admin-tag tag-red">⚠️ Gắn nhãn Dị ứng: Tôm / Giáp xác</span>
+                    <span class="admin-tag tag-yellow">⚠️ Phụ gia: E621</span>
+                  </div>
+
+                  <div class="admin-decision-btns">
+                    <button class="btn btn-success" onclick="alert('Đã phê duyệt sản phẩm vào cơ sở dữ liệu chính thức!')">✔ Duyệt Vào Danh Mục</button>
+                    <button class="btn btn-warning" onclick="alert('Đã gửi yêu cầu bổ sung ảnh nhãn phụ!')">✏ Yêu cầu sửa</button>
+                    <button class="btn btn-danger" onclick="alert('Đã từ chối do vi phạm quy chuẩn!')">✖ Từ chối</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= SCREEN 17: ADMIN DICTIONARY ================= -->
+          <div class="screen-view hidden" id="view-admin-dictionary">
+            <div class="admin-portal-header">
+              <div class="admin-brand">🛡️ NutriViet Admin Portal</div>
+              <div class="admin-user">Quản trị viên: Lê Tất Nam (Admin)</div>
+            </div>
+            <div class="admin-body">
+              <div class="admin-nav-tabs">
+                <button class="tab-btn" onclick="switchScreen('admin-moderation')">Duyệt Đóng Góp (12 chờ)</button>
+                <button class="tab-btn active">Từ Điển Phụ Gia & FoodOn</button>
+                <button class="tab-btn">Nhật Ký Hệ Thống</button>
+              </div>
+
+              <div class="dictionary-view">
+                <div class="dict-header">
+                  <h4>Tra Cứu & Quản Trị Từ Điển Dị Ứng / E-Numbers</h4>
+                  <button class="btn-sm">+ Thêm Phụ Gia Mới</button>
+                </div>
+
+                <table class="dict-table">
+                  <thead>
+                    <tr>
+                      <th>Mã Phụ Gia / E-Code</th>
+                      <th>Tên Khoa Học & Tiếng Việt</th>
+                      <th>Nhóm Gốc (FoodOn Ontology)</th>
+                      <th>Mức Độ Cảnh Báo</th>
+                      <th>Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>E469</strong></td>
+                      <td>Sodium Caseinate (Natri Caseinat)</td>
+                      <td><code>FOODON:03411304 (Cow Milk Protein)</code></td>
+                      <td><span class="status-badge danger">Cực kỳ nghiêm trọng</span></td>
+                      <td><button class="btn-xs">Sửa</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>E621</strong></td>
+                      <td>Monosodium Glutamate (Bột ngọt/Mì chính)</td>
+                      <td><code>FOODON:03420109 (Glutamic Salt)</code></td>
+                      <td><span class="status-badge warn">Thận trọng (Gút/Natri)</span></td>
+                      <td><button class="btn-xs">Sửa</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>E322</strong></td>
+                      <td>Lecithin (Đậu nành / Trứng)</td>
+                      <td><code>FOODON:03411422 (Soybean Derivative)</code></td>
+                      <td><span class="status-badge warn">Cảnh báo Đậu nành</span></td>
+                      <td><button class="btn-xs">Sửa</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>E102</strong></td>
+                      <td>Tartrazine (Phẩm màu vàng chanh)</td>
+                      <td><code>FOODON:03420311 (Synthetic Dye)</code></td>
+                      <td><span class="status-badge warn">Nhạy cảm hen suyễn</span></td>
+                      <td><button class="btn-xs">Sửa</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div> <!-- /phone-screen -->
+      </div> <!-- /device-frame -->
+    </main>
+
+    <!-- Footer Status info -->
+    <footer class="prototype-footer">
+      <span>NutriViet Prototype v1.0 • Built with Vanilla HTML5/CSS3/JS • Group 07 CS300</span>
+      <span id="currentScreenInfo">Đang hiển thị: <strong>UC04 & UC05: Thiết lập Dị ứng & Bệnh lý nền</strong></span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
