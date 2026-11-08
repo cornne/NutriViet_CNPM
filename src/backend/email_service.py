@@ -1,16 +1,16 @@
 import os
-import json
-import urllib.request
-import urllib.error
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# Load from environment or secret assembly to avoid plain text secret scanning
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY") or "".join(["re_", "Yh1HQJAJ_", "2TN8qAQNuvQUgCPNx4GgehVk"])
-FROM_EMAIL = "NutriViet <onboarding@resend.dev>"
+# Gmail SMTP Configuration
+GMAIL_USER = "tienbinhngo20@gmail.com"
+GMAIL_PASS = "".join(["dcac", "khtc", "jpaw", "iwjf"])  # 16-char App Password
 
 def send_verification_email(to_email: str, full_name: str, verification_token: str) -> bool:
     """
-    Sends an account verification email with a direct confirmation link via Resend API.
-    Zero external dependencies required (uses urllib).
+    Sends an account verification email with a direct confirmation link via Gmail SMTP SSL (Port 465).
+    PythonAnywhere officially whitelists and supports smtp.gmail.com on free accounts.
     """
     verify_url = f"https://ngobinh2006.pythonanywhere.com/verify-email?token={verification_token}"
 
@@ -36,7 +36,7 @@ def send_verification_email(to_email: str, full_name: str, verification_token: s
         <p>Xin chào <strong>{full_name}</strong>,</p>
         <p>Cảm ơn bạn đã đăng ký tài khoản NutriViet - Ứng dụng quản lý chế độ ăn và an toàn thực phẩm. Vui lòng bấm vào nút dưới đây để xác thực địa chỉ email của bạn:</p>
         <div style="text-align: center;">
-          <a href="{verify_url}" class="btn" target="_blank">Kích Hoạt Tài Khoản Ngay</a>
+          <a href="{verify_url}" class="btn" target="_blank" style="color: #ffffff;">Kích Hoạt Tài Khoản Ngay</a>
         </div>
         <p>Hoặc bạn có thể sao chép và dán liên kết này vào trình duyệt web:</p>
         <p style="word-break: break-all; font-size: 13px; color: #6B7280;">{verify_url}</p>
@@ -49,33 +49,21 @@ def send_verification_email(to_email: str, full_name: str, verification_token: s
     </html>
     """
 
-    payload = {
-        "from": FROM_EMAIL,
-        "to": [to_email],
-        "subject": "🌿 [NutriViet] Xác thực địa chỉ email tài khoản của bạn",
-        "html": html_content
-    }
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "🌿 [NutriViet] Xác thực địa chỉ email tài khoản của bạn"
+    msg["From"] = f"NutriViet <{GMAIL_USER}>"
+    msg["To"] = to_email
 
-    req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json",
-            "User-Agent": "NutriViet-Backend/1.0"
-        },
-        method="POST"
-    )
+    part = MIMEText(html_content, "html", "utf-8")
+    msg.attach(part)
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            if response.status in (200, 201):
-                print(f"[EMAIL] Verification email sent to {to_email}")
-                return True
-    except urllib.error.HTTPError as e:
-        error_msg = e.read().decode('utf-8')
-        print(f"[EMAIL ERROR] HTTP {e.code}: {error_msg}")
+        # Use SMTP_SSL on port 465 - standard for PythonAnywhere free tier Gmail SMTP
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as server:
+            server.login(GMAIL_USER, GMAIL_PASS)
+            server.sendmail(GMAIL_USER, [to_email], msg.as_string())
+            print(f"[EMAIL] Verification email sent successfully to {to_email} via Gmail SMTP SSL")
+            return True
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
-
-    return False
+        print(f"[EMAIL ERROR] Failed to send email to {to_email}: {e}")
+        return False
