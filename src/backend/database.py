@@ -42,6 +42,21 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
     conn.commit()
 
+    # 2. User Allergens Table (FG2 Deliverable)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_allergens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        allergen_code TEXT NOT NULL,
+        allergen_name TEXT NOT NULL,
+        severity TEXT NOT NULL DEFAULT 'high',
+        updated_at TEXT NOT NULL
+    )
+    """)
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_allergen ON user_allergens(user_id, allergen_code)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_allergens_user_id ON user_allergens(user_id)")
+    conn.commit()
+
     # Seed an initial demo account if empty
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
@@ -175,6 +190,47 @@ def authenticate_user(email: str, password: str) -> tuple[dict, str]:
         "email": row["email"],
         "created_at": row["created_at"]
     }, None
+
+def get_user_allergens(user_id: int) -> list:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT allergen_code as code, allergen_name as name, severity, updated_at
+        FROM user_allergens 
+        WHERE user_id = ? 
+        ORDER BY id ASC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def save_user_allergens(user_id: int, allergens: list) -> tuple:
+    if not user_id:
+        return False, "User ID is required"
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat()
+    
+    try:
+        # Atomic transaction: delete existing and insert new
+        cursor.execute("DELETE FROM user_allergens WHERE user_id = ?", (user_id,))
+        for item in allergens:
+            code = item.get("code") or item.get("allergen_code", "")
+            name = item.get("name") or item.get("allergen_name", "")
+            severity = item.get("severity", "high").lower()
+            if code and name:
+                cursor.execute("""
+                    INSERT INTO user_allergens (user_id, allergen_code, allergen_name, severity, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user_id, code, name, severity, now))
+        conn.commit()
+        conn.close()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, str(e)
 
 def get_all_users() -> list[dict]:
     conn = get_connection()
