@@ -15,7 +15,9 @@ from database import (
     authenticate_user,
     get_all_users,
     verify_user_token,
-    resend_token_for_email
+    resend_token_for_email,
+    get_user_allergens,
+    save_user_allergens
 )
 from email_service import send_verification_email
 
@@ -115,6 +117,22 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
             else:
                 self._set_headers(400, content_type="text/html; charset=utf-8")
                 self.wfile.write(FAIL_HTML_PAGE.encode('utf-8'))
+
+        elif path == "/api/v1/profile/allergens":
+            user_id = query.get("user_id", [None])[0]
+            if not user_id:
+                self._set_headers(400)
+                resp = {"status": "error", "message": "Missing user_id query parameter"}
+            else:
+                allergens = get_user_allergens(int(user_id))
+                self._set_headers(200)
+                resp = {
+                    "status": "success",
+                    "user_id": int(user_id),
+                    "allergens": allergens,
+                    "total": len(allergens)
+                }
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
 
         elif path == "/api/v1/users":
             users = get_all_users()
@@ -219,6 +237,27 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
                 send_verification_email(user["email"], user["full_name"], user["verification_token"])
                 self._set_headers(200)
                 resp = {"status": "success", "message": "Đã gửi lại link xác thực đến email của bạn."}
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
+
+        # 4. Save User Allergens Profile (FG2)
+        elif path == "/api/v1/profile/allergens":
+            user_id = body.get("user_id")
+            allergens = body.get("allergens", [])
+            if not user_id:
+                self._set_headers(400)
+                resp = {"status": "error", "message": "user_id is required"}
+            else:
+                ok, err = save_user_allergens(int(user_id), allergens)
+                if ok:
+                    self._set_headers(200)
+                    resp = {
+                        "status": "success",
+                        "message": "Hồ sơ dị ứng đã được lưu thành công vào cơ sở dữ liệu.",
+                        "count": len(allergens)
+                    }
+                else:
+                    self._set_headers(500)
+                    resp = {"status": "error", "message": err}
             self.wfile.write(json.dumps(resp).encode('utf-8'))
 
         else:
