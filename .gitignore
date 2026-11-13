@@ -11,6 +11,10 @@ yarn-error.log*
 *.pem
 *.key
 
+# Submission Archive
+PA3-Group07/
+PA3-Group07.zip
+
 # Build & Output
 dist/
 build/
@@ -24,6 +28,8 @@ src/mobile/build/
 src/mobile/.dart_tool/
 src/mobile/.idea/
 src/mobile/*.iml
+src/mobile/android/.gradle/
+src/mobile/android/.kotlin/
 
 # IDE & OS
 .vscode/
