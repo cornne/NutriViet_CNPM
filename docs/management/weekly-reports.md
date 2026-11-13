@@ -1,296 +1,381 @@
-# NutriViet: Weekly Scrum & AI Usage Reports (Sprint 2)
+# NutriViet: Weekly Scrum & AI Usage Reports (Sprint 3)
 **Agile Meeting Minutes, Trello Tracking & Generative AI Disclosure**  
 **Course:** CS300 - CSC13002 - Introduction to Software Engineering  
-**Project Assignment:** PA2-2026 (Part D Deliverable)  
+**Project Assignment:** PA3-2026 (Section F Deliverable)  
 **Group:** Group 07 - NutriViet Team  
-**Sprint 2 Cadence:** 18/10/2026 – 31/10/2026  
+**Sprint 3 Cadence:** 01/11/2026 – 14/11/2026  
 
 ---
 
 ## 1. Weekly Scrum Meeting Minutes
 *Performed by: Truong Gia Linh | Reviewed by: Ngo Tien Binh | Edited by: Le Tat Nam*
 
-### =========== 18/10, Sprint 2 ===========
+---
 
+### =========== Meeting 1: Sprint 3 Planning (02/11/2026) ===========
+
+**Date & Time:** Monday, 02/11/2026 | 20:00 – 21:15  
+**Location:** Google Meet (Online)  
 **Team members present:**
-- Ngo Tien Binh
-- Le Tat Nam
-- Luong Hoang Nam
-- Nguyen Hoang Phuc Thinh
-- Truong Gia Linh
+- Ngo Tien Binh (PM & AI Lead)
+- Le Tat Nam (Backend & Architecture Lead)
+- Luong Hoang Nam (UI/UX & Flutter Lead)
+- Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
+- Truong Gia Linh (QA & Documentation Lead)
 
-**Team members absent:**
-- None
+**Team members absent:** None (100% Attendance)
 
 ---
 
-### Status reports:
+#### Status Reports & Sprint Kickoff:
 
 #### Ngo Tien Binh (PM & AI Lead)
 * **Completed tasks:**
-  - Reviewed PA2 requirements and decomposed assignment scope into 14 distinct sprint tasks.
-  - Initialized team Trello Kanban board with Scrum columns: *In Progress*, *To Do*, and *Done*.
+  - Synthesized teaching assistant (TA) feedback on the PA2 submission.
+  - Decomposed PA3 requirements into 14 concrete sprint tasks (`TASK-15` through `TASK-28`).
+  - Configured team Trello Kanban board with strict **1 Performer (Assignee) + 1 Reviewer** mapping per task.
 * **To-do Tasks:**
-  - Task TASK-01: Set up GitHub Spec Kit repository scaffolding (`specify init`), configure `.specify/`, and author `constitution.md`.
-  - Task TASK-07: Draft Project Plan goals, boundaries, scope, and deliverables (`project-plan.md`).
-  - Task TASK-09: Define the 5-Sprint schedule and 4-tier software build plan.
-  - Task TASK-13: Consolidate AI usage disclosures for Sprint 2.
+  - Task `TASK-15`: Update Project Plan with Sprint 3 milestones and author Section A of `Changes.md`.
+  - Task `TASK-22`: Initialize Spec Kit workflow for the target functional group (**FG1: Authentication & Authorization** and **FG2: Personal Allergy Profile Management**).
 * **Issues/Obstacles:**
-  - Need to ensure Spec Kit installation works cleanly on Windows PowerShell environments without path permission issues.
+  - Need to ensure all 5 members strictly record Git commits with standardized conventional commit prefixes (`docs:`, `feat:`, `chore:`).
 
 #### Le Tat Nam (Backend & Architecture Lead)
 * **Completed tasks:**
-  - Analyzed PA1 feedback and reviewed required Vision Document positioning table structures.
+  - Analyzed TA remarks regarding Vision Document NFR testability and competitive positioning.
 * **To-do Tasks:**
-  - Task TASK-03: Draft Problem Statement and Product Position Statement tables for `vision.md` (Section 2).
-  - Task TASK-08: Author the Project Plan risk management section with 4 categorized risks and concrete mitigation plans.
-  - Cross-review TASK-06 (Quantifiable NFRs) and TASK-11 (FoodOn schema design).
+  - Task `TASK-16`: Refine `vision.md` with 4-dimensional user environment specifications, 8-criteria competitor benchmark, and quantifiable NFR verification methods.
+  - Task `TASK-23`: Formulate technical plan (`plans/`) and data contract schemas for FG1 & FG2.
+  - Cross-review `TASK-15` (Project Plan & `Changes.md`).
 * **Issues/Obstacles:**
-  - Need to strictly adhere to the exact required table formats (`the problem of / affects / ...` and `For / Who / ...`).
+  - Ensuring cryptographic password salting and SQLite persistence latency remain well below the 300ms threshold.
 
 #### Luong Hoang Nam (UI/UX & Flutter Lead)
 * **Completed tasks:**
-  - Outlined Flutter Android project structure and reviewed Google ML Kit Flutter integration docs.
+  - Outlined UI wireframe requirements covering all 18 system use cases (UC01–UC18).
 * **To-do Tasks:**
-  - Task TASK-05: Write detailed 3–5 sentence explanatory paragraphs for FG1–FG8 and construct 2 Mermaid workflow diagrams in `vision.md`.
-  - Task TASK-10: Conduct technical spike testing Google ML Kit camera text recognition on physical food packages.
+  - Task `TASK-17`: Model system use cases using Mermaid syntax (global diagram and module-level sub-diagrams).
+  - Task `TASK-20`: Develop high-fidelity interactive UI prototype demonstrating both basic flows and alternative flows.
 * **Issues/Obstacles:**
-  - Need physical packaging samples with curved and glossy surfaces to test optical character recognition boundaries.
+  - Dual-coding alert designs (combining distinct geometric glyphs with colors) must strictly adhere to WCAG 2.1 AA accessibility guidelines.
 
-#### Nguyen Hoang Phuc Thinh (Database & Git Lead)
+#### Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
 * **Completed tasks:**
-  - Verified Git repository synchronization and clean `main` branch state.
+  - Verified repository health, tagged `PA2-v1.0` release tag, and set up feature branch protection.
 * **To-do Tasks:**
-  - Task TASK-06: Formulate quantifiable, measurable Non-Functional Requirements in `vision.md`.
-  - Task TASK-11: Investigate FoodOn OWL ontology graph structures and draft preliminary PostgreSQL schemas.
-  - Task TASK-14: Manage Trello evidence captures, Git log exports, and final `PA2-Group07.zip` packaging.
+  - Task `TASK-19`: Author Use-Case Specifications for extended scenarios (UC11–UC18: Diary, Shopping, Crowdsource, Admin).
+  - Task `TASK-28`: Oversee sprint packaging, Git tree audit, and PDF exports.
 * **Issues/Obstacles:**
-  - Avoiding subjective NFR metrics (e.g., "fast") by ensuring all performance and scalability items are numeric.
+  - Coordinating database schema design for user credentials and allergen flags with backend API endpoints.
 
 #### Truong Gia Linh (QA & Documentation Lead)
 * **Completed tasks:**
-  - Established document templates for `vision.md` and `project-plan.md` in `/docs`.
+  - Set up Sprint 3 Scrum tracking log templates and document review checklist in `/docs/management`.
 * **To-do Tasks:**
-  - Task TASK-04: Author stakeholder personas, supermarket environmental constraints, and competitor quadrant chart in `vision.md`.
-  - Task TASK-12: Document meeting minutes and maintain Scrum records.
-  - Coordinate the Spec Kit training completion log (`training-log.md`) across all 5 members.
+  - Task `TASK-18`: Author Use-Case Specifications for core scenarios (UC01–UC10: Auth, Profiles, Scanner, Hazard Alerts).
+  - Task `TASK-21`: Capture high-resolution prototype screenshots and embed them into `use-cases.md`.
+  - Task `TASK-27`: Maintain meeting minutes and Trello progress tracking logs.
 * **Issues/Obstacles:**
-  - Verifying that all section headers include the mandatory Author/Reviewer/Editor metadata.
+  - Checking that all 18 use cases exhaustively cover alternative/exception flows (network failure, unreadable packaging, blurred camera frames).
 
 ---
 
-### Actions (if any)
-1. Ngo Tien Binh to execute `specify init` and commit the ratified `constitution.md` to GitHub.
-2. All members to watch the official Spec Kit YouTube tutorials and submit 3–4 sentence takeaways for `training-log.md`.
-3. Le Tat Nam and Luong Hoang Nam to begin initial drafting of `vision.md` sections.
-4. Next sync: Mid-Sprint Progress Check (Weekly Scrum 1) on Wednesday, 21/10/2026.
+#### Actions & Decisions:
+1. Formalized **FG1 (Authentication & Authorization)** and **FG2 (Personal Allergy Profile Management)** as the target functional groups for the full-stack Spec Kit implementation (Section E).
+2. Established an internal documentation milestone for **Sunday, 08/11/2026** to freeze use-case specifications and prototypes before heavy full-stack coding begins.
+3. Next ceremony: Mid-Sprint Standup on Sunday, 08/11/2026.
 
-### Summary of the meeting
-The team held the Sprint 2 Planning meeting on Google Meet from 20:00 to 21:00 on Sunday, 18/10/2026. All 5 members attended. The group reviewed the PA2 assignment guidelines, enforced the mandatory **1 Doer + 1 Reviewer** rule, and populated 14 task cards on Trello (`TASK-01` to `TASK-14`). An internal milestone of Friday, 30/10/2026 was established to guarantee a 24-hour buffer before the official 31/10/2026 deadline.
-
----
-
-### Trello Board Progress Evidence (Sprint 2)
-![NutriViet Sprint 2 Trello Kanban Board](../assets/setup/trello-board.png)
-
-*Figure 1.1: NutriViet Sprint 2 Scrum Board on Trello showing active task assignments and workflow progression across In Progress, To Do, and Done columns.*
+#### Summary of Meeting 1:
+The Sprint 3 Planning meeting ran smoothly on Google Meet. The team ratified the Sprint 3 backlog, confirmed the 14-task division on Trello, and aligned on the priority of completing the Use-Case Model (Section C) and Use-Case Specifications (Section D) early in the sprint to guide the Spec Kit implementation (Section E).
 
 ---
 
-### =========== 26/10, Sprint 2 ===========
+### =========== Meeting 2: Mid-Sprint Standup & Progress Review (08/11/2026) ===========
 
+**Date & Time:** Sunday, 08/11/2026 | 20:30 – 21:40  
+**Location:** Google Meet (Online)  
 **Team members present:**
-- Ngo Tien Binh
-- Le Tat Nam
-- Luong Hoang Nam
-- Nguyen Hoang Phuc Thinh
-- Truong Gia Linh
+- Ngo Tien Binh (PM & AI Lead)
+- Le Tat Nam (Backend & Architecture Lead)
+- Luong Hoang Nam (UI/UX & Flutter Lead)
+- Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
+- Truong Gia Linh (QA & Documentation Lead)
 
-**Team members absent:**
-- None
+**Team members absent:** None (100% Attendance)
 
 ---
 
-### Status reports:
+#### Status Reports:
 
 #### Ngo Tien Binh (PM & AI Lead)
 * **Completed tasks:**
-  - Task TASK-01: Completed GitHub Spec Kit setup, initialized `.specify/` infrastructure, and ratified `constitution.md`.
-  - Task TASK-02: Completed Spec Kit YouTube training tutorial and authored personal learning log.
-  - Reviewed and approved TASK-03 (Vision Doc Positioning) and TASK-05 (Vision Doc Features & Mermaid).
+  - Task `TASK-15`: **DONE.** Updated `project-plan.md` to PA3-2026 2nd submission status; updated 5-sprint roadmap; authored Section A in `Changes.md` with complete rationale.
+  - Initiated Task `TASK-22`: Initialized Spec Kit feature specifications for FG1 & FG2 (`specs/` directory).
 * **To-do Tasks:**
-  - Task TASK-07: Finalize Project Plan goals, boundaries, scope, and deliverables (currently In Progress).
-  - Task TASK-09: Draft 5-Sprint Scrum schedule and 4-tier software build plan.
-  - Review TASK-10 (Flutter Camera OCR spike).
+  - Finalize `TASK-22` specifications by 09/11/2026.
+  - Review `TASK-17` (Mermaid Diagrams) and `TASK-20` (UI Prototype).
+  - Prepare video demonstration narration script for `TASK-26`.
 * **Issues/Obstacles:**
-  - Balancing mid-sprint documentation review with Project Plan drafting; on track to meet internal deadline on 30/10.
+  - Resolving Spec Kit CLI schema validation warnings during specification compilation.
 
 #### Le Tat Nam (Backend & Architecture Lead)
 * **Completed tasks:**
-  - Task TASK-02: Completed Spec Kit self-training module on `/speckit-plan`.
-  - Task TASK-03: Completed Section 2 of Vision Document (Problem Statement & Product Position Statement tables).
-  - Reviewed TASK-06 (Quantifiable NFRs) authored by Thinh.
+  - Task `TASK-16`: **DONE.** Expanded `vision.md` with 4-dimensional user environments (retail lighting, camera hardware, supermarket basement network drops, desktop admin portal), 8-dimension competitor matrix, and quantitative NFR verification methods. Documented in Section B of `Changes.md`.
+  - Reviewed `TASK-15` (`project-plan.md` and `Changes.md`).
 * **To-do Tasks:**
-  - Task TASK-08: Author Project Plan Risk Management section with 4 categorized risks and concrete mitigation strategies.
-  - Review TASK-09 (5-Sprint schedule) and TASK-11 (FoodOn schema design).
+  - Task `TASK-23`: Formulate technical plan (`plans/`) and task breakdown (`tasks/`) for FG1 & FG2.
+  - Task `TASK-25`: Implement backend RESTful API endpoints and database schema.
 * **Issues/Obstacles:**
-  - Ensuring ontology lookup query latency risk is properly quantified and paired with indexed relational caching.
+  - Ensuring cryptographic password salting and SQLite persistence latency remain well below 300ms.
 
 #### Luong Hoang Nam (UI/UX & Flutter Lead)
 * **Completed tasks:**
-  - Task TASK-02: Completed Spec Kit training on `/speckit-specify` and acceptance criteria.
-  - Task TASK-05: Completed Section 5 of Vision Document (8 refined feature descriptions with 3–5 sentence paragraphs and 2 Mermaid workflow diagrams).
-  - Reviewed TASK-04 (Stakeholders & Survey) authored by Linh.
+  - Task `TASK-17`: **DONE.** Constructed system-level and sub-module use-case diagrams in Mermaid syntax covering all 8 Functional Groups with actors, `<<include>>`, `<<extend>>`, and generalization hierarchies.
+  - Advanced Task `TASK-20`: Built interactive UI prototype covering all 18 use cases in HTML5/CSS3/JavaScript (`prototype/index.html`).
 * **To-do Tasks:**
-  - Task TASK-10: Continue Flutter ML Kit camera OCR text recognition spike (currently In Progress).
-  - Measure extraction latency on physical packaging under varying lighting conditions.
+  - Complete `TASK-20` and hand over prototype screens to Linh for embedding into specifications.
+  - Task `TASK-24`: Implement frontend UI & client-side state management for FG1 & FG2.
 * **Issues/Obstacles:**
-  - High-reflection cellophane packaging occasionally causes character drops; tuning contrast preprocessing parameters in ML Kit sandbox.
+  - None; prototype renders cleanly on both mobile viewport and desktop browsers.
 
-#### Nguyen Hoang Phuc Thinh (Database & Git Lead)
+#### Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
 * **Completed tasks:**
-  - Task TASK-02: Completed Spec Kit training on `/speckit-tasks` decomposition.
-  - Task TASK-06: Completed Section 6 of Vision Document (Quantifiable Non-Functional Requirements covering latency, security, and scalability).
-  - Reviewed TASK-01 (Spec Kit setup and Git sync) by Binh.
+  - Advanced Task `TASK-19`: Completed draft specifications for extended use cases (UC11–UC18: Dietary Log, Reaction Incidents, Shopping Lists, Community Submissions, and Admin Moderation).
 * **To-do Tasks:**
-  - Task TASK-11: Draft preliminary PostgreSQL relational schema for FoodOn allergen lineages and ingredient lexicons.
-  - Task TASK-13: Compile Sprint 2 AI usage disclosure logs.
-  - Task TASK-14: Prepare PDF conversion scripts and packaging checklist.
+  - Finalize `TASK-19` specifications with exhaustive alternative flows by 09/11/2026.
+  - Assist Le Tat Nam with database schema migrations for FG1 & FG2 (`TASK-25`).
 * **Issues/Obstacles:**
-  - None; Git repository is clean and synchronized.
+  - Coordinating database schema design for user credentials and allergen flags with backend API endpoints.
 
 #### Truong Gia Linh (QA & Documentation Lead)
 * **Completed tasks:**
-  - Task TASK-02: Completed Spec Kit training on `/speckit-clarify` and QA checklist quality gates.
-  - Task TASK-04: Completed Section 3 of Vision Document (Stakeholder personas, supermarket constraints, and competitor quadrant chart).
-  - Consolidated member training summaries into `src/speckit/training-log.md`.
+  - Advanced Task `TASK-18`: Completed draft specifications for core use cases (UC01–UC10: Auth, Profiles, Camera Scanner, Hazard Alerts, Safe Alternatives).
+  - Initiated Task `TASK-21`: Exported 17 high-resolution prototype screenshots into `docs/requirements/assets/prototypes/`.
+  - Maintained Task `TASK-27`: Documented Scrum meeting minutes and updated Trello Board progress.
 * **To-do Tasks:**
-  - Task TASK-12: Document meeting minutes for Meeting 2 (26/10) and prepare final sprint review templates.
-  - Review TASK-07 (Project Plan Scope) authored by Binh.
+  - Finalize `TASK-18` and complete screenshot embedding for `TASK-21` into `use-cases.md`.
+  - Review `TASK-16` (Vision Document) and `TASK-24` (Frontend UI implementation).
 * **Issues/Obstacles:**
-  - Need to ensure all Markdown tables and Mermaid diagrams render without overflow in PDF export.
+  - Verifying relative image paths so that figures render seamlessly in both Markdown and converted PDF exports.
 
 ---
 
-### Actions (if any)
-1. Ngo Tien Binh to finalize TASK-07 (Project Plan Scope) and advance to TASK-09 (5-Sprint Schedule).
-2. Le Tat Nam to begin TASK-08 (Risk Management) and Nguyen Hoang Phuc Thinh to begin TASK-11 (FoodOn Schema Design).
-3. Luong Hoang Nam to complete ML Kit benchmark measurements for TASK-10.
-4. Next sync: Pre-submission Integration Check on Friday, 30/10/2026.
+#### Actions & Decisions:
+1. Mid-Sprint checkpoint confirmed: **3 tasks completed in Done** (`TASK-15`, `TASK-16`, `TASK-17`), **6 tasks actively In Progress** (`TASK-18`, `TASK-19`, `TASK-20`, `TASK-21`, `TASK-22`, `TASK-27`), and **5 tasks queued in To Do** (`TASK-23`, `TASK-24`, `TASK-25`, `TASK-26`, `TASK-28`).
+2. Confirmed that Section A, B, C, and D documentation is on track to freeze by Monday, 09/11/2026.
+3. Full-stack development team (Nam, Nam, Thinh, Binh) to begin coding FG1 & FG2 (Section E) following the Spec Kit SDD workflow.
+4. Next ceremony: Mid-Sprint Progress & Spec Kit Checkpoint Meeting on Tuesday, 10/11/2026.
 
-### Summary of the meeting
-The team held Weekly Scrum Meeting 2 via Google Meet on Monday, 26/10/2026 from 20:00 to 20:35 with all 5 members present. The team reviewed mid-sprint progress: 6 out of 14 tasks are fully completed (all Vision Document and Spec Kit setup tasks), 2 tasks are actively In Progress (Project Plan Scope and Flutter OCR Spike), and the remaining 6 tasks are queued in To Do. The project is well ahead of schedule and fully on track to achieve the internal freeze milestone on 30/10/2026.
-
----
-
-### Trello Board Progress Evidence (Mid-Sprint - 26/10)
-![NutriViet Sprint 2 Trello Board (26/10)](../assets/setup/trello-meeting2.png)
-
-*Figure 1.2: NutriViet Sprint 2 Scrum Board on Trello as of 26/10/2026 showing 6 completed tasks in Done, 2 tasks In Progress, and 6 remaining tasks in To Do.*
+#### Summary of Meeting 2:
+Weekly Scrum Meeting 2 verified that the project is on track. All foundational documentation and modeling deliverables (Sections A, B, C) are finalized. The remaining use-case specifications and prototype screenshots (Section D) are in their final review stages. The team is well-positioned to begin the full-stack Spec Kit implementation phase.
 
 ---
 
-### =========== 30/10, Sprint 2 ===========
+### Trello Board Progress Evidence (Mid-Sprint Checkpoint - 08/11/2026)
 
+![NutriViet Sprint 3 Trello Board Mid-Sprint](../assets/setup/trello-sprint3-meeting2.jpg)
+
+*Figure 1.1: NutriViet Sprint 3 Scrum Board on Trello as of Sunday, 08/11/2026, displaying 3 tasks completed in Done, 6 tasks In Progress, and 5 queued tasks in To Do with explicit 1:1 member assignments and deadlines.*
+
+---
+
+### =========== Meeting 3: Mid-Sprint Progress & Spec Kit Checkpoint (12/11/2026) ===========
+
+**Date & Time:** Thursday, 12/11/2026 | 20:30 – 21:45  
+**Location:** Google Meet (Online)  
 **Team members present:**
-- Ngo Tien Binh
-- Le Tat Nam
-- Luong Hoang Nam
-- Nguyen Hoang Phuc Thinh
-- Truong Gia Linh
+- Ngo Tien Binh (PM & AI Lead)
+- Le Tat Nam (Backend & Architecture Lead)
+- Luong Hoang Nam (UI/UX & Flutter Lead)
+- Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
+- Truong Gia Linh (QA & Documentation Lead)
 
-**Team members absent:**
-- None
+**Team members absent:** None (100% Attendance)
 
 ---
 
-### Status reports:
+#### Status Reports:
 
 #### Ngo Tien Binh (PM & AI Lead)
 * **Completed tasks:**
-  - Task TASK-07: Completed Section 1, 2, and 3 of Project Plan (`project-plan.md`) covering Project Goals, Boundaries, In-scope/Out-of-scope capabilities, Course Deliverables, Assumptions, and Team Organization Matrix.
-  - Task TASK-09: Completed Section 4 and 5 of Project Plan (`project-plan.md`) formalizing the 5-Sprint high-level roadmap, Mermaid Gantt timeline, 14 Sprint 2 tasks, later sprint tasks, and 4-tier Software Build Plan (Build 0.1 to Build 1.0 Demo).
-  - Task TASK-13: Compiled Sprint 2 Generative AI tool disclosures and prompt logs in compliance with course academic integrity guidelines.
-  - Reviewed and approved TASK-10 (Flutter Camera OCR spike), TASK-12 (Scrum documentation), and TASK-14 (packaging and Git audit).
-* **To-do Tasks (Sprint 3 / PA3 Preparation):**
-  - Task: Decompose PA3 requirements into backlog user stories and tasks for Software Architecture Document (SAD), Figma UI prototyping, and Flutter Clean Architecture scaffolding.
-  - Schedule Sprint 3 Planning meeting for Sunday, 01/11/2026.
+  - Task `TASK-15`: **DONE.** Updated `project-plan.md` to PA3-2026 2nd submission status; updated 5-sprint roadmap (Sprint 3: 01/11 – 14/11/2026); authored Section A in `Changes.md`.
+  - Task `TASK-22`: **DONE.** Completed Spec Kit specifications for FG1 (Authentication) and FG2 (Allergy Profile) with full Gherkin acceptance criteria in `specs/001-authentication/spec.md` and `specs/002-allergy-profile/spec.md`.
+* **To-do Tasks:**
+  - Task `TASK-26`: **IN PROGRESS (Nov 12 - Nov 14).** Finalize narration script (`video-demo-script.md`) and record end-to-end video demonstration of the live running application for YouTube.
 * **Issues/Obstacles:**
-  - None; all 14 sprint tasks are 100% completed, peer-reviewed, and merged into `main` 24 hours ahead of the official deadline.
+  - Configured Android Emulator DNS to `dns.google` to resolve network routing conflicts when host machines use Cloudflare WARP.
 
 #### Le Tat Nam (Backend & Architecture Lead)
 * **Completed tasks:**
-  - Task TASK-08: Authored Risk Management section in `project-plan.md` (Section 3.2), analyzing 4 critical risks (OCR accuracy on glossy packaging, midterm absences, scope creep, FoodOn ontology query latency) with concrete mitigation plans and Mermaid quadrant chart.
-  - Reviewed and approved TASK-09 (5-Sprint Schedule & Build Plan) and TASK-11 (FoodOn Schema Design).
-* **To-do Tasks (Sprint 3 / PA3 Preparation):**
-  - Draft backend system architecture specifications for the SAD (FastAPI microservices, C4 container diagram, RESTful API endpoints).
-  - Set up FastAPI project repository boilerplate with Docker Compose and health check endpoints.
+  - Task `TASK-16`: **DONE.** Expanded `vision.md` with 4-dimensional user environments, 8-dimension competitor matrix, and quantitative NFR verification methods.
+  - Task `TASK-23`: **DONE.** Formulated Spec Kit implementation plan (`plan.md`), data contracts (`openapi.json`), and granular task breakdown (`tasks.md`).
+* **To-do Tasks:**
+  - Task `TASK-25`: **IN PROGRESS (Nov 10 - Nov 14).** Finalize backend WSGI API endpoints for password change (`/api/v1/auth/change-password`) and user physical metrics (`/api/v1/profile/metrics`) on PythonAnywhere.
 * **Issues/Obstacles:**
-  - None; FoodOn schema and indexing strategy confirmed with Thinh to keep query response latency under 200ms.
+  - Enforced SQLite table schema migrations on the remote PythonAnywhere cloud instance.
 
 #### Luong Hoang Nam (UI/UX & Flutter Lead)
 * **Completed tasks:**
-  - Task TASK-10: Completed Flutter camera OCR technical spike (`Build 0.1`). Benchmarked Google ML Kit Text Recognition on 15 real-world Vietnamese packaged food items under varying retail lighting conditions; validated image contrast preprocessing and achieved average recognition latency of ~780ms.
-  - Documented spike findings and recommendations for hyphenated word reconstruction in `vision.md` and `project-plan.md`.
-  - Reviewed and approved TASK-07 (Project Plan Scope).
-* **To-do Tasks (Sprint 3 / PA3 Preparation):**
-  - Draft high-fidelity Figma interactive wireframes covering all 8 Functional Groups (FG1–FG8).
-  - Scaffold Flutter Clean Architecture folder structure (`core/`, `features/scanner/`, `features/profile/`, `features/history/`).
+  - Task `TASK-17`: **DONE.** Constructed system-level and sub-module use-case diagrams in Mermaid syntax covering all 8 Functional Groups with actors and relationships.
+  - Task `TASK-20`: **DONE.** Finalized high-fidelity interactive prototype covering all 18 use cases.
+* **To-do Tasks:**
+  - Task `TASK-24`: **IN PROGRESS (Nov 10 - Nov 14).** Finalize Flutter frontend: modern bottom taskbar with center glowing QUÉT button, profile card navigation, crowdsource packaging photo uploader, and community feed.
 * **Issues/Obstacles:**
-  - None; spike confirmed ML Kit on-device model fulfills the sub-2.0s latency requirement without requiring cloud OCR overhead.
+  - Streamlined `SettingsScreen` to eliminate layout overflow and focus strictly on password update.
 
-#### Nguyen Hoang Phuc Thinh (Database & Git Lead)
+#### Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
 * **Completed tasks:**
-  - Task TASK-11: Completed FoodOn ontology schema design spike. Formulated normalized relational PostgreSQL schema mapping FoodOn OWL classes (allergens, food derivatives, scientific terms) to indexed lookup tables.
-  - Task TASK-14: Managed sprint packaging, Jira/Trello evidence captures, Git commit tree audit, document PDF conversions, and compiled the `PA2-Group07.zip` archive checklist.
-  - Reviewed and approved TASK-08 (Risk Management).
-* **To-do Tasks (Sprint 3 / PA3 Preparation):**
-  - Set up PostgreSQL and Redis database containers in Docker Compose.
-  - Configure automated GitHub Actions CI workflow for Flutter and Python linting and testing.
+  - Task `TASK-19`: **DONE.** Finalized Use-Case Specifications for extended scenarios (UC11–UC18: Dietary Log, Reaction Incidents, Shopping Lists, Community Submissions, and Admin Moderation).
+* **To-do Tasks:**
+  - Task `TASK-28`: **IN PROGRESS (Nov 12 - Nov 14).** Prepare AI usage disclosure documentation, audit git commit logs, and assemble `PA3-Group07.zip`.
 * **Issues/Obstacles:**
-  - None; all Git commits adhere to Conventional Commits and the repository working tree is clean.
+  - Ensuring the repository remains clean of binary artifacts and temporary build caches.
 
 #### Truong Gia Linh (QA & Documentation Lead)
 * **Completed tasks:**
-  - Task TASK-12: Documented weekly Scrum meeting minutes across all sprint ceremonies (Sprint Planning 18/10, Standup 26/10, Sprint Review & Retrospective 30/10) in `weekly-reports.md`.
-  - Verified that all Markdown documentation sections strictly adhere to academic author/reviewer attribution rules (`Performed by / Reviewed by / Edited by`).
-  - Verified cross-links and formatting across `vision.md`, `project-plan.md`, `training-log.md`, and `README.md`.
-  - Reviewed and approved TASK-13 (AI Usage Disclosure).
-* **To-do Tasks (Sprint 3 / PA3 Preparation):**
-  - Formulate test plan templates for Sprint 3 (SAD architectural verification, heuristic evaluation of Figma wireframes).
-  - Maintain audit logs and weekly Scrum templates for Sprint 3.
+  - Task `TASK-18`: **DONE.** Finalized Use-Case Specifications for core scenarios (UC01–UC10: Auth, Profiles, Camera Scanner, Hazard Alerts, Safe Alternatives).
+  - Task `TASK-21`: **DONE.** Successfully embedded all 17 prototype screenshots into `use-cases.md`.
+* **To-do Tasks:**
+  - Task `TASK-27`: **IN PROGRESS (Nov 2 - Nov 14).** Maintain meeting minutes and synchronize Trello Board progress checkpoint evidence.
 * **Issues/Obstacles:**
-  - None; all tables and diagrams render cleanly in Markdown and PDF export.
+  - Verifying relative image paths so that figures render seamlessly in both Markdown and converted PDF exports.
 
 ---
 
-### Actions (if any)
-1. Nguyen Hoang Phuc Thinh to finalize and archive `PA2-Group07.zip` deliverable package containing all documentation, Spec Kit setup, and Git history.
-2. Ngo Tien Binh to perform final sanity verification and submit the PA2 package to the course submission portal prior to the 31/10/2026 deadline.
-3. Luong Hoang Nam and Le Tat Nam to prepare design briefs and backend boilerplate for Sprint 3 kickoff.
-4. Next sync: Sprint 3 Planning Meeting on Sunday, 01/11/2026 at 20:00 via Google Meet.
+#### Actions & Decisions:
+1. Mid-Sprint checkpoint confirmed: **9 tasks completed in Done** (`TASK-15` through `TASK-23`), **5 tasks actively In Progress** (`TASK-24`, `TASK-25`, `TASK-26`, `TASK-27`, `TASK-28`), and **0 tasks remaining in To Do**.
+2. Confirmed that all Section A, B, C, and D documentation and prototype assets are 100% frozen.
+3. Full-stack development team (Nam, Nam, Thinh, Binh) advancing the final integration of the live running Flutter client with the Cloud PythonAnywhere backend.
+4. Final sprint timeline confirmed: Sprint 3 concludes on **Saturday, 14/11/2026**. Next ceremony: Sprint Review & Retrospective on Saturday, 14/11/2026.
 
-### Summary of the meeting
-The team held the Sprint 2 Review & Retrospective meeting via Google Meet on Friday, 30/10/2026 from 20:00 to 21:00 with all 5 members present. The team evaluated final sprint deliverables against the initial sprint backlog: all 14 out of 14 tasks are fully completed in the Done column (0 In Progress, 0 To Do), fulfilling the 100% completion target ahead of the course deadline. The team reviewed the working artifacts (Vision Document, Project Plan, Spec Kit training log, and technical spikes) and held a Sprint Retrospective:
-- **What went well:** Strict enforcement of the "1 Doer + 1 Reviewer" rule ensured high quality and caught documentation discrepancies early; Spec Kit adoption provided a standardized constitution and clear task breakdowns; early technical spikes (ML Kit OCR and FoodOn schema) successfully validated technical feasibility for Sprint 3 and Sprint 4.
-- **What could be improved:** Markdown-to-PDF formatting adjustments should be scheduled earlier in the sprint to avoid dense end-of-sprint rendering checks.
-- **Action for next sprint:** Maintain daily Git commits and initiate Figma prototyping and Flutter Clean Architecture scaffolding immediately at the start of Sprint 3.
+#### Summary of Meeting 3:
+Weekly Scrum Meeting 3 verified outstanding sprint momentum. 9 out of 14 tasks are fully completed in Done, while the remaining 5 tasks for implementation, demonstration, and final submission packaging are actively progressing toward the November 14 deadline. The team is on schedule to finalize all Section E and Section F deliverables.
 
 ---
 
-### Trello Board Progress Evidence (Sprint 2 Final - 30/10)
-![NutriViet Sprint 2 Trello Board Final (30/10)](../assets/setup/trello-meeting3.png)
+### Trello Board Progress Evidence (Sprint 3 Checkpoint - 12/11/2026)
 
-*Figure 1.3: NutriViet Sprint 2 Scrum Board on Trello as of 30/10/2026 showing 100% sprint completion with all 14 tasks in the Done column (0 To Do, 0 In Progress).*
+![NutriViet Sprint 3 Trello Board Checkpoint](../assets/setup/trello-sprint3-meeting3.jpg)
+
+*Figure 1.2: NutriViet Sprint 3 Scrum Board on Trello as of 12/11/2026, displaying 9 tasks completed in Done, 5 tasks actively In Progress, and 0 queued tasks in To Do with explicit 1:1 member assignments and deadlines leading to final sprint delivery on 14/11/2026.*
+
+---
+
+### =========== Meeting 4: Sprint 3 Review & Retrospective (14/11/2026) ===========
+
+**Date & Time:** Saturday, 14/11/2026 | 20:00 – 21:30  
+**Location:** Google Meet (Online)  
+**Team members present:**
+- Ngo Tien Binh (PM & AI Lead)
+- Le Tat Nam (Backend & Architecture Lead)
+- Luong Hoang Nam (UI/UX & Flutter Lead)
+- Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
+- Truong Gia Linh (QA & Documentation Lead)
+
+**Team members absent:** None (100% Attendance)
+
+---
+
+#### Status Reports:
+
+#### Ngo Tien Binh (PM & AI Lead)
+* **Completed tasks:**
+  - Task `TASK-22`: **DONE.** Completed Spec Kit specifications (`specs/`) for FG1 (Authentication) and FG2 (Allergy Profile) with full acceptance criteria.
+  - Task `TASK-26`: **DONE.** Recorded 5-minute video demonstration with voiceover narration walking through the live running FG1 & FG2 features; uploaded to [YouTube (https://www.youtube.com/watch?v=-LUs4PHV20Q)](https://www.youtube.com/watch?v=-LUs4PHV20Q) and embedded link in `README.md`.
+  - Conducted end-to-end sanity audit of all course deliverables.
+* **To-do Tasks:**
+  - None (All 14 Sprint 3 tasks 100% completed, verified, and archived for final PA3 delivery).
+
+#### Le Tat Nam (Backend & Architecture Lead)
+* **Completed tasks:**
+  - Task `TASK-23`: **DONE.** Formulated Spec Kit architecture plan (`plans/`) and task breakdown (`tasks/`).
+  - Task `TASK-25`: **DONE.** Implemented backend RESTful API with SQLite relational persistence on PythonAnywhere for FG1 & FG2; verified API contracts against OpenAPI specs.
+
+#### Luong Hoang Nam (UI/UX & Flutter Lead)
+* **Completed tasks:**
+  - Task `TASK-20`: **DONE.** Finalized high-fidelity interactive prototype for all 18 use cases.
+  - Task `TASK-24`: **DONE.** Implemented Flutter frontend with modern taskbar, glowing QUÉT button, profile metrics, and community crowdsource upload integrated with the backend API.
+
+#### Nguyen Hoang Phuc Thinh (Database & DevOps Lead)
+* **Completed tasks:**
+  - Task `TASK-19`: **DONE.** Finalized Use-Case Specifications for UC11–UC18.
+  - Task `TASK-28`: **DONE.** Compiled AI usage logs, exported clean Git commit log, converted all Markdown artifacts to PDF format, cleaned repository dependencies (`node_modules`, `venv`), and generated `PA3-Group07.zip`.
+
+#### Truong Gia Linh (QA & Documentation Lead)
+* **Completed tasks:**
+  - Task `TASK-18`: **DONE.** Finalized Use-Case Specifications for UC01–UC10.
+  - Task `TASK-21`: **DONE.** Successfully embedded all 17 prototype screenshots into `use-cases.md`.
+  - Task `TASK-27`: **DONE.** Finalized Sprint 3 meeting minutes and archived Trello board progress.
+
+---
+
+#### Actions & Decisions:
+1. Final Sprint 3 Delivery Audit confirmed: **14 out of 14 tasks (100%) completed in Done**, **0 tasks in In Progress**, and **0 tasks in To Do**.
+2. Live running demonstration of FG1 (Authentication) and FG2 (Allergy Profile & Health Metrics) formally approved and ratified by all members.
+3. Final Git commit history audited and exported to `git-log.txt`. Cleaned repository builds and generated final delivery archive `PA3-Group07.zip`.
+4. Sprint 3 formally signed off. Backlog refinement for Sprint 4 scheduled for Sunday, 15/11/2026.
+
+#### Summary of Meeting 4:
+The Sprint 3 Review & Retrospective meeting concluded successfully on Saturday, 14/11/2026. All 14 assigned tasks across Sections A through F are 100% complete with rigorous cross-peer review. The live Flutter application seamlessly communicates with the Cloud PythonAnywhere backend, and all Spec Kit specifications, plans, and task matrices meet university standards.
+
+---
+
+### Trello Board Final Evidence (Sprint 3 Delivery - 14/11/2026)
+
+![NutriViet Sprint 3 Final Trello Board](../assets/setup/trello-sprint3-meeting4.jpg)
+
+*Figure 1.3: NutriViet Sprint 3 Final Scrum Board on Trello as of Saturday, 14/11/2026, displaying all 14/14 tasks (100%) completed in Done, 0 In Progress, and 0 To Do with full verification and sign-off.*
+
+---
+
+#### Sprint 3 Retrospective Analysis:
+* **What went well:**
+  - Using Spec Kit to specify features before coding prevented scope creep and gave clear implementation boundaries for FG1 & FG2.
+  - Having high-fidelity UI prototypes before implementing frontend components accelerated client development.
+  - Strict enforcement of the 1 Performer + 1 Reviewer rule caught edge cases in alternative flows early.
+* **What could be improved:**
+  - Coordinating database schema migrations with frontend data models required an extra sync session; future sprints will establish OpenAPI schemas earlier.
+* **Actions for Sprint 4 (PA4):**
+  - Integrate live Google ML Kit camera OCR scanning into the mobile client.
+  - Expand FoodOn semantic matching service to cover 100+ common Vietnamese packaged food additives.
 
 ---
 
 ## 2. Generative AI Usage & Tool Disclosures
-*Performed by: Ngo Tien Binh | Reviewed by: Truong Gia Linh | Edited by: Le Tat Nam*
+*Performed by: Ngo Tien Binh | Reviewed by: Truong Gia Linh | Edited by: Nguyen Hoang Phuc Thinh*
 
-In accordance with course academic integrity guidelines, the team declares the assistive developer tooling utilized during Sprint 2:
+In accordance with course academic integrity guidelines, the team explicitly discloses the strict, limited boundaries within which Generative AI tools were used during Sprint 3. The team maintains full intellectual ownership over all deliverables, with the vast majority of engineering effort (over 85%) carried out entirely by human team members.
 
-* **GitHub Spec Kit (`specify-cli`):** Utilized for Spec-Driven Development (SDD) self-training and workspace initialization in direct compliance with Part C assignment specifications.
-* **GitHub Copilot / IDE Extensions:** Utilized strictly as editor-level productivity aids for syntax auto-completion, Markdown table formatting, and code linting within VS Code.
+### 2.1. Core Human Intellectual Ownership vs. AI Boundaries
 
-> **Academic Integrity Statement:** All functional requirements, architectural designs, data schemas, risk evaluations, and technical spike findings in this submission are 100% original work authored, reviewed, and finalized by the team members. Generative AI tools were not used to synthesize domain decisions or replace human engineering analysis.
+| Core Engineering Deliverable | Human Authorship & Ownership (Student Team) | Role of Generative AI (Strictly Limited) |
+|:---|:---|:---|
+| **Use-Case Model & Diagrams (Section C)** | **100% Human Designed & Authored.** All 18 Use Cases, actors (Consumer, Admin, ML Kit, FoodOn), boundary definitions, and UML relationships (`<<include>>`, `<<extend>>`, generalization) were brainstormed on paper/whiteboard and manually coded into Mermaid syntax by Luong Hoang Nam. | **Zero modeling contribution.** AI was NOT used to generate or design use cases. Only consulted for Mermaid syntax debugging (e.g., verifying subgraphs and dotted arrow connector rendering in Markdown). |
+| **Use-Case Specifications (Section D)** | **100% Human Authored.** All preconditions, step-by-step basic flows, complex alternative flows (network drop, bad camera focus, blurred labels), and postconditions were derived directly from our Vision Document by Truong Gia Linh & Nguyen Hoang Phuc Thinh. | Secondary proofreading assistant strictly for English grammatical polish and passive voice consistency. |
+| **High-Fidelity UI Prototypes (Section D)** | **100% Human Designed.** All 17 interactive prototype screens were conceived, wireframed, and styled by Luong Hoang Nam using Figma/design tools to reflect Vietnamese FMCG packaging ergonomics. | **None.** No generative image/UI models were used for the prototypes. |
+| **System Architecture & Database Schema (Section E)** | **100% Human Architected.** Database tables (`users`, `user_allergens`, `user_metrics`), PBKDF2 salting crypto, and REST API contract designs were formulated by Le Tat Nam & Ngo Tien Binh. | Editor-level auto-complete (GitHub Copilot) for repetitive typing of SQL boilerplate fields and type hints. |
+| **Full-Stack Implementation (Section E)** | **100% Human Engineered & Debugged.** Flutter state management, custom UI widgets, biometric calculations, and Python WSGI cloud deployment were hand-coded and tested by the team on Android Emulator and live cloud servers. | None for core business logic; only utilized standard official documentation and CLI scaffolding tools (`specify-cli`). |
+
+---
+
+### 2.2. Tool Inventory & Scope of Use
+1. **GitHub Spec Kit (`specify-cli`):** An official open-source methodology tool used strictly to scaffold standardized folder directories (`specs/`, `plans/`, `tasks/`) for Spec-Driven Development compliance.
+2. **Generative Language Models (Gemini / Claude):** Restricted solely to documentation editorial assistance—proofreading technical English grammar and diagnosing Markdown / Mermaid syntax quirks.
+3. **GitHub Copilot:** Restricted strictly to editor-level code-completion for standard boilerplate syntax (e.g., Python dictionaries, Flutter widget constructor parameters).
+
+---
+
+### 2.3. Granular AI Interaction Log (Sprint 3)
+
+| Date | Team Member | AI Tool | Prompt / Objective | AI Generated Output | Human Review, Intellectual Effort & Customization Applied |
+|:---:|:---|:---:|:---|:---|:---|
+| **03/11/2026** | Luong Hoang Nam | Google Gemini | *"How to fix Mermaid syntax error when nesting subgraphs with dotted extend arrows in Markdown?"* | Explained Mermaid syntax rules for line syntax (`-.->|text|`). | The entire Use-Case architecture, 18 Use Cases, actor generalizations, and relationship semantics were already 100% hand-drawn and designed by the team; AI only provided syntax troubleshooting advice for Markdown rendering. |
+| **05/11/2026** | Truong Gia Linh | Claude 3.5 | *"Proofread English grammar and passive voice phrasing for the step-by-step descriptions in food hazard evaluation."* | Suggested grammatical adjustments and refined technical vocabulary. | Team verified all domain logic manually against supermarket scenarios; all functional steps (camera lux thresholds, OCR tokenization, FoodOn ontology derivation) remained 100% original human work. |
+| **07/11/2026** | Ngo Tien Binh | Spec Kit CLI | `specify init --template sdd` to generate SDD folder scaffolds for Functional Groups FG1 & FG2. | Generated empty folder structure (`specs/`, `plans/`, `tasks/`) with blank template files. | Team manually authored all domain user stories, Gherkin acceptance criteria, database entities, and OpenAPI contract endpoints from scratch. |
+| **11/11/2026** | Le Tat Nam | GitHub Copilot | Tab auto-completion for Python type hints and standard error handler structure. | Suggested basic `try/except` boilerplate and JSON serialization code. | Core security logic, PBKDF2 HMAC-SHA256 password salting, database schema reconciliation, and Vietnamese allergen dictionary mapping were 100% written and verified by human engineers. |
+
+---
+
+### 2.4. Formal Academic Integrity Declaration
+> **Academic Integrity Statement:**  
+> All system architectures, use-case models, UML diagrams, functional specifications, UI prototypes, domain algorithms, and full-stack software code presented in this PA3 submission represent original intellectual work independently conceived, designed, hand-coded, and validated by the members of Group 07. Generative AI tools were strictly confined to minor auxiliary roles (grammar proofreading and syntax validation) and never substituted for human critical thinking, architectural design, or engineering problem-solving.

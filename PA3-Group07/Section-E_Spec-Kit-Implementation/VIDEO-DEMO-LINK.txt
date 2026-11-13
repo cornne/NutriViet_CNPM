@@ -1,0 +1,21 @@
+﻿================================================================================
+NUTRIVIET (GROUP 07) - PA3-2026 VIDEO DEMONSTRATION
+================================================================================
+Course: CS300 - CSC13002 - Introduction to Software Engineering
+Project: NutriViet (Smart Food Allergy Warning Mobile Application)
+Milestone: Project Assignment 3 (PA3-2026) - Section E Deliverable
+
+YouTube Video Link:
+https://www.youtube.com/watch?v=-LUs4PHV20Q
+
+Live Production Backend:
+https://ngobinh2006.pythonanywhere.com
+
+Demonstrated Modules:
+- FG1: Authentication & Authorization (specs/001-authentication/)
+- FG2: Personal Allergy Profile Management (specs/002-allergy-profile/)
+- Security Settings & Dedicated Password Change
+- Body Metrics (BMI / Mifflin-St Jeor TDEE) & Sensitivity Thresholds
+- Ecosystem Tour (Modern Taskbar, Center Scanner, Crowdsource Upload)
+- Cloud Database Verification (PythonAnywhere SQLite API)
+================================================================================

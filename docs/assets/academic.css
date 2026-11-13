@@ -237,6 +237,15 @@ img {
   margin-right: auto !important;
 }
 
+.mermaid, svg, div.mermaid {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  display: block !important;
+  margin: 10pt auto !important;
+  text-align: center !important;
+  max-width: 100% !important;
+}
+
 /* Page Break Utility */
 .page-break {
   page-break-before: always !important;

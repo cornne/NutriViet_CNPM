@@ -1,0 +1,140 @@
+# NutriViet: Smart Personalized Nutrition & Food Allergy Warning Mobile Application
+
+[![Course](https://img.shields.io/badge/Course-CS300%20Software%20Engineering-blue.svg)](https://www.fit.hcmus.edu.vn/)
+[![Institution](https://img.shields.io/badge/Institution-VNU--HCM%20University%20of%20Science-green.svg)](https://hcmus.edu.vn/)
+[![Methodology](https://img.shields.io/badge/Methodology-Scrum%20%2F%20Agile-orange.svg)]()
+[![Development](https://img.shields.io/badge/Spec--Driven-GitHub%20Spec%20Kit-purple.svg)](https://github.com/github/spec-kit)
+[![Video Demo](https://img.shields.io/badge/YouTube-Video%20Demo-red.svg?logo=youtube)](https://www.youtube.com/watch?v=-LUs4PHV20Q)
+
+> **NutriViet** is an intelligent Android mobile application engineered to safeguard consumers with personalized food allergy hazard warnings and proactive nutrition management. By combining on-device Optical Character Recognition (OCR), Levenshtein fuzzy matching, and the FoodOn semantic ontology, NutriViet instantly translates complex packaging labels into unambiguous, color-coded safety alerts (RED dangerous / YELLOW caution / GREEN safe), while providing structured dietary logging, safe food alternative recommendations, and a verified community crowdsourcing ecosystem.
+
+---
+
+## 👥 Team Members & Leadership Roster
+
+**Group:** Group 07 - NutriViet Team  
+**Institution:** Faculty of Information Technology, VNU-HCM University of Science (HCMUS)
+
+| No. | Student ID | Full Name | Project Role & Primary Responsibilities |
+|:---:|:---:|:---|:---|
+| 1 | **24127004** | **Ngo Tien Binh** | **Project Manager (PM) & AI Lead** / Full-Stack Engineer |
+| 2 | **23127432** | **Le Tat Nam** | **Backend & System Architecture Lead** / Full-Stack Engineer |
+| 3 | **24127456** | **Luong Hoang Nam** | **UI/UX & Flutter Lead** / Full-Stack Engineer |
+| 4 | **24127242** | **Nguyen Hoang Phuc Thinh** | **Database & DevOps Lead** / Full-Stack Engineer |
+| 5 | **24127438** | **Truong Gia Linh** | **QA & Test Automation Lead** / Full-Stack Engineer |
+
+---
+
+## 📅 Project Milestones & Semester Roadmap (5 Sprints)
+
+The project is structured into **5 sequential Scrum Sprints**, each mapping to an official Project Assignment (PA) milestone:
+
+| Sprint | Milestone | Status | Duration | Primary Focus & Deliverables |
+|:---:|:---|:---:|:---:|:---|
+| **Sprint 1** | **PA1-2026** | **Completed** | 25/09 – 17/10/2026 | Project Proposal, Existing App Survey (Yuko & Soosee), Team Contract, Scrum Setup |
+| **Sprint 2** | **PA2-2026** | **Completed** | 18/10 – 31/10/2026 | Vision Document, Project Plan, GitHub Spec Kit Integration, Sprint 2 Reports |
+| **Sprint 3** | **PA3-2026** | **Active / Delivered** | 01/11 – 14/11/2026 | Use-Case Model (Mermaid), 18 Detailed Use-Case Specs & 17 Prototypes, Full-Stack Spec Kit Implementation (FG1 & FG2), Video Demo |
+| **Sprint 4** | **PA4-2026** | *Planned* | 15/11 – 05/12/2026 | Core OCR & Allergen Engine Implementation, API Contracts, Unit Testing ($\ge 80\%$ coverage) |
+| **Sprint 5** | **PA5-2026** | *Planned* | 06/12 – 22/12/2026 | System Verification, Crowdsourcing Portal, Polish, Final Release APK, and Live Demo |
+
+---
+
+## 📂 Repository Directory Structure
+
+```text
+NutriViet/
+├── .github/                           # GitHub workflows and Spec Kit AI agent skills
+│   └── skills/                        # Prompts and skills for Spec-Driven Development
+├── .specify/                          # GitHub Spec Kit root configuration
+│   ├── memory/                        # Long-term memory governance (constitution.md)
+│   ├── templates/                     # Standardized spec, plan, and task templates
+│   └── scripts/                       # Automation scripts for SDD workflow
+├── docs/                              # Project documentation across all milestones
+│   ├── assets/                        # Diagrams, setup proofs, UI screenshots
+│   │   ├── setup/                     # Tool setup & Trello board evidence
+│   │   └── survey/                    # Empirical app survey screenshots
+│   ├── requirements/                  # Requirements specifications
+│   │   ├── README.md
+│   │   ├── vision.md                  # [PA2/PA3] Master Vision Document & Quantifiable NFRs
+│   │   ├── use-cases.md               # [PA3] Use-Case Model & 18 Detailed Specifications
+│   │   └── assets/prototypes/         # [PA3] 17 High-Fidelity UI Prototype Screenshots
+│   ├── management/                    # Agile Scrum management & governance
+│   │   ├── README.md
+│   │   ├── project-plan.md            # [PA2/PA3] 5-Sprint Project Plan & Risk Matrix
+│   │   ├── team-contract.md           # [PA1] Working Agreements & Code of Conduct
+│   │   ├── video-demo-script.md       # [PA3] Video Demonstration Narration Script
+│   │   └── weekly-reports.md          # [PA1-PA5] Scrum Meeting Minutes & AI Logs
+│   ├── analysis-and-design/           # Architecture diagrams, C4 models, ERDs
+│   └── test/                          # Test plans, test cases, and QA reports
+├── specs/                             # [PA3] Active Spec Kit Implementation Specifications
+│   ├── 001-authentication/            # FG1: Spec, Plan, Data Model, OpenAPI, Tasks, Checklist
+│   └── 002-allergy-profile/           # FG2: Spec, Plan, Data Model, OpenAPI, Tasks, Checklist
+├── src/                               # Application source code & assignment artifacts
+│   ├── backend/                       # Python WSGI Microservice & SQLite database
+│   │   ├── wsgi_app.py                # Production Cloud WSGI app (ngobinh2006.pythonanywhere.com)
+│   │   ├── server.py                  # Local development REST API
+│   │   └── database.py                # Database connection & schema migration engine
+│   ├── mobile/                        # Flutter Android mobile client
+│   │   ├── lib/screens/               # Login, Register, Verify, Settings, Home, Profile, Community
+│   │   └── lib/services/              # AuthService, ProfileService, API bridges
+│   ├── speckit/                       # GitHub Spec Kit governance templates & training logs
+│   │   ├── README.md
+│   │   └── training-log.md            # Member training completion evidence
+│   └── constitution.md                # Ratified NutriViet Project Constitution
+├── Changes.md                         # [PA3] Traceable changes log across PA2 -> PA3
+├── proposal.md                        # [PA1] Master Project Proposal & App Survey
+├── README.md                          # Repository overview & milestone navigator
+└── .gitignore                         # Environment & build ignore patterns
+```
+
+---
+
+## 📚 Deliverables & Documentation Index
+
+### 🔹 Project Assignment 1 (PA1-2026) — *Completed*
+* [Project Proposal (`proposal.md`)](./proposal.md): Comprehensive functional groups (FG1–FG8), system actors, AI feature proposal (Fuzzy Matching + FoodOn Ontology).
+* [Existing App Survey](./proposal.md#c---existing-app-survey): Empirical analysis of Yuko and Soosee market applications.
+* [Team Contract (`docs/management/team-contract.md`)](./docs/management/team-contract.md): 8 working agreements, communication policies, and peer review rules.
+* [Setup Evidence](./proposal.md#e---development-environment--scrum-setup-evidence): Git repository, Trello Kanban board, and AI tooling disclosures.
+
+### 🔹 Project Assignment 2 (PA2-2026) — *Completed*
+* [Vision Document (`docs/requirements/vision.md`)](./docs/requirements/vision.md): Problem Statement, Product Position Statement, personas, competitor matrix, and NFRs.
+* [Project Plan (`docs/management/project-plan.md`)](./docs/management/project-plan.md): 5-Sprint Scrum roadmap, risk management matrix, and team assignments.
+* [Spec Kit Initialization & Constitution (`src/constitution.md`)](./src/constitution.md): Project constitution and training logs.
+* [Weekly Scrum Reports (`docs/management/weekly-reports.md`)](./docs/management/weekly-reports.md): Sprint 2 minutes and AI interaction logs.
+
+### 🔹 Project Assignment 3 (PA3-2026) — *Delivered Milestone*
+* **Section A:** [Revised Project Plan (`docs/management/project-plan.md`)](./docs/management/project-plan.md) + [Changes Log (`Changes.md`)](./Changes.md)
+* **Section B:** [Detailed Vision Document (`docs/requirements/vision.md`)](./docs/requirements/vision.md) + [Changes Log (`Changes.md`)](./Changes.md)
+* **Section C:** [Use-Case Model with Mermaid Diagrams (`docs/requirements/use-cases.md`)](./docs/requirements/use-cases.md)
+* **Section D:** [Use-Case Specifications & 17 High-Fidelity UI Prototypes (`docs/requirements/use-cases.md`)](./docs/requirements/use-cases.md)
+* **Section E:** Full-Stack Implementation using Spec Kit:
+  * [FG1 Spec Kit Directory (`specs/001-authentication/`)](./specs/001-authentication/) & [FG2 Spec Kit Directory (`specs/002-allergy-profile/`)](./specs/002-allergy-profile/)
+  * [Flutter Mobile Client (`src/mobile/`)](./src/mobile/) & [Python Cloud Backend (`src/backend/wsgi_app.py`)](./src/backend/wsgi_app.py)
+  * [Video Demo Narration Script (`docs/management/video-demo-script.md`)](./docs/management/video-demo-script.md)
+  * 🎬 **Video Demonstration Link:** [YouTube Video Demonstration (Full-Stack Live Software Demo)](https://www.youtube.com/watch?v=-LUs4PHV20Q)
+* **Section F:** [Weekly Scrum Reports & Generative AI Disclosures (`docs/management/weekly-reports.md`)](./docs/management/weekly-reports.md)
+
+---
+
+## 💻 Technology Stack & Architecture
+
+| Tier | Technologies & Frameworks | Description |
+|:---|:---|:---|
+| **Mobile Client** | **Flutter (Dart 3.x)** | Android native deployment (min SDK 26), Clean Architecture with BLoC state management. |
+| **On-Device Vision** | **Google ML Kit Text Recognition** | Real-time camera OCR with local image contrast and adaptive threshold preprocessing. |
+| **Backend Services** | **Python 3.12 / FastAPI** | High-performance asynchronous RESTful APIs, OpenAPI/Swagger contracts, containerized with Docker. |
+| **AI & Knowledge** | **Levenshtein Fuzzy Matching & FoodOn** | Typo-tolerant text matching against Vietnamese dictionaries; semantic allergen ontology derivation. |
+| **Data Persistence** | **PostgreSQL & SQLite/Hive** | Relational cloud storage for catalog/profiles; encrypted local SQLite for offline emergency fallback. |
+| **Engineering Rigor** | **GitHub Spec Kit & GitHub Actions** | Spec-Driven Development (SDD), automated CI/CD linting, testing, and branch protection. |
+
+---
+
+## ⚙️ Development & Contribution Workflow
+
+The team strictly follows Agile/Scrum and Spec-Driven Development standards:
+1. **Branching Strategy:** Direct commits to `main` are restricted. All development occurs on feature branches (`feat/`, `fix/`, `docs/`) and merges require at least 1 approving peer review.
+2. **Task Rule:** Every task is assigned to **1 Performer** and verified by **1 Reviewer** on Trello.
+3. **Commit Discipline:** Conventional Commits standard (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`).
+4. **Header Attribution:** Every documentation section includes:
+   > `*Performed by: [Name] | Reviewed by: [Name] | Edited by: [Name]*`

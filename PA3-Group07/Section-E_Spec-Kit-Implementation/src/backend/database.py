@@ -1,0 +1,359 @@
+"""
+NutriViet Authentication Database Module (SQLite)
+PA3-2026 Deliverable - Section E Data Persistence with Email Verification
+"""
+
+import sqlite3
+import hashlib
+import os
+import secrets
+import datetime
+
+DB_PATH = os.path.join(os.path.dirname(__file__), "nutriviet.db")
+
+def get_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        is_verified INTEGER DEFAULT 0,
+        verification_token TEXT,
+        created_at TEXT NOT NULL
+    )
+    """)
+    conn.commit()
+
+    # Migration check for existing databases without is_verified / verification_token
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "is_verified" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+    if "verification_token" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
+    if "reset_token" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN reset_token TEXT")
+    conn.commit()
+
+    # 2. User Allergens Table (FG2 Deliverable)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_allergens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        allergen_code TEXT NOT NULL,
+        allergen_name TEXT NOT NULL,
+        severity TEXT NOT NULL DEFAULT 'high',
+        updated_at TEXT NOT NULL
+    )
+    """)
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_allergen ON user_allergens(user_id, allergen_code)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_allergens_user_id ON user_allergens(user_id)")
+    conn.commit()
+
+    # 3. User Physical / Nutrition Metrics Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_metrics (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        age INTEGER DEFAULT 22,
+        gender TEXT DEFAULT 'male',
+        height REAL DEFAULT 170.0,
+        weight REAL DEFAULT 65.0,
+        activity_level TEXT DEFAULT 'moderate',
+        target_calories INTEGER DEFAULT 2100,
+        updated_at TEXT NOT NULL
+    )
+    """)
+    conn.commit()
+
+    # Seed an initial demo account if empty
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] == 0:
+        create_user("Nguyen Van Nutri", "demo@nutriviet.vn", "NutriPass123!", is_verified=1)
+        print("[DB] Initialized database and seeded verified demo user: demo@nutriviet.vn (NutriPass123!)")
+    else:
+        print("[DB] Database connected successfully.")
+    conn.close()
+
+def hash_password(password: str, salt: str = None) -> tuple[str, str]:
+    if not salt:
+        salt = os.urandom(16).hex()
+    pwd_bytes = password.encode('utf-8')
+    salt_bytes = salt.encode('utf-8')
+    key = hashlib.pbkdf2_hmac('sha256', pwd_bytes, salt_bytes, 100000)
+    return key.hex(), salt
+
+def verify_password(password: str, stored_hash: str, salt: str) -> bool:
+    new_hash, _ = hash_password(password, salt)
+    return new_hash == stored_hash
+
+def create_user(full_name: str, email: str, password: str, is_verified: int = 0) -> tuple[dict, str]:
+    full_name = full_name.strip()
+    email = email.strip().lower()
+    
+    if not full_name or not email or not password:
+        return None, "All fields are required"
+    if len(password) < 6:
+        return None, "Password must be at least 6 characters"
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Check duplicate
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    if cursor.fetchone():
+        conn.close()
+        return None, "EMAIL_ALREADY_EXISTS"
+    
+    pwd_hash, salt = hash_password(password)
+    verification_token = secrets.token_urlsafe(32)
+    now = datetime.datetime.utcnow().isoformat()
+    
+    cursor.execute("""
+        INSERT INTO users (full_name, email, password_hash, salt, is_verified, verification_token, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (full_name, email, pwd_hash, salt, is_verified, verification_token, now))
+    conn.commit()
+    user_id = cursor.lastrowid
+    conn.close()
+    
+    return {
+        "id": user_id,
+        "full_name": full_name,
+        "email": email,
+        "is_verified": bool(is_verified),
+        "verification_token": verification_token,
+        "created_at": now
+    }, None
+
+def verify_user_token(token: str) -> tuple[dict, str]:
+    if not token:
+        return None, "Invalid token"
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email, is_verified FROM users WHERE verification_token = ?", (token,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None, "TOKEN_NOT_FOUND"
+
+    cursor.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (row["id"],))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
+        "is_verified": True
+    }, None
+
+def resend_token_for_email(email: str) -> tuple[dict, str]:
+    email = email.strip().lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email, is_verified FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None, "USER_NOT_FOUND"
+    if row["is_verified"] == 1:
+        conn.close()
+        return None, "ALREADY_VERIFIED"
+
+    new_token = secrets.token_urlsafe(32)
+    cursor.execute("UPDATE users SET verification_token = ? WHERE id = ?", (new_token, row["id"]))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
+        "verification_token": new_token
+    }, None
+
+def create_reset_token(email: str) -> tuple[dict, str]:
+    email = email.strip().lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None, "USER_NOT_FOUND"
+
+    new_token = secrets.token_urlsafe(32)
+    cursor.execute("UPDATE users SET reset_token = ? WHERE id = ?", (new_token, row["id"]))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
+        "reset_token": new_token
+    }, None
+
+def authenticate_user(email: str, password: str) -> tuple[dict, str]:
+    email = email.strip().lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email, password_hash, salt, is_verified, created_at FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if not row:
+        return None, "INVALID_CREDENTIALS"
+    
+    if not verify_password(password, row["password_hash"], row["salt"]):
+        return None, "INVALID_CREDENTIALS"
+
+    if row["is_verified"] != 1:
+        return None, "EMAIL_NOT_VERIFIED"
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
+        "created_at": row["created_at"]
+    }, None
+
+def reset_user_password(email: str, new_password: str) -> tuple[dict, str]:
+    email = email.strip().lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None, "USER_NOT_FOUND"
+
+    pwd_hash, salt = hash_password(new_password)
+    cursor.execute("UPDATE users SET password_hash = ?, salt = ?, is_verified = 1 WHERE id = ?", (pwd_hash, salt, row["id"]))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
+    }, None
+
+def get_user_allergens(user_id: int) -> list:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT allergen_code as code, allergen_name as name, severity, updated_at
+        FROM user_allergens 
+        WHERE user_id = ? 
+        ORDER BY id ASC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def save_user_allergens(user_id: int, allergens: list) -> tuple:
+    if not user_id:
+        return False, "User ID is required"
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat()
+    
+    try:
+        # Atomic transaction: delete existing and insert new
+        cursor.execute("DELETE FROM user_allergens WHERE user_id = ?", (user_id,))
+        for item in allergens:
+            code = item.get("code") or item.get("allergen_code", "")
+            name = item.get("name") or item.get("allergen_name", "")
+            severity = item.get("severity", "high").lower()
+            if code and name:
+                cursor.execute("""
+                    INSERT INTO user_allergens (user_id, allergen_code, allergen_name, severity, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user_id, code, name, severity, now))
+        conn.commit()
+        conn.close()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, str(e)
+
+def change_user_password(user_id: int, current_pwd: str, new_pwd: str) -> tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, password_hash, salt FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False, "Không tìm thấy tài khoản người dùng."
+    if not verify_password(current_pwd, row["password_hash"], row["salt"]):
+        conn.close()
+        return False, "Mật khẩu hiện tại (hoặc mật khẩu tạm) không chính xác."
+    
+    pwd_hash, salt = hash_password(new_pwd)
+    cursor.execute("UPDATE users SET password_hash = ?, salt = ?, is_verified = 1 WHERE id = ?", (pwd_hash, salt, user_id))
+    conn.commit()
+    conn.close()
+    return True, None
+
+def get_user_metrics(user_id: int) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT age, gender, height, weight, activity_level, updated_at FROM user_metrics WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return {"age": 22, "gender": "male", "height": 170.0, "weight": 65.0, "activity_level": "moderate"}
+
+def save_user_metrics(user_id: int, age: int, gender: str, height: float, weight: float, activity_level: str = 'moderate') -> tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat()
+    try:
+        cursor.execute("""
+        INSERT INTO user_metrics (user_id, age, gender, height, weight, activity_level, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            age = excluded.age,
+            gender = excluded.gender,
+            height = excluded.height,
+            weight = excluded.weight,
+            activity_level = excluded.activity_level,
+            updated_at = excluded.updated_at
+        """, (user_id, age, gender, height, weight, activity_level, now))
+        conn.commit()
+        conn.close()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, str(e)
+
+def get_all_users() -> list[dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email, is_verified, created_at FROM users ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+if __name__ == "__main__":
+    init_db()
+    print("Database ready at:", DB_PATH)
+    print("Existing users:", get_all_users())

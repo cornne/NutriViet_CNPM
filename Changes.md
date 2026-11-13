@@ -2,7 +2,7 @@
 **Course:** CS300 - CSC13002 - Introduction to Software Engineering  
 **Project Assignment:** PA3-2026  
 **Group:** Group 07 - NutriViet Team  
-**Submission Date:** 02/11/2026  
+**Submission Date:** 14/11/2026  
 
 ---
 
@@ -18,7 +18,7 @@ This `Changes.md` document provides a comprehensive, traceable record of all mod
 |:---:|:---|:---:|:---|
 | 1 | **Header & Metadata** | *Updated* | Promoted document status from PA2-2026 to **PA3-2026 (2nd Submission)**. |
 | 2 | **Section 3.1 Team Structure** | *Refined* | Clarified Luong Hoang Nam's responsibilities to explicitly encompass high-fidelity interactive UI prototyping and screenshot evidence generation for PA3 Section D. |
-| 3 | **Section 4.1 5-Sprint Roadmap** | *Updated* | Marked Sprint 2 (PA2) as **Completed** (18/10/2026 – 31/10/2026). Transitioned Sprint 3 (PA3: 01/11/2026 – 18/11/2026) to **Active Sprint**, detailing core objectives: Use-Case Modeling (Section C), Use-Case Specifications & UI Prototypes (Section D), Spec Kit End-to-End Implementation of 1 Functional Group (Section E), and Scrum/AI reporting (Section F). |
+| 3 | **Section 4.1 5-Sprint Roadmap** | *Updated* | Marked Sprint 2 (PA2) as **Completed** (18/10/2026 – 31/10/2026). Transitioned Sprint 3 (PA3: 01/11/2026 – 14/11/2026) to **Active Sprint**, detailing core objectives: Use-Case Modeling (Section C), Use-Case Specifications & UI Prototypes (Section D), Spec Kit End-to-End Implementation of 1 Functional Group (Section E), and Scrum/AI reporting (Section F). |
 | 4 | **Section 4.2 Sprint 2 Archive** | *Restructured* | Formally archived the 14 completed tasks of Sprint 2 (`TASK-01` to `TASK-14`) as historical project evidence. |
 | 5 | **Section 4.3 Sprint 3 Active Tasks** | *Added (Major)* | Created a granular 14-task work breakdown structure for Sprint 3 (`TASK-15` through `TASK-28`). In strict accordance with course rules, each task has **exactly 1 designated performer**, **1 designated reviewer**, start/due dates, and synchronized progress status (*In Progress* / *To Do*). Tasks directly map to PA3 grading sections A through F. |
 | 6 | **Section 4.4 Later Sprints** | *Refined* | Refined planned activities for Sprint 4 (core system integration & test coverage $\ge 80\%$) and Sprint 5 (crowdsourcing, admin moderation, and live demonstration). |
@@ -39,9 +39,55 @@ This `Changes.md` document provides a comprehensive, traceable record of all mod
 
 ---
 
-## Summary of Completed Stage 1 Deliverables
+## Section C - Changes in Use-Case Model (`docs/requirements/use-cases.md`)
+*Performed by: Luong Hoang Nam | Reviewed by: Ngo Tien Binh | Edited by: Le Tat Nam*
+
+| # | Section / Component | Type of Change | Description & Academic Rationale |
+|:---:|:---|:---:|:---|
+| 1 | **System-Level Mermaid Diagram** | *Added (New)* | Created a comprehensive system-level Use-Case diagram visualizing all 18 use cases across FG1–FG8 mapped to primary actors (Consumer, System Administrator specializing User) and secondary technical actors (Google ML Kit, FoodOn Semantic Ontology Engine). |
+| 2 | **Subsystem Mermaid Diagrams & Relationship Analysis** | *Added (New)* | Constructed 4 detailed subsystem diagrams and relationship analysis table illustrating `<<include>>`, `<<extend>>` (with explicit conditions), and generalization (actor & use case variants) across core functional workflows. |
+| 3 | **Use Case Categorization Table** | *Added (New)* | Mapped all 18 use cases directly to Functional Groups FG1 through FG8 with formal IDs (`UC01` to `UC18`). |
+
+---
+
+## Section D - Changes in Use-Case Specifications & Prototypes (`docs/requirements/use-cases.md`)
+*Performed by: Truong Gia Linh & Nguyen Hoang Phuc Thinh | Reviewed by: Luong Hoang Nam*
+
+| # | Section / Component | Type of Change | Description & Academic Rationale |
+|:---:|:---|:---:|:---|
+| 1 | **18 Detailed Use-Case Specs** | *Added (Major)* | Formulated formal use-case specifications for all 18 use cases featuring Preconditions, Basic Flow, Alternative Flows (covering exception states, bad camera focus, network failure), and Postconditions. |
+| 2 | **High-Fidelity UI Prototypes** | *Added (Major)* | Engineered and embedded **17 high-resolution prototype screens** (`assets/prototypes/`) illustrating consumer interfaces, hazard alert dual-coding, scanning viewfinders, diary logging, crowdsource photo upload, and admin moderation. |
+
+---
+
+## Section E - Spec Kit Full-Stack Implementation (`specs/` & `src/`)
+*Performed by: Le Tat Nam, Luong Hoang Nam, Ngo Tien Binh | Reviewed by: Truong Gia Linh*
+
+| # | Section / Component | Type of Change | Description & Academic Rationale |
+|:---:|:---|:---:|:---|
+| 1 | **Spec Kit Lifecycle Artifacts** | *Added (Major)* | Authored complete Spec-Driven Development cycle in `specs/001-authentication/` and `specs/002-allergy-profile/`: `spec.md`, `plan.md`, `data-model.md`, `openapi.json`, `tasks.md`, `research.md`, and `requirements.md` (22/22 gates passed). |
+| 2 | **Backend Microservice** | *Added (Major)* | Built production Python WSGI microservice (`wsgi_app.py`) deployed live on PythonAnywhere (`ngobinh2006.pythonanywhere.com`) with PBKDF2 HMAC-SHA256 crypto, password change, body physical metrics (BMI/TDEE), and SQLite relational persistence. |
+| 3 | **Mobile Client Application** | *Added (Major)* | Developed responsive Flutter mobile application (`src/mobile/`) with zero-prefill login, email activation gate, dedicated password change screen, BMI/TDEE physical metrics, modern 5-tab taskbar with glowing center QUÉT button, and crowdsourced product photo upload. |
+| 4 | **Video Demonstration** | *Added (Major)* | Recorded and published full-stack video demonstration on [YouTube](https://www.youtube.com/watch?v=-LUs4PHV20Q) accompanied by structured bilingual narration script (`video-demo-script.md`). |
+
+---
+
+## Section F - Changes in Weekly Scrum & AI Logs (`docs/management/weekly-reports.md`)
+*Performed by: Truong Gia Linh | Reviewed by: Ngo Tien Binh*
+
+| # | Section / Component | Type of Change | Description & Academic Rationale |
+|:---:|:---|:---:|:---|
+| 1 | **Scrum Meeting Minutes** | *Added (New)* | Documented 4 sprint ceremonies across Sprint 3 (01/11 – 14/11/2026): Sprint 3 Planning (02/11), Mid-Sprint Standup (08/11), Mid-Sprint Progress & Spec Kit Checkpoint (12/11), and Sprint Review & Retrospective (14/11). |
+| 2 | **Trello Progress Tracking** | *Updated* | Embedded 3 sequential Trello board progression checkpoints across Sprint 3: Mid-sprint (08/11: 3 Done, 6 In Progress, 5 To Do - Figure 1.1), Spec Kit Checkpoint (12/11: 9 Done, 5 In Progress, 0 To Do - Figure 1.2), and Final Sprint Delivery (14/11: 14/14 Done (100%), 0 In Progress, 0 To Do - Figure 1.3) verifying rigorous 1:1 member task assignments and 100% completion. |
+| 3 | **Generative AI Disclosures** | *Added (New)* | Articulated formal human intellectual ownership boundaries (>85% human engineering: 100% student-designed Use Cases, UML diagrams, prototypes, and architecture). Documented granular AI log demonstrating strictly auxiliary use (grammar proofreading, Mermaid syntax error troubleshooting) with an Academic Integrity Declaration. |
+
+---
+
+## Summary of Completed Stage 1 & Stage 2 Deliverables
 - [x] **Section A:** Revised Project Plan ([project-plan.md](docs/management/project-plan.md)) + `Changes.md`
 - [x] **Section B:** Detailed Vision Document ([vision.md](docs/requirements/vision.md)) + `Changes.md`
 - [x] **Section C:** Use-Case Model with Mermaid Diagrams ([use-cases.md](docs/requirements/use-cases.md))
 - [x] **Section D:** Use-Case Specifications & High-Fidelity UI Prototypes ([use-cases.md](docs/requirements/use-cases.md))
+- [x] **Section E:** Full-Stack Implementation using Spec Kit - FG1 Authentication & FG2 Profile ([specs/](specs/))
+- [x] **Section F:** Weekly Scrum Reports & Generative AI Tool Disclosures ([weekly-reports.md](docs/management/weekly-reports.md))
 

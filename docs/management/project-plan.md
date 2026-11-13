@@ -106,14 +106,14 @@ The project is structured into **5 consecutive Scrum Sprints**, each spanning 2 
    * Authored initial Project Plan (`project-plan.md`) with 5-Sprint schedule and risk management.
    * Integrated GitHub Spec Kit, ratified `constitution.md`, and completed member training.
    * Executed technical spikes on Flutter ML Kit camera capture and FoodOn schema design.
-3. **Sprint 3 (PA3 - Requirements Elaboration, Use-Case Specifications, UI Prototype & Spec Kit E2E Implementation):** *Active Sprint (01/11/2026 – 18/11/2026)*
+3. **Sprint 3 (PA3 - Requirements Elaboration, Use-Case Specifications, UI Prototype & Spec Kit E2E Implementation):** *Active Sprint (01/11/2026 – 14/11/2026)*
    * Revise Project Plan and Vision Document based on evaluation rubrics; maintain unified `Changes.md`.
    * Model complete system use cases via Mermaid diagrams covering FG1 through FG8 (Section C).
    * Elaborate comprehensive Use-Case Specifications for every use case (Section D) including basic flow, alternative flows, and postconditions.
    * Develop interactive UI prototypes for each use case and embed screenshots in specifications.
    * Select and implement 1 Functional Group end-to-end (UI + API/Logic + Data Persistence) following the Spec Kit spec-driven workflow (Section E).
    * Record video demo with narration demonstrating the working feature; compile AI and weekly Scrum reports (Section F).
-4. **Sprint 4 (PA4 - Core Implementation, Multi-Feature Integration & Domain Testing):** *Planned (19/11/2026 – 05/12/2026)*
+4. **Sprint 4 (PA4 - Core Implementation, Multi-Feature Integration & Domain Testing):** *Planned (15/11/2026 – 05/12/2026)*
    * Integrate camera OCR pipeline with live bounding boxes and flashlight control across device form factors.
    * Implement FastAPI backend microservices for fuzzy matching and FoodOn ontology queries.
    * Implement user health profile configuration and local SQLite/Hive offline storage.
@@ -149,26 +149,26 @@ The project is structured into **5 consecutive Scrum Sprints**, each spanning 2 
 ---
 
 ### 4.3. Sprint 3 Active Tasks (PA3-2026)
-*Duration: 01/11/2026 – 18/11/2026 (Synchronized with Jira/Trello Board)*
+*Duration: 01/11/2026 – 14/11/2026 (Synchronized with Jira/Trello Board)*
 
 In accordance with course guidelines, every task represents a concrete project activity, has **exactly one assigned performer**, and is **reviewed by another designated member**.
 
 | Task ID | Task Title & Specific Activity | Performer (Assignee) | Reviewer | Start Date | Due Date | Status |
 |:---:|:---|:---:|:---:|:---:|:---:|:---:|
-| **TASK-15** | **Revised Project Plan & Changes Tracking:** Update project schedule, task matrix, and author `Changes.md` (Section A). | **Ngo Tien Binh** | Le Tat Nam | 01/11 | 04/11 | **In Progress** |
-| **TASK-16** | **Detailed Vision Document Refinements:** Expand user environments (supermarket basements, camera hardware), competitor matrix, and quantifiable NFR verification (Section B). | **Le Tat Nam** | Truong Gia Linh | 01/11 | 05/11 | **In Progress** |
-| **TASK-17** | **Use-Case Model (Mermaid Diagrams):** Construct hierarchical use-case diagrams with Mermaid covering FG1–FG8, actors, and include/extend relationships (Section C). | **Luong Hoang Nam** | Ngo Tien Binh | 02/11 | 06/11 | **In Progress** |
-| **TASK-18** | **Use-Case Specifications (Part 1: Core User Scenarios):** Author detailed use-case specifications for FG1 (Auth), FG2 (Profiles), FG3 (Scanner), FG4 (Alerts & Alternatives) with preconditions, basic flows, alternative flows, and postconditions (Section D). | **Truong Gia Linh** | Luong Hoang Nam | 03/11 | 08/11 | **To Do** |
-| **TASK-19** | **Use-Case Specifications (Part 2: Diary, Crowdsourcing & Admin):** Author specifications for FG5 (Diary), FG6 (Favorites), FG7 (Contribution), FG8 (Admin Verification) with exhaustive alternative flows (Section D). | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 03/11 | 08/11 | **To Do** |
-| **TASK-20** | **High-Fidelity UI Prototype Development:** Build interactive prototype application demonstrating core screens for basic and alternative flows across use cases (Section D). | **Luong Hoang Nam** | Ngo Tien Binh | 04/11 | 09/11 | **In Progress** |
-| **TASK-21** | **Prototype Screenshot Extraction & Spec Embedding:** Capture high-resolution prototype screens and systematically integrate alongside each use case specification (Section D). | **Truong Gia Linh** | Nguyen Hoang Phuc Thinh | 07/11 | 10/11 | **To Do** |
-| **TASK-22** | **Spec Kit Workflow - Functional Group Specification (`specs`):** Author detailed specification for chosen functional group following Spec Kit methodology (Section E). | **Ngo Tien Binh** | Le Tat Nam | 06/11 | 09/11 | **To Do** |
-| **TASK-23** | **Spec Kit Workflow - Architecture & Implementation Plan (`plans`):** Formulate technical plan, data contracts, and task breakdown (`tasks`) for selected functional group (Section E). | **Le Tat Nam** | Ngo Tien Binh | 08/11 | 11/11 | **To Do** |
-| **TASK-24** | **End-to-End Implementation - Frontend UI & Logic:** Implement client-side interface and state management for selected functional group (Section E). | **Luong Hoang Nam** | Truong Gia Linh | 10/11 | 14/11 | **To Do** |
-| **TASK-25** | **End-to-End Implementation - Backend API & Data Persistence:** Implement RESTful API endpoints, business logic, and PostgreSQL database storage for selected functional group (Section E). | **Le Tat Nam** | Nguyen Hoang Phuc Thinh | 10/11 | 14/11 | **To Do** |
-| **TASK-26** | **Video Demonstration Recording & Narration:** Record end-to-end working software demonstration with voiceover narration and publish to YouTube (Section E). | **Ngo Tien Binh** | Luong Hoang Nam | 14/11 | 16/11 | **To Do** |
-| **TASK-27** | **Weekly Scrum Meetings & Jira Reporting:** Document Sprint 3 planning, standup meetings, sprint review, and Jira progress screenshots (Section F). | **Truong Gia Linh** | Ngo Tien Binh | 01/11 | 16/11 | **In Progress** |
-| **TASK-28** | **AI Usage Disclosure & Final Submission Assembly:** Compile comprehensive AI usage logs, clean dependencies (`node_modules`), export Git logs, generate PDFs, and package `PA3-Group07.zip`. | **Nguyen Hoang Phuc Thinh** | Ngo Tien Binh | 16/11 | 18/11 | **To Do** |
+| **TASK-15** | **Update Project Plan & Changes Tracking:** Update project schedule, task matrix, and author `Changes.md` (Section A). | **Ngo Tien Binh** | Le Tat Nam | 01/11 | 04/11 | **Done** |
+| **TASK-16** | **Detailed Vision Document Refinements:** Expand user environments (supermarket basements, camera hardware), competitor matrix, and quantifiable NFR verification (Section B). | **Le Tat Nam** | Truong Gia Linh | 01/11 | 05/11 | **Done** |
+| **TASK-17** | **Use-Case Model (Mermaid Diagrams):** Construct hierarchical use-case diagrams with Mermaid covering FG1–FG8, actors, and include/extend relationships (Section C). | **Luong Hoang Nam** | Ngo Tien Binh | 02/11 | 06/11 | **Done** |
+| **TASK-18** | **Use-Case Specs Part 1: Core User Scenarios (UC01 - UC10):** Author detailed use-case specifications for FG1 (Auth), FG2 (Profiles), FG3 (Scanner), FG4 (Alerts & Alternatives) with preconditions, basic flows, alternative flows, and postconditions (Section D). | **Truong Gia Linh** | Luong Hoang Nam | 03/11 | 08/11 | **Done** |
+| **TASK-19** | **Use-Case Specs Part 2: Extended Scenarios (UC11 - UC18):** Author specifications for FG5 (Diary), FG6 (Favorites), FG7 (Contribution), FG8 (Admin Verification) with exhaustive alternative flows (Section D). | **Nguyen Hoang Phuc Thinh** | Le Tat Nam | 03/11 | 08/11 | **Done** |
+| **TASK-20** | **Interactive UI Prototype Development:** Build interactive prototype application demonstrating core screens for basic and alternative flows across use cases (Section D). | **Luong Hoang Nam** | Ngo Tien Binh | 04/11 | 09/11 | **Done** |
+| **TASK-21** | **Capture Prototype Screenshots & Embed to Specs:** Capture high-resolution prototype screens and systematically integrate alongside each use case specification (Section D). | **Truong Gia Linh** | Nguyen Hoang Phuc Thinh | 06/11 | 09/11 | **Done** |
+| **TASK-22** | **Spec Kit Workflow: Author Feature Specifications (specs/):** Author detailed specification for FG1 & FG2 following Spec Kit methodology (Section E). | **Ngo Tien Binh** | Le Tat Nam | 06/11 | 09/11 | **Done** |
+| **TASK-23** | **Spec Kit Workflow: Architecture Plan & Task Breakdown (plans/):** Formulate technical plan, data contracts, and task breakdown for selected functional groups (Section E). | **Le Tat Nam** | Ngo Tien Binh | 09/11 | 11/11 | **Done** |
+| **TASK-24** | **End-to-End Implementation: Frontend UI & Client Logic:** Implement client-side interface and state management for FG1 & FG2 in Flutter (Section E). | **Luong Hoang Nam** | Truong Gia Linh | 10/11 | 14/11 | **Done** |
+| **TASK-25** | **End-to-End Implementation: Backend API & Data Persistence:** Implement RESTful API endpoints, business logic, and SQLite persistence on Cloud PythonAnywhere (Section E). | **Le Tat Nam** | Nguyen Hoang Phuc Thinh | 10/11 | 14/11 | **Done** |
+| **TASK-26** | **Video Demonstration Recording & Narration (YouTube):** Record end-to-end working software demonstration with voiceover narration and publish to [YouTube Video (https://www.youtube.com/watch?v=-LUs4PHV20Q)](https://www.youtube.com/watch?v=-LUs4PHV20Q) (Section E). | **Ngo Tien Binh** | Luong Hoang Nam | 12/11 | 14/11 | **Done** |
+| **TASK-27** | **Weekly Scrum Minutes & Trello Tracking (Sprint 3):** Document Sprint 3 planning, standup meetings, sprint review, and Trello progress screenshots (Section F). | **Truong Gia Linh** | Ngo Tien Binh | 02/11 | 14/11 | **Done** |
+| **TASK-28** | **AI Usage Disclosure, PDF Export & Final Submission Packaging:** Compile comprehensive AI usage logs, clean dependencies (`node_modules`), export Git logs, generate PDFs, and package `PA3-Group07.zip`. | **Nguyen Hoang Phuc Thinh** | Ngo Tien Binh | 12/11 | 14/11 | **Done** |
 
 ---
 

@@ -40,6 +40,8 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
     if "verification_token" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
+    if "reset_token" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN reset_token TEXT")
     conn.commit()
 
     # 2. User Allergens Table (FG2 Deliverable)
@@ -55,6 +57,21 @@ def init_db():
     """)
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_allergen ON user_allergens(user_id, allergen_code)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_allergens_user_id ON user_allergens(user_id)")
+    conn.commit()
+
+    # 3. User Physical / Nutrition Metrics Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_metrics (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        age INTEGER DEFAULT 22,
+        gender TEXT DEFAULT 'male',
+        height REAL DEFAULT 170.0,
+        weight REAL DEFAULT 65.0,
+        activity_level TEXT DEFAULT 'moderate',
+        target_calories INTEGER DEFAULT 2100,
+        updated_at TEXT NOT NULL
+    )
+    """)
     conn.commit()
 
     # Seed an initial demo account if empty
@@ -167,6 +184,29 @@ def resend_token_for_email(email: str) -> tuple[dict, str]:
         "verification_token": new_token
     }, None
 
+def create_reset_token(email: str) -> tuple[dict, str]:
+    email = email.strip().lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None, "USER_NOT_FOUND"
+
+    new_token = secrets.token_urlsafe(32)
+    cursor.execute("UPDATE users SET reset_token = ? WHERE id = ?", (new_token, row["id"]))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
+        "reset_token": new_token
+    }, None
+
 def authenticate_user(email: str, password: str) -> tuple[dict, str]:
     email = email.strip().lower()
     conn = get_connection()
@@ -189,6 +229,27 @@ def authenticate_user(email: str, password: str) -> tuple[dict, str]:
         "full_name": row["full_name"],
         "email": row["email"],
         "created_at": row["created_at"]
+    }, None
+
+def reset_user_password(email: str, new_password: str) -> tuple[dict, str]:
+    email = email.strip().lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_name, email FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None, "USER_NOT_FOUND"
+
+    pwd_hash, salt = hash_password(new_password)
+    cursor.execute("UPDATE users SET password_hash = ?, salt = ?, is_verified = 1 WHERE id = ?", (pwd_hash, salt, row["id"]))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "full_name": row["full_name"],
+        "email": row["email"],
     }, None
 
 def get_user_allergens(user_id: int) -> list:
@@ -224,6 +285,58 @@ def save_user_allergens(user_id: int, allergens: list) -> tuple:
                     INSERT INTO user_allergens (user_id, allergen_code, allergen_name, severity, updated_at)
                     VALUES (?, ?, ?, ?, ?)
                 """, (user_id, code, name, severity, now))
+        conn.commit()
+        conn.close()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, str(e)
+
+def change_user_password(user_id: int, current_pwd: str, new_pwd: str) -> tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, password_hash, salt FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False, "Không tìm thấy tài khoản người dùng."
+    if not verify_password(current_pwd, row["password_hash"], row["salt"]):
+        conn.close()
+        return False, "Mật khẩu hiện tại (hoặc mật khẩu tạm) không chính xác."
+    
+    pwd_hash, salt = hash_password(new_pwd)
+    cursor.execute("UPDATE users SET password_hash = ?, salt = ?, is_verified = 1 WHERE id = ?", (pwd_hash, salt, user_id))
+    conn.commit()
+    conn.close()
+    return True, None
+
+def get_user_metrics(user_id: int) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT age, gender, height, weight, activity_level, updated_at FROM user_metrics WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return {"age": 22, "gender": "male", "height": 170.0, "weight": 65.0, "activity_level": "moderate"}
+
+def save_user_metrics(user_id: int, age: int, gender: str, height: float, weight: float, activity_level: str = 'moderate') -> tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat()
+    try:
+        cursor.execute("""
+        INSERT INTO user_metrics (user_id, age, gender, height, weight, activity_level, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            age = excluded.age,
+            gender = excluded.gender,
+            height = excluded.height,
+            weight = excluded.weight,
+            activity_level = excluded.activity_level,
+            updated_at = excluded.updated_at
+        """, (user_id, age, gender, height, weight, activity_level, now))
         conn.commit()
         conn.close()
         return True, None

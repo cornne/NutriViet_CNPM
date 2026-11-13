@@ -16,8 +16,13 @@ from database import (
     get_all_users,
     verify_user_token,
     resend_token_for_email,
+    create_reset_token,
+    reset_user_password,
+    change_user_password,
     get_user_allergens,
-    save_user_allergens
+    save_user_allergens,
+    get_user_metrics,
+    save_user_metrics
 )
 from email_service import send_verification_email
 
@@ -134,6 +139,17 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
                 }
             self.wfile.write(json.dumps(resp).encode('utf-8'))
 
+        elif path == "/api/v1/profile/metrics":
+            user_id = query.get("user_id", [None])[0]
+            metrics = get_user_metrics(int(user_id)) if user_id else get_user_metrics(1)
+            h_m = float(metrics.get("height", 170.0)) / 100.0
+            w = float(metrics.get("weight", 65.0))
+            bmi = round(w / (h_m * h_m), 1) if h_m > 0 else 22.0
+            metrics["bmi"] = bmi
+            metrics["bmi_status"] = "Cân đối" if 18.5 <= bmi < 23.0 else ("Thiếu cân" if bmi < 18.5 else "Thừa cân")
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"success": True, "metrics": metrics}).encode('utf-8'))
+
         elif path == "/api/v1/users":
             users = get_all_users()
             self._set_headers(200)
@@ -239,7 +255,27 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
                 resp = {"status": "success", "message": "Đã gửi lại link xác thực đến email của bạn."}
             self.wfile.write(json.dumps(resp).encode('utf-8'))
 
-        # 4. Save User Allergens Profile (FG2)
+        # 4. Forgot Password Route
+        elif path == "/api/v1/auth/forgot-password":
+            email = body.get("email")
+            user, error = create_reset_token(email)
+            if error:
+                # Anti-enumeration response: always say instructions sent if email valid format
+                self._set_headers(200)
+                resp = {
+                    "status": "success",
+                    "message": "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu đã được gửi đến hộp thư của bạn."
+                }
+            else:
+                self._set_headers(200)
+                resp = {
+                    "status": "success",
+                    "message": "Đã gửi hướng dẫn khôi phục mật khẩu đến email của bạn.",
+                    "reset_token": user.get("reset_token")
+                }
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
+
+        # 5. Save User Allergens Profile (FG2)
         elif path == "/api/v1/profile/allergens":
             user_id = body.get("user_id")
             allergens = body.get("allergens", [])
@@ -258,6 +294,37 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
                 else:
                     self._set_headers(500)
                     resp = {"status": "error", "message": err}
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
+
+        # 6. Change Password Route
+        elif path == "/api/v1/auth/change-password":
+            user_id = body.get("user_id")
+            current_pwd = body.get("current_password")
+            new_pwd = body.get("new_password")
+            ok, err = change_user_password(int(user_id), current_pwd, new_pwd)
+            if ok:
+                self._set_headers(200)
+                resp = {"success": True, "message": "Đổi mật khẩu thành công!"}
+            else:
+                self._set_headers(400)
+                resp = {"success": False, "message": err or "Đổi mật khẩu thất bại"}
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
+
+        # 7. Save Physical & Nutrition Metrics Route
+        elif path == "/api/v1/profile/metrics":
+            user_id = body.get("user_id")
+            age = int(body.get("age", 22))
+            gender = body.get("gender", "male")
+            height = float(body.get("height", 170.0))
+            weight = float(body.get("weight", 65.0))
+            activity = body.get("activity_level", "moderate")
+            ok, err = save_user_metrics(int(user_id), age, gender, height, weight, activity)
+            if ok:
+                self._set_headers(200)
+                resp = {"success": True, "message": "Đã lưu chỉ số thể trạng thành công!"}
+            else:
+                self._set_headers(500)
+                resp = {"success": False, "message": err}
             self.wfile.write(json.dumps(resp).encode('utf-8'))
 
         else:

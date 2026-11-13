@@ -3,7 +3,7 @@
 **Course:** CS300 - CSC13002 - Introduction to Software Engineering  
 **Project Assignment:** PA3-2026 (Section C & Section D Deliverables)  
 **Group:** Group 07 - NutriViet Team  
-**Submission Date:** 02/11/2026  
+**Submission Date:** 14/11/2026  
 
 ---
 
@@ -40,57 +40,67 @@ The table below establishes bidirectional traceability between the 8 Functional 
 
 ### 2.1. System Actors
 
-1. **Consumer (Primary End-User):** Shoppers managing individual or family dietary restrictions, fatal food allergies (peanuts, seafood, cow's milk, gluten), or chronic metabolic disorders (gout, diabetes, hypertension). Interacts via the Android mobile client.
-2. **System Administrator (Staff / Moderator):** Platform managers and medical nutrition moderators responsible for vetting crowdsourced product submissions, rectifying reported OCR discrepancies, and maintaining the FoodOn ontology mapping tables. Interacts via the desktop web moderation portal.
-3. **Google ML Kit OCR Engine (Secondary / Technical Actor):** On-device machine vision system providing bounding box detection and raw optical character recognition from mobile camera frames.
-4. **FoodOn Semantic Ontology Engine (Secondary / Technical Actor):** Relational and graph query service responsible for deriving hidden allergen relationships (e.g., verifying that *Casein* implies *Cow's Milk*).
+In accordance with UML 2.5 standards, the NutriViet system identifies both human actors (primary end-users and administrators) and external technical systems (secondary actors):
+
+1. **User (Abstract Base Actor):** An abstract generalized human actor representing any authenticated entity within the NutriViet ecosystem. Possesses core authentication credentials (email/password or OAuth identity) and session security context. Both `Consumer` and `System Administrator` inherit from `User`.
+2. **Consumer (Primary End-User - Specializes `User`):** Everyday shoppers and consumers managing individual or family food allergies (peanuts, seafood, cow's milk, gluten, eggs, soy) or chronic metabolic conditions (diabetes, gout, hypertension). Interacts primarily through the Android mobile client to scan products, configure allergy profiles, log meals, and contribute unindexed items.
+3. **System Administrator (Staff / Nutrition Moderator - Specializes `User`):** Certified nutritionists, medical advisors, and platform administrators responsible for moderating crowdsourced product submissions, auditing user-reported OCR inaccuracies, and maintaining the FoodOn master ontology and additive dictionaries via the administrative web portal.
+4. **Google ML Kit OCR Engine (Secondary / Supporting Technical Actor):** On-device machine learning subsystem providing text detection, perspective rectification, and raw optical character tokenization from captured mobile camera frames.
+5. **FoodOn Semantic Ontology Engine (Secondary / Supporting Technical Actor):** Cloud-hosted semantic knowledge graph providing hierarchical ingredient derivation (e.g., inferring *Casein* $\to$ *Cow's Milk Allergen*) and typo-tolerant Levenshtein fuzzy string matching against Vietnamese dietary dictionaries.
 
 ---
 
+<div class="page-break"></div>
+
 ### 2.2. Global System Use-Case Diagram
-The diagram below provides a complete structural view of all system use cases, primary and secondary actors, system boundaries, and inter-use-case relationships (`<<include>>`, `<<extend>>`, and generalizations).
+
+The diagram below provides a holistic architectural view of the NutriViet system boundary, encompassing all 8 Functional Groups (FG1 through FG8) and 18 Use Cases (UC01 through UC18). It explicitly details actor generalizations, primary actor associations, secondary technical actor bridges, and inter-use-case dependencies (`include` and `extend`).
 
 ```mermaid
 flowchart LR
-    Consumer(["Consumer<br/>(Standard User)"])
-    Admin(["System Administrator<br/>(Moderator)"])
-    MLKit[["Google ML Kit<br/>(OCR Engine)"]]
-    FoodOn[["FoodOn Semantic<br/>Ontology"]]
+    User(["User (Abstract Base)"])
+    Consumer(["Consumer (Shopper / End-User)"])
+    Admin(["System Administrator (Moderator)"])
+    MLKit[["Google ML Kit (OCR Engine)"]]
+    FoodOn[["FoodOn Semantic Ontology Engine"]]
+
+    %% Actor Generalization
+    Consumer -->|Generalizes| User
+    Admin -->|Generalizes| User
 
     subgraph NutriViet ["NutriViet Platform Boundary"]
-        %% FG1 & FG2
+        %% FG1 & FG2: Identity & Allergy Profile
         UC01(["UC01: Register New Account"])
         UC02(["UC02: Log In & Authenticate"])
         UC03(["UC03: Manage Profile & Security"])
         UC04(["UC04: Configure Allergy & Health Profile"])
         UC05(["UC05: Set Sensitivity Thresholds"])
 
-        %% FG3 & FG4
+        %% FG3 & FG4: OCR Scanner & Hazard Evaluation
         UC06(["UC06: Scan Food Packaging Label"])
         UC07(["UC07: Preprocess & Crop Label Image"])
         UC08(["UC08: View & Filter Scan History"])
         UC09(["UC09: Evaluate Ingredient Hazards"])
         UC10(["UC10: View Safe Product Alternatives"])
 
-        %% FG5 & FG6
+        %% FG5 & FG6: Dietary Journal & Smart Grocery
         UC11(["UC11: Log Daily Meal Intake"])
         UC12(["UC12: Record Allergic Symptom Incident"])
         UC13(["UC13: Manage Safe Product Favorites"])
         UC14(["UC14: Create & Check Grocery List"])
 
-        %% FG7 & FG8
+        %% FG7 & FG8: Crowdsourcing & Moderation
         UC15(["UC15: Submit Unindexed Food Product"])
         UC16(["UC16: Report OCR / Ingredient Inaccuracy"])
         UC17(["UC17: Moderate Crowdsourced Submissions"])
         UC18(["UC18: Manage Master Additive Dictionary"])
     end
 
-    %% Actor Connections
+    %% Actor to Use Case Associations
+    User --> UC02
+    User --> UC03
     Consumer --> UC01
-    Consumer --> UC02
-    Consumer --> UC03
     Consumer --> UC04
-    Consumer --> UC05
     Consumer --> UC06
     Consumer --> UC08
     Consumer --> UC09
@@ -101,7 +111,6 @@ flowchart LR
     Consumer --> UC15
     Consumer --> UC16
 
-    Admin --> UC02
     Admin --> UC17
     Admin --> UC18
 
@@ -109,107 +118,185 @@ flowchart LR
     UC07 -.-> MLKit
     UC09 -.-> FoodOn
 
-    %% Inter-Use Case Relationships
-    UC06 -. "<<include>>" .-> UC07
-    UC09 -. "<<include>>" .-> UC06
-    UC10 -. "<<extend>> (On RED/YELLOW)" .-> UC09
-    UC11 -. "<<extend>> (Optional Log)" .-> UC09
-    UC16 -. "<<extend>> (On Discrepancy)" .-> UC09
-    UC14 -. "<<include>>" .-> UC13
-    UC04 -. "<<include>>" .-> UC05
+    %% Include Relationships
+    UC04 -.->|include| UC05
+    UC06 -.->|include| UC07
+    UC09 -.->|include| UC06
+    UC14 -.->|include| UC13
+
+    %% Extend Relationships
+    UC10 -.->|extend: On Hazard| UC09
+    UC11 -.->|extend: On Intake| UC09
+    UC16 -.->|extend: On Discrepancy| UC09
+    UC15 -.->|extend: Triggers Review| UC17
+    UC16 -.->|extend: Flags Discrepancy| UC17
 ```
 
 ---
 
+<div class="page-break"></div>
+
 ### 2.3. Subsystem Use-Case Diagrams
 
+To provide granular structural modeling for engineering teams, the 8 Functional Groups are partitioned into 4 cohesive subsystems:
+
 #### Subsystem 1: Identity & Health Profile Subsystem (FG1, FG2)
+Covers account onboarding, credential authentication, personal allergen configuration, and sensitivity threshold tuning. Demonstrates actor generalization (`User`), use-case generalization for authentication variants, and mandatory inclusion for sensitivity threshold tuning.
+
 ```mermaid
 flowchart LR
+    User(["User (Abstract)"])
     Consumer(["Consumer"])
-    Admin(["Administrator"])
+    Admin(["System Administrator"])
 
-    subgraph Identity_Profile ["Identity & Health Profile Subsystem"]
+    Consumer -->|Generalizes| User
+    Admin -->|Generalizes| User
+
+    subgraph Identity_Profile ["FG1 & FG2: Identity & Health Profile Subsystem"]
         UC01(["UC01: Register New Account"])
         UC02(["UC02: Log In & Authenticate"])
+        UC02a(["UC02a: Email/Password Login"])
+        UC02b(["UC02b: Google OAuth 2.0 Login"])
         UC03(["UC03: Manage Profile & Security"])
         UC04(["UC04: Configure Allergy Profile"])
-        UC05(["UC05: Set Sensitivity Levels"])
+        UC05(["UC05: Set Sensitivity Thresholds"])
     end
 
+    User --> UC02
+    User --> UC03
     Consumer --> UC01
-    Consumer --> UC02
-    Consumer --> UC03
     Consumer --> UC04
-    Admin --> UC02
-    UC04 -. "<<include>>" .-> UC05
+
+    %% Include Relationship
+    UC04 -.->|include| UC05
+
+    %% Use Case Generalizations
+    UC02a -->|Generalizes| UC02
+    UC02b -->|Generalizes| UC02
 ```
 
 #### Subsystem 2: Camera OCR & Real-Time Hazard Alert Subsystem (FG3, FG4)
+Covers real-time camera viewfinder capture, image preprocessing, Levenshtein fuzzy matching, FoodOn ontology derivation, and safe substitute recommendation. Illustrates secondary actor bindings, mandatory multi-tier inclusion, cloud vs. offline fallback generalization, and conditional extension on hazard detection.
+
 ```mermaid
 flowchart LR
     Consumer(["Consumer"])
-    MLKit[["Google ML Kit OCR"]]
-    FoodOn[["FoodOn Ontology"]]
+    MLKit[["Google ML Kit OCR Engine (Secondary)"]]
+    FoodOn[["FoodOn Semantic Ontology (Secondary)"]]
 
-    subgraph Scanner_Alert ["Scanner & Hazard Evaluation Subsystem"]
-        UC06(["UC06: Scan Packaging Label"])
-        UC07(["UC07: Preprocess & Crop Image"])
-        UC08(["UC08: View Scan History"])
+    subgraph Scanner_Hazard ["FG3 & FG4: Scanner & Hazard Evaluation Subsystem"]
+        UC06(["UC06: Scan Food Packaging Label"])
+        UC07(["UC07: Preprocess & Crop Label Image"])
+        UC08(["UC08: View & Filter Scan History"])
         UC09(["UC09: Evaluate Ingredient Hazards"])
-        UC10(["UC10: View Safe Alternatives"])
+        UC09a(["UC09a: Cloud Semantic Evaluation"])
+        UC09b(["UC09b: Local Offline Fallback Evaluation"])
+        UC10(["UC10: View Safe Product Alternatives"])
     end
 
     Consumer --> UC06
     Consumer --> UC08
     Consumer --> UC09
 
-    UC06 -. "<<include>>" .-> UC07
+    %% Include Relationships
+    UC06 -.->|include| UC07
     UC07 -.-> MLKit
-    UC09 -. "<<include>>" .-> UC06
+    UC09 -.->|include| UC06
     UC09 -.-> FoodOn
-    UC10 -. "<<extend>>" .-> UC09
+
+    %% Extend Relationship
+    UC10 -.->|extend: On Hazard| UC09
+
+    %% Use Case Generalizations
+    UC09a -->|Generalizes| UC09
+    UC09b -->|Generalizes| UC09
 ```
 
+<div class="page-break"></div>
+
 #### Subsystem 3: Nutritional Journal & Smart Grocery Subsystem (FG5, FG6)
+Covers daily dietary tracking, allergic reaction symptom incident logging, bookmarking safe favorites, and organized supermarket shopping checklists. Illustrates severity-level symptom generalization and checklist dependency on safe bookmarks.
+
 ```mermaid
 flowchart LR
     Consumer(["Consumer"])
 
-    subgraph Journal_Shopping ["Journal & Grocery Subsystem"]
+    subgraph Journal_Grocery ["FG5 & FG6: Nutritional Journal & Smart Grocery Subsystem"]
         UC11(["UC11: Log Daily Meal Intake"])
         UC12(["UC12: Record Allergic Symptom Incident"])
-        UC13(["UC13: Manage Favorite Safe Products"])
-        UC14(["UC14: Create & Check Grocery List"])
+        UC12a(["UC12a: Acute Anaphylactic Incident"])
+        UC12b(["UC12b: Mild Intolerance Incident"])
+        UC13(["UC13: Manage Safe Product Favorites"])
+        UC14(["UC14: Create & Check Grocery Shopping List"])
     end
 
     Consumer --> UC11
     Consumer --> UC12
     Consumer --> UC13
     Consumer --> UC14
-    UC14 -. "<<include>>" .-> UC13
+
+    %% Include Relationship
+    UC14 -.->|include| UC13
+
+    %% Use Case Generalizations
+    UC12a -->|Generalizes| UC12
+    UC12b -->|Generalizes| UC12
 ```
 
 #### Subsystem 4: Community Crowdsourcing & Admin Governance Subsystem (FG7, FG8)
+Covers community-driven catalog expansion, user discrepancy reporting, and administrative curation/moderation of products and master allergen dictionaries. Demonstrates submission method generalization and cross-boundary extension into the administrative verification queue.
+
 ```mermaid
 flowchart LR
     Consumer(["Consumer"])
     Admin(["System Administrator"])
 
-    subgraph Crowdsource_Governance ["Crowdsourcing & Moderation Subsystem"]
-        UC15(["UC15: Submit Unindexed Product"])
-        UC16(["UC16: Report OCR Inaccuracy"])
-        UC17(["UC17: Moderate Submissions"])
-        UC18(["UC18: Manage Additive Dictionary"])
+    subgraph Crowdsource_Moderation ["FG7 & FG8: Crowdsourcing & Admin Governance Subsystem"]
+        UC15(["UC15: Submit Unindexed Food Product"])
+        UC15a(["UC15a: Photo & OCR Contribution"])
+        UC15b(["UC15b: Manual Barcode Entry"])
+        UC16(["UC16: Report OCR / Ingredient Inaccuracy"])
+        UC17(["UC17: Moderate Crowdsourced Submissions"])
+        UC18(["UC18: Manage Master Additive Dictionary"])
     end
 
     Consumer --> UC15
     Consumer --> UC16
     Admin --> UC17
     Admin --> UC18
-    UC15 -. "Submits to Queue" .-> UC17
-    UC16 -. "Flags for Review" .-> UC17
+
+    %% Extend Relationships
+    UC15 -.->|extend: Triggers Queue| UC17
+    UC16 -.->|extend: Flags Discrepancy| UC17
+
+    %% Use Case Generalizations
+    UC15a -->|Generalizes| UC15
+    UC15b -->|Generalizes| UC15
 ```
+
+---
+
+<div class="page-break"></div>
+
+### 2.4. Detailed Analysis of Use-Case Relationships
+
+| Relationship Type | Source | Target | Stereotype / Notation | Condition / Behavioral Semantics |
+|:---|:---|:---|:---:|:---|
+| **Actor Generalization** | `Consumer` | `User` | `-->\|Generalizes\|` | A Consumer is a specialized User inheriting authentication sessions, role flags, and base credentials. |
+| **Actor Generalization** | `System Administrator` | `User` | `-->\|Generalizes\|` | An Administrator is a specialized User with elevated administrative roles, accessing moderation portals. |
+| **Include** | `UC06: Scan Label` | `UC07: Preprocess & Crop` | `-.->\|include\|` | Mandatory: Executing an OCR scan always invokes frame contrast normalization, cropping, and text tokenization. |
+| **Include** | `UC09: Evaluate Hazards` | `UC06: Scan Label` | `-.->\|include\|` | Mandatory: Ingredient hazard evaluation requires packaging text tokens extracted via label scanning. |
+| **Include** | `UC04: Configure Profile` | `UC05: Set Thresholds` | `-.->\|include\|` | Mandatory: Creating or updating an allergy profile requires establishing sensitivity levels (Severe vs Mild). |
+| **Include** | `UC14: Create Grocery List` | `UC13: Manage Favorites` | `-.->\|include\|` | Mandatory: Populating a smart allergy-safe grocery checklist includes retrieving verified items from Favorites. |
+| **Extend** | `UC10: View Alternatives` | `UC09: Evaluate Hazards` | `-.->\|extend: On Hazard\|` | Conditional: Extended **only** when evaluation returns a RED (Dangerous) or YELLOW (Caution) hazard alert. |
+| **Extend** | `UC11: Log Daily Meal` | `UC09: Evaluate Hazards` | `-.->\|extend: On Intake\|` | Optional: The user may choose to log the evaluated food item directly into their dietary meal journal upon scanning. |
+| **Extend** | `UC16: Report Inaccuracy` | `UC09: Evaluate Hazards` | `-.->\|extend: On Discrepancy\|` | Conditional: The user may report an OCR misread or misclassified additive after reviewing the hazard evaluation. |
+| **Extend** | `UC15: Submit Unindexed` | `UC17: Moderate Submissions`| `-.->\|extend: Triggers Review\|` | Workflow: When a user submits an unindexed item, it extends the system by appending an entry to the moderation queue. |
+| **Extend** | `UC16: Report Inaccuracy` | `UC17: Moderate Submissions`| `-.->\|extend: Flags Discrepancy\|` | Workflow: Inaccuracy reports extend the moderation queue for administrative review and catalog correction. |
+| **Use Case Generalization** | `UC02a`, `UC02b` | `UC02: Log In` | `-->\|Generalizes\|` | Email/password login and Google OAuth 2.0 login are concrete specializations of user authentication. |
+| **Use Case Generalization** | `UC09a`, `UC09b` | `UC09: Evaluate Hazards`| `-->\|Generalizes\|` | Cloud-based ontology evaluation and local offline fallback cache evaluation specialize hazard evaluation. |
+| **Use Case Generalization** | `UC12a`, `UC12b` | `UC12: Record Incident` | `-->\|Generalizes\|` | Acute anaphylactic emergencies and mild food intolerances specialize allergic symptom incident logging. |
+| **Use Case Generalization** | `UC15a`, `UC15b` | `UC15: Submit Product` | `-->\|Generalizes\|` | Direct packaging camera capture contribution and manual barcode entry specialize crowdsourced contribution. |
 
 ---
 
@@ -351,6 +438,18 @@ flowchart LR
 * **A1 (Incorrect Current Password):** User enters wrong current password; system shows inline validation error.
 * **A2 (Profile Switch for Family Caregivers):** User taps avatar to switch from personal profile to a child's allergy profile (e.g., *"Bé Bo - 3 tuổi"*); system loads the child's allergen rules into the active scanning engine.
 * **A3 (Log Out All Devices):** User taps "Đăng xuất khỏi tất cả thiết bị"; backend revokes all refresh tokens; client deletes local encrypted cache and redirects to Login.
+
+#### Special Requirements
+- Password change must enforce minimum 8 characters with numbers and symbols.
+- Session termination must invalidate refresh tokens immediately in under 300 ms.
+
+#### Prototype Screen
+<a id="figure-d3"></a>
+
+<p align="center">
+  <img src="./assets/prototypes/uc04_uc05_health_profile.png" alt="Figure D.3: UC03 Account Profile & Preferences Screen" height="520" style="max-height: 520px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+</p>
+<p align="center"><em>Figure D.3: UC03 Account Profile and Settings screen showing account credentials, allergy sensitivity summary, and security controls.</em></p>
 
 ---
 

@@ -16,6 +16,14 @@ dist/
 build/
 out/
 .next/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+src/mobile/build/
+src/mobile/.dart_tool/
+src/mobile/.idea/
+src/mobile/*.iml
 
 # IDE & OS
 .vscode/
