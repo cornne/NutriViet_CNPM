@@ -31,9 +31,16 @@ src/mobile/*.iml
 src/mobile/android/.gradle/
 src/mobile/android/.kotlin/
 
-# IDE & OS
+#IDE & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Raw Dictionary Archives & Unfiltered Databases (Too large for GitHub)
+o_v3
+src/backend/data/o_v3.zip
+src/backend/data/av_v3.db
+src/backend/data/va_v3.db
+src/backend/data/foodon/
