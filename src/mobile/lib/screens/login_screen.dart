@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'verify_email_screen.dart';
-import 'allergy_profile_screen.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -212,16 +212,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      // Requirement: Sau khi vào app chuyển qua LIỀN phần nhập thông tin người dùng (Hồ sơ dị ứng FG2)
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => AllergyProfileScreen(
-            userId: user['id'] is int ? user['id'] : int.tryParse(user['id'].toString()) ?? 1,
-            userName: user['full_name'] ?? 'Người dùng',
-            userEmail: user['email'] ?? email,
-            isInitialSetup: true,
-          ),
+          builder: (context) => HomeScreen(user: user),
         ),
       );
     } else {
