@@ -5,8 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_locale.dart';
 
 class AuthService {
-  // Production Cloud Backend API (PythonAnywhere)
-  static const String baseUrl = 'https://ngobinh2006.pythonanywhere.com/api/v1/auth';
+  // Production Cloud Backend API root (PythonAnywhere; override via --dart-define=NUTRIVIET_API_ROOT=...)
+  static const String apiRoot = String.fromEnvironment(
+    'NUTRIVIET_API_ROOT',
+    defaultValue: 'https://ngobinh2006.pythonanywhere.com/api/v1',
+  );
+  static const String baseUrl = '$apiRoot/auth';
 
   /// Register new user account
   static Future<Map<String, dynamic>> register({
