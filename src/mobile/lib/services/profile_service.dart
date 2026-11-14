@@ -5,40 +5,61 @@ import 'package:http/http.dart' as http;
 import '../l10n/app_locale.dart';
 
 class ProfileService {
-  static const String cloudApiRoot = 'https://ngobinh2006.pythonanywhere.com/api/v1';
+  static const String cloudApiRoot = String.fromEnvironment(
+    'NUTRIVIET_API_ROOT',
+    defaultValue: 'https://ngobinh2006.pythonanywhere.com/api/v1',
+  );
+  static const String _loopbackRoot = 'http://127.0.0.1:8050/api/v1';
+  static const String _emulatorRoot = 'http://10.0.2.2:8050/api/v1';
 
   // Persistent HTTP client for TCP/keep-alive reuse across tabs and API calls.
   static final http.Client _client = http.Client();
   static String? _cachedWorkingRoot;
 
-  /// Candidate real backend roots (local FoodOn+WSGI server first, then Cloud server).
-  /// Never returns fake/mock data if unreachable.
-  static List<String> get _apiRoots {
-    final base = kIsWeb
-        ? ['http://127.0.0.1:8050/api/v1', 'http://192.168.1.15:8050/api/v1', cloudApiRoot]
-        : (defaultTargetPlatform == TargetPlatform.android
-            ? [
-                'http://127.0.0.1:8050/api/v1',
-                'http://192.168.1.15:8050/api/v1',
-                'http://10.0.2.2:8050/api/v1',
-                cloudApiRoot,
-              ]
-            : ['http://127.0.0.1:8050/api/v1', 'http://192.168.1.15:8050/api/v1', cloudApiRoot]);
-    final cached = _cachedWorkingRoot;
-    if (cached != null && base.contains(cached) && base.first != cached) {
-      return [cached, ...base.where((r) => r != cached)];
+  /// Resolves backend API roots in priority order.
+  /// Release builds prioritize PythonAnywhere HTTPS first and never probe dead
+  /// developer LAN/emulator IPs; debug builds check `127.0.0.1:8050` first.
+  @visibleForTesting
+  static List<String> buildApiRoots({
+    required bool isReleaseMode,
+    required TargetPlatform platform,
+    required bool isWeb,
+    String? cachedWorkingRoot,
+  }) {
+    final List<String> base;
+    if (isReleaseMode) {
+      base = <String>[cloudApiRoot, _loopbackRoot];
+    } else if (!isWeb && platform == TargetPlatform.android) {
+      base = <String>[_loopbackRoot, cloudApiRoot, _emulatorRoot];
+    } else {
+      base = <String>[_loopbackRoot, cloudApiRoot];
+    }
+    if (cachedWorkingRoot != null &&
+        base.contains(cachedWorkingRoot) &&
+        base.first != cachedWorkingRoot) {
+      return <String>[
+        cachedWorkingRoot,
+        ...base.where((r) => r != cachedWorkingRoot),
+      ];
     }
     return base;
   }
 
+  static List<String> get _apiRoots => buildApiRoots(
+        isReleaseMode: kReleaseMode,
+        platform: defaultTargetPlatform,
+        isWeb: kIsWeb,
+        cachedWorkingRoot: _cachedWorkingRoot,
+      );
+
   static Duration _timeoutForRoot(String root) {
-    if (root.contains('127.0.0.1') || root.contains('192.168.')) {
-      return const Duration(milliseconds: 2200);
+    if (root.contains('127.0.0.1')) {
+      return const Duration(milliseconds: 1500);
     }
     if (root.contains('10.0.2.2')) {
-      return const Duration(milliseconds: 1200);
+      return const Duration(milliseconds: 900);
     }
-    return const Duration(seconds: 8);
+    return const Duration(seconds: 10);
   }
 
   static Future<dynamic> _decodeJsonBytes(Uint8List bytes) {
@@ -122,7 +143,7 @@ class ProfileService {
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(payload),
             )
-            .timeout(const Duration(seconds: 8));
+            .timeout(_timeoutForRoot(root));
         if (response.statusCode == 200 || response.statusCode == 201) {
           final data = await _decodeJsonBytes(response.bodyBytes);
           if (data is Map<String, dynamic>) {
@@ -131,7 +152,7 @@ class ProfileService {
             if (bestResponse.isEmpty) {
               bestResponse = {'_ok': true, ...data};
             }
-            if (!syncAllReachable) {
+            if (!syncAllReachable || (kReleaseMode && root == cloudApiRoot)) {
               return bestResponse;
             }
           }
