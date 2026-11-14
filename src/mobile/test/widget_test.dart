@@ -6,6 +6,7 @@ import 'package:nutriviet_mobile/l10n/app_locale.dart';
 import 'package:nutriviet_mobile/main.dart';
 import 'package:nutriviet_mobile/screens/login_screen.dart';
 import 'package:nutriviet_mobile/screens/settings_screen.dart';
+import 'package:nutriviet_mobile/services/profile_service.dart';
 import 'package:nutriviet_mobile/theme/nutriviet_glass.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_glass_modal.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_shimmer.dart';
@@ -368,6 +369,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Đổi mật khẩu tài khoản'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  test('ProfileService prioritizes PythonAnywhere HTTPS in release mode without LAN probes', () {
+    final releaseRoots = ProfileService.buildApiRoots(
+      isReleaseMode: true,
+      platform: TargetPlatform.android,
+      isWeb: false,
+    );
+    expect(releaseRoots.first, ProfileService.cloudApiRoot);
+    expect(releaseRoots, isNot(contains('http://192.168.1.15:8050/api/v1')));
+    expect(releaseRoots, isNot(contains('http://10.0.2.2:8050/api/v1')));
+
+    final debugRoots = ProfileService.buildApiRoots(
+      isReleaseMode: false,
+      platform: TargetPlatform.android,
+      isWeb: false,
+    );
+    expect(debugRoots.first, 'http://127.0.0.1:8050/api/v1');
+    expect(debugRoots[1], ProfileService.cloudApiRoot);
   });
 }
 
