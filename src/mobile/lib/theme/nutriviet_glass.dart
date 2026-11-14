@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import '../widgets/nutriviet_ui.dart';
 
 /// Shared NutriViet Liquid Glass tokens, styles, and lightweight card surfaces.
 ///
@@ -384,12 +385,15 @@ class NutriVietGlassCard extends StatelessWidget {
     );
 
     if (onTap == null) return surface;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: radius,
-        onTap: onTap,
-        child: surface,
+    return NutriVietPressScale(
+      pressedScale: 0.976,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: onTap,
+          child: surface,
+        ),
       ),
     );
   }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../widgets/nutriviet_ui.dart';
 import 'register_screen.dart';
 import 'verify_email_screen.dart';
 import 'home_screen.dart';
@@ -13,7 +16,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  // Requirement: Không điền sẵn nội dung trên ô email và mật khẩu
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -29,7 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Requirement: Quên mật khẩu
   void _showForgotPasswordDialog() {
     final forgotEmailController = TextEditingController(text: _emailController.text);
     bool isSubmitting = false;
@@ -44,12 +45,20 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
-              children: const [
-                Icon(Icons.lock_reset_rounded, color: Color(0xFF10B981)),
-                SizedBox(width: 8),
+              children: [
+                const PhosphorIcon(
+                  PhosphorIconsDuotone.lockKey,
+                  color: Color(0xFF14803C),
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  'Khôi Phục Mật Khẩu',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  AppLocale.t('Khôi Phục Mật Khẩu', 'Password Recovery'),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
               ],
             ),
@@ -57,18 +66,29 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Nhập địa chỉ email tài khoản NutriViet của bạn. Hệ thống sẽ gửi hướng dẫn khôi phục mật khẩu vào hộp thư.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+                Text(
+                  AppLocale.t(
+                    'Nhập địa chỉ email tài khoản NutriViet của bạn. Hệ thống sẽ gửi hướng dẫn khôi phục mật khẩu vào hộp thư.',
+                    'Enter your NutriViet account email address. We will send password recovery instructions to your inbox.',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: forgotEmailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Địa chỉ Email',
+                  decoration: InputDecoration(
+                    labelText: AppLocale.t('Địa chỉ Email', 'Email Address'),
                     hintText: 'email@example.com',
-                    prefixIcon: Icon(Icons.email_outlined, size: 20, color: Color(0xFF94A3B8)),
+                    prefixIcon: const PhosphorIcon(
+                      PhosphorIconsDuotone.envelope,
+                      size: 20,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ),
                 if (dialogMessage != null) ...[
@@ -76,14 +96,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: dialogSuccess ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                      color: dialogSuccess
+                          ? const Color(0xFFD1FAE5)
+                          : const Color(0xFFFEE2E2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       dialogMessage!,
                       style: TextStyle(
                         fontSize: 12,
-                        color: dialogSuccess ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                        color: dialogSuccess
+                            ? const Color(0xFF065F46)
+                            : const Color(0xFF991B1B),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -94,7 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
             actions: [
               TextButton(
                 onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
-                child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+                child: Text(
+                  AppLocale.t('Hủy', 'Cancel'),
+                  style: const TextStyle(color: Color(0xFF64748B)),
+                ),
               ),
               ElevatedButton(
                 onPressed: isSubmitting
@@ -103,7 +130,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         final email = forgotEmailController.text.trim();
                         if (email.isEmpty) {
                           setDialogState(() {
-                            dialogMessage = 'Vui lòng nhập địa chỉ email';
+                            dialogMessage = AppLocale.t(
+                              'Vui lòng nhập địa chỉ email',
+                              'Please enter your email address',
+                            );
                             dialogSuccess = false;
                           });
                           return;
@@ -127,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Gửi Yêu Cầu'),
+                    : Text(AppLocale.t('Gửi Yêu Cầu', 'Send Request')),
               ),
             ],
           );
@@ -136,7 +166,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Requirement: Người dùng PHẢI xác thực email mới được phép vào app
   void _showUnverifiedEmailDialog(String email) {
     showDialog(
       context: context,
@@ -144,23 +173,37 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
-          children: const [
-            Icon(Icons.mark_email_unread_rounded, color: Color(0xFFEF4444)),
-            SizedBox(width: 8),
+          children: [
+            const PhosphorIcon(
+              PhosphorIconsDuotone.envelope,
+              color: Color(0xFFEF4444),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
             Text(
-              'Chưa Xác Thực Email',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              AppLocale.t('Chưa Xác Thực Email', 'Email Not Verified'),
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ],
         ),
         content: Text(
-          'Tài khoản ($email) chưa được kích hoạt qua email.\n\nTheo chính sách an toàn y tế NutriViet, bạn PHẢI xác thực email trước khi được phép đăng nhập và sử dụng ứng dụng.',
+          AppLocale.t(
+            'Tài khoản ($email) chưa được kích hoạt qua email.\n\nTheo chính sách an toàn y tế NutriViet, bạn phải xác thực email trước khi đăng nhập và sử dụng ứng dụng.',
+            'Account ($email) has not been activated via email.\n\nUnder NutriViet health safety policy, you must verify your email before signing in.',
+          ),
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Đóng', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text(
+              AppLocale.t('Đóng', 'Close'),
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -177,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Kích Hoạt Ngay'),
+            child: Text(AppLocale.t('Kích Hoạt Ngay', 'Verify Now')),
           ),
         ],
       ),
@@ -207,7 +250,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = result['user'];
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đăng nhập thành công! Xin chào ${user['full_name']}'),
+          content: Text(
+            AppLocale.t(
+              'Đăng nhập thành công! Xin chào ${user['full_name']}',
+              'Signed in successfully! Welcome ${user['full_name']}',
+            ),
+          ),
           backgroundColor: const Color(0xFF10B981),
         ),
       );
@@ -220,14 +268,21 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } else {
       final code = result['code'] ?? '';
-      final msg = result['message'] ?? 'Đăng nhập thất bại';
+      final msg = result['message'] ??
+          AppLocale.t('Đăng nhập thất bại', 'Sign in failed');
 
-      // Requirement: Người dùng PHẢI xác thực email mới được phép vào app
-      if (code == 'EMAIL_NOT_VERIFIED' || msg.contains('kích hoạt') || msg.contains('xác thực')) {
+      if (code == 'EMAIL_NOT_VERIFIED' ||
+          msg.contains('kích hoạt') ||
+          msg.contains('xác thực')) {
         _showUnverifiedEmailDialog(_emailController.text.trim());
       } else {
         setState(() {
-          _errorMessage = result['error'] != null ? '$msg\nChi tiết: ${result['error']}' : msg;
+          _errorMessage = result['error'] != null
+              ? AppLocale.t(
+                  '$msg\nChi tiết: ${result['error']}',
+                  '$msg\nDetails: ${result['error']}',
+                )
+              : msg;
         });
       }
     }
@@ -247,33 +302,64 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Shield Icon Header
-                  Center(
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.18),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () async {
+                        await AppLocale.setLanguage(AppLocale.isEn ? 'vi' : 'en');
+                        if (mounted) setState(() {});
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const PhosphorIcon(
+                              PhosphorIconsDuotone.translate,
+                              size: 16,
+                              color: Color(0xFF14803C),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              AppLocale.isEn ? 'English' : 'Tiếng Việt',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      alignment: Alignment.center,
-                      child: const Text('🛡️', style: TextStyle(fontSize: 38)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  const Center(
+                    child: NutriVietEntranceMotion(
+                      child: NutriVietPulseHalo(
+                        glowColor: Color(0xFF14803C),
+                        size: 74,
+                        child: NutriVietGlassIconTile(
+                          icon: PhosphorIconsDuotone.shieldCheck,
+                          color: Color(0xFF14803C),
+                          size: 74,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Title
-                  const Text(
-                    'Chào mừng trở lại',
+                  Text(
+                    AppLocale.t('Chào mừng trở lại', 'Welcome back'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF0F172A),
@@ -282,23 +368,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 4),
 
-                  // Subtitle
                   RichText(
                     textAlign: TextAlign.center,
-                    text: const TextSpan(
-                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                       children: [
-                        TextSpan(text: 'Quét nhãn thực phẩm an toàn cùng '),
                         TextSpan(
+                          text: AppLocale.t(
+                            'Quét nhãn thực phẩm an toàn cùng ',
+                            'Scan food labels safely with ',
+                          ),
+                        ),
+                        const TextSpan(
                           text: 'NutriViet',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Error Banner
                   if (_errorMessage != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -309,7 +401,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                          const PhosphorIcon(
+                            PhosphorIconsDuotone.warningOctagon,
+                            color: Color(0xFFDC2626),
+                            size: 20,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -327,10 +423,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Email Field (Blank by default)
-                  const Text(
-                    'Email hoặc Số điện thoại',
-                    style: TextStyle(
+                  Text(
+                    AppLocale.t('Email hoặc Số điện thoại', 'Email or Phone number'),
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF475569),
@@ -341,26 +436,39 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
-                    decoration: const InputDecoration(
-                      hintText: 'nhap.email@example.com',
-                      prefixIcon: Icon(Icons.email_outlined, size: 20, color: Color(0xFF94A3B8)),
+                    decoration: InputDecoration(
+                      hintText: AppLocale.t(
+                        'nhap.email@example.com',
+                        'your.email@example.com',
+                      ),
+                      prefixIcon: const PhosphorIcon(
+                        PhosphorIconsDuotone.envelope,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Vui lòng nhập địa chỉ email';
+                        return AppLocale.t(
+                          'Vui lòng nhập địa chỉ email',
+                          'Please enter your email address',
+                        );
                       }
-                      if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
-                        return 'Định dạng email không hợp lệ';
+                      if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
+                          .hasMatch(value.trim())) {
+                        return AppLocale.t(
+                          'Định dạng email không hợp lệ',
+                          'Invalid email format',
+                        );
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 14),
 
-                  // Password Field (Blank by default)
-                  const Text(
-                    'Mật khẩu',
-                    style: TextStyle(
+                  Text(
+                    AppLocale.t('Mật khẩu', 'Password'),
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF475569),
@@ -372,13 +480,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscurePassword,
                     style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
                     decoration: InputDecoration(
-                      hintText: 'Nhập mật khẩu',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: Color(0xFF94A3B8)),
+                      hintText: AppLocale.t('Nhập mật khẩu', 'Enter password'),
+                      prefixIcon: const PhosphorIcon(
+                        PhosphorIconsDuotone.lock,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        icon: PhosphorIcon(
+                          _obscurePassword
+                              ? PhosphorIconsDuotone.eyeSlash
+                              : PhosphorIconsDuotone.eye,
                           size: 20,
-                          color: const Color(0xFF94A3B8),
+                          color: const Color(0xFF64748B),
                         ),
                         onPressed: () {
                           setState(() {
@@ -389,14 +503,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập mật khẩu';
+                        return AppLocale.t(
+                          'Vui lòng nhập mật khẩu',
+                          'Please enter your password',
+                        );
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // Remember me & Forgot Password Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -409,7 +525,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Checkbox(
                               value: _rememberMe,
                               activeColor: const Color(0xFF10B981),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                               onChanged: (val) {
                                 setState(() {
                                   _rememberMe = val ?? true;
@@ -418,17 +536,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Ghi nhớ đăng nhập',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                          Text(
+                            AppLocale.t('Ghi nhớ đăng nhập', 'Remember me'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF475569),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
                       GestureDetector(
                         onTap: _showForgotPasswordDialog,
-                        child: const Text(
-                          'Quên mật khẩu?',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocale.t('Quên mật khẩu?', 'Forgot password?'),
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF10B981),
                             fontWeight: FontWeight.w600,
@@ -439,7 +561,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 22),
 
-                  // Primary Button "Đăng Nhập An Toàn"
                   Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -473,9 +594,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'Đăng Nhập An Toàn',
-                              style: TextStyle(
+                          : Text(
+                              AppLocale.t('Đăng Nhập An Toàn', 'Sign In Safely'),
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
@@ -485,13 +606,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Switch to Register
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Chưa có tài khoản? ',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      Text(
+                        AppLocale.t('Chưa có tài khoản? ', 'Don\'t have an account? '),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -502,9 +622,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           );
                         },
-                        child: const Text(
-                          'Đăng ký ngay',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocale.t('Đăng ký ngay', 'Sign up now'),
+                          style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF10B981),
                             fontWeight: FontWeight.w700,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../widgets/nutriviet_ui.dart';
 import 'login_screen.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
@@ -41,7 +44,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF334155), size: 20),
+          icon: const PhosphorIcon(
+            PhosphorIconsBold.caretLeft,
+            color: Color(0xFF334155),
+            size: 20,
+          ),
           onPressed: () {
             Navigator.pushAndRemoveUntil(
               context,
@@ -58,32 +65,25 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Mailbox Illustration Circle matching prototype aesthetic
-              Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1FAE5),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              const Center(
+                child: NutriVietEntranceMotion(
+                  child: NutriVietPulseHalo(
+                    glowColor: Color(0xFF14803C),
+                    size: 80,
+                    child: NutriVietGlassIconTile(
+                      icon: PhosphorIconsDuotone.envelope,
+                      color: Color(0xFF14803C),
+                      size: 80,
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: const Text('📬', style: TextStyle(fontSize: 40)),
                 ),
               ),
               const SizedBox(height: 20),
 
-              const Text(
-                'Kiểm tra hộp thư Gmail',
+              Text(
+                AppLocale.t('Kiểm tra hộp thư Email', 'Check Your Email Inbox'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
@@ -92,7 +92,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               const SizedBox(height: 8),
 
               Text(
-                'Chúng tôi đã gửi một liên kết xác thực đến địa chỉ:\n${widget.email}',
+                AppLocale.t(
+                  'Chúng tôi đã gửi một liên kết xác thực đến địa chỉ:\n${widget.email}',
+                  'We sent an account verification link to:\n${widget.email}',
+                ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
@@ -101,10 +104,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Vui lòng mở Gmail và bấm vào nút "Kích Hoạt Tài Khoản Ngay" để hoàn tất đăng ký.',
+              Text(
+                AppLocale.t(
+                  'Vui lòng mở hộp thư và bấm vào nút kích hoạt tài khoản để hoàn tất đăng ký.',
+                  'Please open your email and click the activation button to complete registration.',
+                ),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF94A3B8),
                 ),
@@ -115,17 +121,23 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: _resendSuccess ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                    color: _resendSuccess
+                        ? const Color(0xFFD1FAE5)
+                        : const Color(0xFFFEE2E2),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _resendSuccess ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                      color: _resendSuccess
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
                     ),
                   ),
                   child: Text(
                     _resendMessage!,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: _resendSuccess ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                      color: _resendSuccess
+                          ? const Color(0xFF065F46)
+                          : const Color(0xFF991B1B),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -134,7 +146,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // Button: Go to Login with gradient
               Container(
                 height: 50,
                 decoration: BoxDecoration(
@@ -165,15 +176,21 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text(
-                    'Tôi đã kích hoạt - Đăng nhập',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                  child: Text(
+                    AppLocale.t(
+                      'Tôi đã kích hoạt - Đăng nhập',
+                      'I have verified - Sign in',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
 
-              // Button: Resend email
               OutlinedButton(
                 onPressed: _isResending ? null : _handleResend,
                 style: OutlinedButton.styleFrom(
@@ -186,11 +203,20 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF10B981),
+                        ),
                       )
-                    : const Text(
-                        'Chưa nhận được? Gửi lại email',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    : Text(
+                        AppLocale.t(
+                          'Chưa nhận được? Gửi lại email',
+                          'Didn\'t receive it? Resend email',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
               ),
             ],
