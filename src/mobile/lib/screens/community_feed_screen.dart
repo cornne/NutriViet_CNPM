@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
 import 'contribute_product_screen.dart';
 
 class CommunityFeedScreen extends StatefulWidget {
@@ -32,17 +34,29 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF334155), size: 20),
+          icon: const PhosphorIcon(
+            PhosphorIconsBold.caretLeft,
+            color: Color(0xFF334155),
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Mạng Xã Hội Cộng Đồng',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+        title: Text(
+          AppLocale.t('Mạng Xã Hội Cộng Đồng', 'Community Network'),
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
         ),
         actions: [
           IconButton(
-            tooltip: 'Đăng tải sản phẩm mới',
-            icon: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFF10B981)),
+            tooltip: AppLocale.t('Đăng tải sản phẩm mới', 'Post new product'),
+            icon: const PhosphorIcon(
+              PhosphorIconsDuotone.imagesSquare,
+              color: Color(0xFF14803C),
+              size: 23,
+            ),
             onPressed: () async {
               final result = await Navigator.push(
                 context,
@@ -58,19 +72,32 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 setState(() {
                   _posts.insert(0, {
                     'id': DateTime.now().millisecondsSinceEpoch,
-                    'author': widget.user['full_name'] ?? 'Tôi (Người dùng)',
+                    'author': widget.user['full_name'] ??
+                        AppLocale.t('Tôi (Người dùng)', 'Me (User)'),
                     'avatar': '👤',
-                    'time': 'Vừa xong',
-                    'product_name': 'Sản phẩm vừa đóng góp',
-                    'brand': 'Đã gửi duyệt cộng đồng',
+                    'time': AppLocale.t('Vừa xong', 'Just now'),
+                    'product_name': AppLocale.t(
+                      'Sản phẩm vừa đóng góp',
+                      'Recently contributed product',
+                    ),
+                    'brand': AppLocale.t(
+                      'Đã gửi duyệt cộng đồng',
+                      'Submitted for community review',
+                    ),
                     'is_warning': false,
-                    'allergen_badge': '🆕 Đóng góp mới',
-                    'content': 'Đã gửi ảnh chụp bao bì và bảng thành phần lên mạng xã hội cộng đồng.',
-                    'barcode': 'Pending',
+                    'allergen_badge': AppLocale.t('🆕 Đóng góp mới', '🆕 New contribution'),
+                    'content': AppLocale.t(
+                      'Đã gửi ảnh chụp bao bì và bảng thành phần lên mạng xã hội cộng đồng.',
+                      'Submitted packaging and ingredient photos to the community network.',
+                    ),
+                    'barcode': '',
                     'likes': 1,
                     'is_liked': true,
                     'comments': 0,
-                    'photo_label': 'Ảnh bao bì & thành phần',
+                    'photo_label': AppLocale.t(
+                      'Ảnh bao bì & thành phần',
+                      'Packaging & ingredient photo',
+                    ),
                   });
                 });
               }
@@ -85,7 +112,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Banner invite to post
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -111,21 +137,32 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('📸', style: TextStyle(fontSize: 24)),
+                  child: const PhosphorIcon(
+                    PhosphorIconsDuotone.cameraPlus,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Chia Sẻ Thực Phẩm An Toàn',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        AppLocale.t('Chia Sẻ Thực Phẩm An Toàn', 'Share Safe Food Products'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Đăng tải ảnh bao bì sản phẩm bạn vừa mua để hỗ trợ cộng đồng nhận biết.',
-                        style: TextStyle(color: Color(0xFFA7F3D0), fontSize: 11),
+                        AppLocale.t(
+                          'Đăng tải ảnh bao bì sản phẩm bạn vừa mua để hỗ trợ cộng đồng nhận biết.',
+                          'Upload packaging photos of products you bought to help the community.',
+                        ),
+                        style: const TextStyle(color: Color(0xFFA7F3D0), fontSize: 11),
                       ),
                     ],
                   ),
@@ -151,21 +188,26 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
-                  child: const Text('Đăng ảnh', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  child: Text(
+                    AppLocale.t('Đăng ảnh', 'Post photo'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Community Feed Title
-          const Text(
-            'Bảng Tin Mới Nhất',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+          Text(
+            AppLocale.t('Bảng Tin Mới Nhất', 'Latest Community Posts'),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 10),
 
-          // Posts List
           ...List.generate(_posts.length, (index) {
             final post = _posts[index];
             final bool isWarning = post['is_warning'] == true;
@@ -187,7 +229,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Author header
                   Row(
                     children: [
                       Container(
@@ -207,7 +248,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           children: [
                             Text(
                               post['author'],
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                              ),
                             ),
                             Text(
                               post['time'],
@@ -219,7 +264,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: isWarning ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5),
+                          color: isWarning
+                              ? const Color(0xFFFEE2E2)
+                              : const Color(0xFFD1FAE5),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -227,7 +274,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: isWarning ? const Color(0xFFDC2626) : const Color(0xFF065F46),
+                            color: isWarning
+                                ? const Color(0xFFDC2626)
+                                : const Color(0xFF065F46),
                           ),
                         ),
                       ),
@@ -235,28 +284,40 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Product title
                   Text(
                     post['product_name'],
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                   if (post['brand'] != null) ...[
                     const SizedBox(height: 2),
                     Text(
-                      'Thương hiệu: ${post['brand']}',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                      AppLocale.t(
+                        'Thương hiệu: ${post['brand']}',
+                        'Brand: ${post['brand']}',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 8),
 
-                  // Content text
                   Text(
                     post['content'],
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF334155),
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Photo Card Preview
                   Container(
                     height: 130,
                     width: double.infinity,
@@ -271,7 +332,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                       ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isWarning ? const Color(0xFFFECACA) : const Color(0xFFA7F3D0),
+                        color: isWarning
+                            ? const Color(0xFFFECACA)
+                            : const Color(0xFFA7F3D0),
                       ),
                     ),
                     child: Stack(
@@ -280,18 +343,26 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.image_rounded,
-                                color: isWarning ? const Color(0xFFEF4444).withValues(alpha: 0.6) : const Color(0xFF10B981).withValues(alpha: 0.6),
+                              PhosphorIcon(
+                                PhosphorIconsDuotone.image,
+                                color: isWarning
+                                    ? const Color(0xFFEF4444).withValues(alpha: 0.7)
+                                    : const Color(0xFF14803C).withValues(alpha: 0.7),
                                 size: 36,
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                post['photo_label'] ?? 'Ảnh chụp bao bì & thành phần thực tế',
+                                post['photo_label'] ??
+                                    AppLocale.t(
+                                      'Ảnh chụp bao bì & thành phần thực tế',
+                                      'Packaging & ingredient photo',
+                                    ),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: isWarning ? const Color(0xFF991B1B) : const Color(0xFF065F46),
+                                  color: isWarning
+                                      ? const Color(0xFF991B1B)
+                                      : const Color(0xFF065F46),
                                 ),
                               ),
                             ],
@@ -306,20 +377,34 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isWarning ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
+                                color: isWarning
+                                    ? const Color(0xFFFCA5A5)
+                                    : const Color(0xFF86EFAC),
                               ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.verified_rounded, size: 12, color: isWarning ? const Color(0xFFDC2626) : const Color(0xFF059669)),
+                                PhosphorIcon(
+                                  isWarning
+                                      ? PhosphorIconsFill.warningOctagon
+                                      : PhosphorIconsFill.sealCheck,
+                                  size: 13,
+                                  color: isWarning
+                                      ? const Color(0xFFDC2626)
+                                      : const Color(0xFF14803C),
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  isWarning ? 'Cảnh báo nguy cơ' : 'Nhãn an toàn',
+                                  isWarning
+                                      ? AppLocale.t('Cảnh báo nguy cơ', 'Risk warning')
+                                      : AppLocale.t('Nhãn an toàn', 'Safe label'),
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: isWarning ? const Color(0xFFDC2626) : const Color(0xFF059669),
+                                    color: isWarning
+                                        ? const Color(0xFFDC2626)
+                                        : const Color(0xFF059669),
                                   ),
                                 ),
                               ],
@@ -334,7 +419,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   const Divider(color: Color(0xFFF1F5F9), height: 1),
                   const SizedBox(height: 10),
 
-                  // Action Buttons: Like, Comment, Share
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -345,9 +429,13 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: Row(
                             children: [
-                              Icon(
-                                post['is_liked'] ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                color: post['is_liked'] ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+                              PhosphorIcon(
+                                post['is_liked']
+                                    ? PhosphorIconsFill.heart
+                                    : PhosphorIconsDuotone.heart,
+                                color: post['is_liked']
+                                    ? const Color(0xFFEF4444)
+                                    : const Color(0xFF64748B),
                                 size: 18,
                               ),
                               const SizedBox(width: 6),
@@ -356,7 +444,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: post['is_liked'] ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+                                  color: post['is_liked']
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF64748B),
                                 ),
                               ),
                             ],
@@ -365,16 +455,38 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF64748B), size: 16),
+                          const PhosphorIcon(
+                            PhosphorIconsDuotone.chatTeardrop,
+                            color: Color(0xFF64748B),
+                            size: 17,
+                          ),
                           const SizedBox(width: 6),
-                          Text('${post['comments']} bình luận', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                          Text(
+                            AppLocale.t(
+                              '${post['comments']} bình luận',
+                              '${post['comments']} comments',
+                            ),
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          ),
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(Icons.share_outlined, color: Color(0xFF64748B), size: 18),
+                        icon: const PhosphorIcon(
+                          PhosphorIconsDuotone.shareNetwork,
+                          color: Color(0xFF64748B),
+                          size: 18,
+                        ),
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Đã sao chép liên kết bài viết!'), backgroundColor: Color(0xFF10B981)),
+                            SnackBar(
+                              content: Text(
+                                AppLocale.t(
+                                  'Đã sao chép liên kết bài viết!',
+                                  'Post link copied!',
+                                ),
+                              ),
+                              backgroundColor: const Color(0xFF10B981),
+                            ),
                           );
                         },
                       ),
