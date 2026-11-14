@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
@@ -15,6 +16,7 @@ class MyHttpOverrides extends HttpOverrides {
 void main() async {
   HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
+  await LiquidGlassShaders.ensureLoaded();
   final session = await AuthService.getSession();
   runApp(NutriVietApp(initialUser: session));
 }
@@ -31,21 +33,20 @@ class NutriVietApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        scaffoldBackgroundColor: const Color(0xFFF3F6F3),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF10B981),
-          primary: const Color(0xFF10B981),
-          secondary: const Color(0xFF059669),
+          seedColor: const Color(0xFF14803C),
+          primary: const Color(0xFF14803C),
+          secondary: const Color(0xFF4F37C8),
           surface: const Color(0xFFFFFFFF),
-          error: const Color(0xFFEF4444),
+          error: const Color(0xFFDC2626),
         ),
         fontFamily: 'Roboto',
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
