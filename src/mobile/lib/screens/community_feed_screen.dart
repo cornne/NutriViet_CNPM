@@ -11,53 +11,7 @@ class CommunityFeedScreen extends StatefulWidget {
 }
 
 class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
-  final List<Map<String, dynamic>> _posts = [
-    {
-      'id': 1,
-      'author': 'Nguyễn Hoàng Nam',
-      'avatar': '👨‍⚕️',
-      'time': '2 giờ trước',
-      'product_name': 'Bánh Quy Bơ Đậu Phộng Hải Châu',
-      'brand': 'Công ty CP Bánh kẹo Hải Châu',
-      'is_warning': true,
-      'allergen_badge': '🚨 Chứa Đậu phộng & Gluten',
-      'content': 'Bao bì mới đổi dây chuyền có bổ sung thêm bơ đậu phộng nguyên chất. Các bạn dị ứng lạc cần kiểm tra kỹ bảng thành phần nhé!',
-      'barcode': '8934561234567',
-      'likes': 42,
-      'is_liked': false,
-      'comments': 8,
-    },
-    {
-      'id': 2,
-      'author': 'Trần Thị Mỹ Duyên',
-      'avatar': '👩‍🦰',
-      'time': '5 giờ trước',
-      'product_name': 'Sữa Hạt Macca & Hạnh Nhân 137 Degrees',
-      'brand': '137 Degrees Thailand',
-      'is_warning': false,
-      'allergen_badge': '✅ An toàn không Lactose (Không sữa bò)',
-      'content': 'Sản phẩm thuần chay 100%, không pha sữa bò, người không dung nạp lactose uống hoàn toàn êm bụng. Đã kiểm chứng nhãn phụ!',
-      'barcode': '8859012345678',
-      'likes': 68,
-      'is_liked': false,
-      'comments': 14,
-    },
-    {
-      'id': 3,
-      'author': 'Bác sĩ Dinh dưỡng Lê Văn Minh',
-      'avatar': '🧑‍⚕️',
-      'time': 'Hôm qua',
-      'product_name': 'Mẹo phân biệt phụ gia dẫn xuất đạm sữa & đậu nành',
-      'brand': 'Chuyên mục Giáo dục Y tế NutriViet',
-      'is_warning': true,
-      'allergen_badge': '⚠️ Lưu ý Casein, Whey, Lecithin',
-      'content': 'Lưu ý từ vựng "casein", "whey" bản chất là đạm sữa bò. Từ vựng "lecithin" trên bánh kẹo Việt Nam thường chiết xuất từ đậu nành hoặc lòng đỏ trứng gà.',
-      'barcode': 'NutriViet-Edu-Tip',
-      'likes': 152,
-      'is_liked': false,
-      'comments': 29,
-    },
-  ];
+  final List<Map<String, dynamic>> _posts = [];
 
   void _toggleLike(int index) {
     setState(() {
