@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NutriViet — FoodOn + Kala Hybrid Ontology Explorer</title>
+  <style>
+    :root {
+      --bg-page: #F8FAFC;
+      --bg-surface: #FFFFFF;
+      --bg-subtle: #F1F5F9;
+      --bg-muted: #E2E8F0;
+      --text-primary: #0F172A;
+      --text-secondary: #334155;
+      --text-muted: #64748B;
+      --border-default: #CBD5E1;
+      --border-subtle: #E2E8F0;
+      --brand-primary: #059669;
+      --brand-hover: #047857;
+      --brand-soft: #ECFDF5;
+      --brand-border: #A7F3D0;
+      --danger-bg: #FEF2F2;
+      --danger-text: #B91C1C;
+      --danger-border: #FECACA;
+      --warn-bg: #FFFBEB;
+      --warn-text: #B45309;
+      --warn-border: #FDE68A;
+      --safe-bg: #ECFDF5;
+      --safe-text: #047857;
+      --safe-border: #A7F3D0;
+      --info-bg: #EFF6FF;
+      --info-text: #1D4ED8;
+      --info-border: #BFDBFE;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    /* Top Navigation Bar */
+    .topbar {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+
+    .topbar-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: var(--brand-primary);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title h1 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .brand-title p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .topbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .db-stats-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .lang-switcher {
+      display: inline-flex;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 2px;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .lang-btn:focus-visible {
+      outline: 2px solid var(--brand-primary);
+      outline-offset: 1px;
+    }
+
+    .lang-btn.active {
+      background: var(--brand-primary);
+      color: #FFFFFF;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Mode Tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-default);
+      margin-bottom: 20px;
+    }
+
+    .mode-tab {
+      border: none;
+      background: transparent;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+
+    .mode-tab:hover {
+      color: var(--text-primary);
+    }
+
+    .mode-tab.active {
+      color: var(--brand-primary);
+      border-bottom-color: var(--brand-primary);
+    }
+
+    /* Search & Filter Panel */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+
+    .search-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    @media (max-width: 768px) {
+      .search-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .search-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 36px 10px 12px;
+      font-size: 14px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      background: var(--bg-surface);
+    }
+
+    .search-input:focus {
+      outline: 2px solid var(--brand-primary);
+      border-color: var(--brand-primary);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 8px;
+      border: none;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .clear-btn:hover {
+      background: var(--bg-muted);
+      color: var(--text-primary);
+    }
+
+    .scope-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .scope-btn {
+      border: 1px solid var(--border-default);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    .scope-btn.active {
+      background: var(--brand-soft);
+      border-color: var(--brand-primary);
+      color: var(--brand-primary);
+    }
+
+    /* Filter rows */
+    .filter-row {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .chip-group-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-right: 4px;
+    }
+
+    .chip {
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .chip:hover {
+      border-color: var(--brand-primary);
+      color: var(--brand-primary);
+      background: var(--brand-soft);
+    }
+
+    .chip.active {
+      background: var(--text-primary);
+      color: #FFFFFF;
+      border-color: var(--text-primary);
+    }
+
+    /* 4-Stage Recognition Inspector */
+    .recognition-box {
+      border-left: 4px solid var(--brand-primary);
+    }
+
+    .rec-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .rec-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .badge-allergen {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border: 1px solid var(--danger-border);
+    }
+
+    .badge-chronic {
+      background: var(--warn-bg);
+      color: var(--warn-text);
+      border: 1px solid var(--warn-border);
+    }
+
+    .badge-safe {
+      background: var(--safe-bg);
+      color: var(--safe-text);
+      border: 1px solid var(--safe-border);
+    }
+
+    .badge-stage {
+      background: var(--info-bg);
+      color: var(--info-text);
+      border: 1px solid var(--info-border);
+    }
+
+    .badge-curie {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      border: 1px solid var(--border-default);
+    }
+
+    /* Lineage Chain Breadcrumb */
+    .lineage-chain {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .lineage-node {
+      display: inline-flex;
+      flex-direction: column;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .lineage-node:hover {
+      border-color: var(--brand-primary);
+    }
+
+    .lineage-node-id {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .lineage-node-en {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .lineage-node-vi {
+      font-size: 11px;
+      color: var(--brand-primary);
+    }
+
+    .lineage-arrow {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Results Table */
+    .table-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      background: var(--bg-surface);
+    }
+
+    th {
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-default);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr.result-row:hover {
+      background: var(--bg-page);
+    }
+
+    .vi-tag {
+      display: inline-block;
+      background: var(--brand-soft);
+      color: var(--brand-hover);
+      border: 1px solid var(--brand-border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin: 2px 3px 2px 0;
+    }
+
+    .en-tag {
+      display: inline-block;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin: 2px 3px 2px 0;
+    }
+
+    /* Packaging Simulator */
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .sim-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .check-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-surface);
+    }
+
+    .check-card input {
+      accent-color: var(--brand-primary);
+    }
+
+    .textarea-input {
+      width: 100%;
+      min-height: 92px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    .primary-btn {
+      background: var(--brand-primary);
+      color: #FFFFFF;
+      border: none;
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .primary-btn:hover {
+      background: var(--brand-hover);
+    }
+
+    .verdict-banner {
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border: 2px solid transparent;
+      margin-top: 16px;
+    }
+
+    .verdict-RED {
+      background: var(--danger-bg);
+      border-color: var(--danger-text);
+      color: var(--danger-text);
+    }
+
+    .verdict-YELLOW {
+      background: var(--warn-bg);
+      border-color: var(--warn-text);
+      color: var(--warn-text);
+    }
+
+    .verdict-GREEN {
+      background: var(--safe-bg);
+      border-color: var(--safe-text);
+      color: var(--safe-text);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--text-muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-group">
+        <div class="brand-mark" aria-hidden="true">NV</div>
+        <div class="brand-title">
+          <h1 id="ui-app-title">NutriViet — Bộ Tìm Kiếm & Kiểm Thử FoodOn + Kala</h1>
+          <p id="ui-app-subtitle">Kết nối 100% Data-Driven giữa FoodOn Ontology (EN) & Từ điển Kala (VI) • Không Fallback Hardcode</p>
+        </div>
+      </div>
+
+      <div class="topbar-controls">
+        <div class="db-stats-pill" id="db-stats-banner" aria-live="polite">
+          <span>DB: 7.61 MB (-94.8%)</span>
+          <span>•</span>
+          <span id="stat-concepts">25,577 CURIEs</span>
+          <span>•</span>
+          <span id="stat-vi">13,761 VI</span>
+          <span>•</span>
+          <span id="stat-en">42,669 EN</span>
+        </div>
+
+        <div class="lang-switcher" role="group" aria-label="UI Language Switcher">
+          <button type="button" class="lang-btn active" id="btn-ui-vi" onclick="setUiLang('vi')">Tiếng Việt (VI)</button>
+          <button type="button" class="lang-btn" id="btn-ui-en" onclick="setUiLang('en')">English (EN)</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Mode Navigation Tabs -->
+    <div class="mode-tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" class="mode-tab active" id="tab-btn-search" onclick="switchTab('search')">
+        1. Tra cứu Từ vựng & Đồ thị FoodOn (Search & Lineage)
+      </button>
+      <button type="button" role="tab" aria-selected="false" class="mode-tab" id="tab-btn-packaging" onclick="switchTab('packaging')">
+        2. Giả lập Quét Nhãn Bao bì (UC09 Packaging Evaluator)
+      </button>
+    </div>
+
+    <!-- TAB 1: SEARCH & ONTOLOGY EXPLORER -->
+    <section id="tab-panel-search" role="tabpanel">
+      <div class="panel">
+        <div class="search-grid">
+          <div>
+            <label for="search-input" class="field-label" id="lbl-search-input">
+              Nhập nguyên liệu, từ vựng tiếng Việt, tiếng Anh, mã phụ gia (E/INS) hoặc lỗi OCR mất dấu:
+            </label>
+            <div class="search-input-wrap">
+              <input
+                id="search-input"
+                type="search"
+                class="search-input"
+                placeholder="VD: đậu phộng, lạc, sữa đậu nành, casein, E621, đâu phông (28%), peanut butter..."
+                value="đậu phộng"
+                autocomplete="off"
+              />
+              <button type="button" class="clear-btn" title="Clear" aria-label="Clear search" onclick="clearSearch()">✕</button>
+            </div>
+          </div>
+
+          <div>
+            <span class="field-label" id="lbl-lang-scope">Ngôn ngữ tìm kiếm (Search Scope):</span>
+            <div class="scope-group" role="group" aria-label="Search Language Scope">
+              <button type="button" class="scope-btn active" data-scope="all" id="scope-all" onclick="setSearchScope('all')">Song ngữ (VI + EN)</button>
+              <button type="button" class="scope-btn" data-scope="vi" id="scope-vi" onclick="setSearchScope('vi')">Chỉ Tiếng Việt (VI)</button>
+              <button type="button" class="scope-btn" data-scope="en" id="scope-en" onclick="setSearchScope('en')">Chỉ Tiếng Anh (EN)</button>
+              <button type="button" class="scope-btn" data-scope="ecode" id="scope-ecode" onclick="setSearchScope('ecode')">Mã E / INS</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Samples & Allergen Filter -->
+        <div class="filter-row">
+          <div class="chip-list">
+            <span class="chip-group-label" id="lbl-quick-samples">Thử nhanh (Quick Test):</span>
+            <button type="button" class="chip" onclick="quickSearch('đậu phộng', 'all')">đậu phộng</button>
+            <button type="button" class="chip" onclick="quickSearch('lạc', 'vi')">lạc (phương ngữ Bắc)</button>
+            <button type="button" class="chip" onclick="quickSearch('mè', 'vi')">mè / vừng</button>
+            <button type="button" class="chip" onclick="quickSearch('sữa đậu nành', 'all')">sữa đậu nành (Plant milk)</button>
+            <button type="button" class="chip" onclick="quickSearch('ca-zê-in', 'all')">ca-zê-in (Đạm sữa ẩn)</button>
+            <button type="button" class="chip" onclick="quickSearch('nước sữa', 'vi')">nước sữa (Whey)</button>
+            <button type="button" class="chip" onclick="quickSearch('Chất nhũ hóa (Lecithin đậu nành)', 'all')">Chất nhũ hóa (Lecithin đậu nành)</button>
+            <button type="button" class="chip" onclick="quickSearch('Chất điều vị (E621)', 'all')">Chất điều vị (E621)</button>
+            <button type="button" class="chip" onclick="quickSearch('đâu phông (28%)', 'all')">đâu phông (28%) [OCR lỗi dấu]</button>
+            <button type="button" class="chip" onclick="quickSearch('bột mi', 'all')">bột mi [OCR mất dấu]</button>
+            <button type="button" class="chip" onclick="quickSearch('peanut butter', 'en')">peanut butter (EN)</button>
+            <button type="button" class="chip" onclick="quickSearch('sodium caseinate', 'en')">sodium caseinate (EN)</button>
+          </div>
+
+          <div class="chip-list" id="allergen-filter-bar">
+            <span class="chip-group-label" id="lbl-allergen-filter">Lọc theo Nhóm Dị ứng:</span>
+            <button type="button" class="chip active" data-al="" onclick="setAllergenFilter('')">Tất cả (All)</button>
+            <button type="button" class="chip" data-al="peanuts" onclick="setAllergenFilter('peanuts')">Đậu phộng (Peanuts)</button>
+            <button type="button" class="chip" data-al="milk" onclick="setAllergenFilter('milk')">Sữa (Milk)</button>
+            <button type="button" class="chip" data-al="seafood" onclick="setAllergenFilter('seafood')">Hải sản (Seafood)</button>
+            <button type="button" class="chip" data-al="eggs" onclick="setAllergenFilter('eggs')">Trứng (Eggs)</button>
+            <button type="button" class="chip" data-al="soy" onclick="setAllergenFilter('soy')">Đậu nành (Soy)</button>
+            <button type="button" class="chip" data-al="gluten" onclick="setAllergenFilter('gluten')">Gluten</button>
+            <button type="button" class="chip" data-al="tree_nuts" onclick="setAllergenFilter('tree_nuts')">Hạt cây (Tree Nuts)</button>
+            <button type="button" class="chip" data-al="sesame" onclick="setAllergenFilter('sesame')">Mè (Sesame)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Stage Recognition Pipeline Result Card -->
+      <div class="panel recognition-box" id="recognition-panel">
+        <div class="rec-header">
+          <h2 class="rec-title" id="ui-rec-heading">Kết quả Phân tích Pipeline 4 Tầng (4-Stage Recognition & Ontology Trace)</h2>
+          <span class="badge badge-curie" id="rec-latency">0.06 ms</span>
+        </div>
+        <div id="recognition-body"></div>
+      </div>
+
+      <!-- Concept Table -->
+      <div class="panel">
+        <div class="table-header-bar">
+          <h2 class="rec-title" id="ui-table-heading">Danh sách Khái niệm FoodOn & Từ vựng Kala khớp truy vấn</h2>
+          <span id="table-count-label" style="font-size: 12px; color: var(--text-muted);"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th id="th-curie">Mã FoodOn / ChEBI</th>
+                <th id="th-en">Nhãn Tiếng Anh (FoodOn)</th>
+                <th id="th-vi">Từ vựng Tiếng Việt kết nối (Kala)</th>
+                <th id="th-allergen">Cảnh báo Dị ứng & Bệnh nền</th>
+                <th id="th-lineage">Cây Phả hệ Ontology (Lineage)</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: PACKAGING LABEL SIMULATOR (UC09) -->
+    <section id="tab-panel-packaging" role="tabpanel" class="hidden">
+      <div class="sim-grid">
+        <div class="panel">
+          <h2 class="rec-title" id="ui-sim-profile-title" style="margin-bottom: 12px;">Hồ sơ Dị ứng & Bệnh nền Người dùng</h2>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;" id="ui-sim-profile-desc">
+            Chọn các nhóm dị ứng (Cảnh báo ĐỎ) và bệnh lý nền (Cảnh báo VÀNG):
+          </p>
+
+          <span class="field-label" id="lbl-sim-allergens">8 Nhóm Dị ứng (Allergens -> RED):</span>
+          <div class="check-grid" id="sim-allergen-checks">
+            <label class="check-card"><input type="checkbox" value="peanuts" checked /> <span data-al-name="peanuts">Đậu phộng (Peanuts)</span></label>
+            <label class="check-card"><input type="checkbox" value="milk" checked /> <span data-al-name="milk">Sữa bò (Milk)</span></label>
+            <label class="check-card"><input type="checkbox" value="seafood" /> <span data-al-name="seafood">Hải sản (Seafood)</span></label>
+            <label class="check-card"><input type="checkbox" value="eggs" /> <span data-al-name="eggs">Trứng (Eggs)</span></label>
+            <label class="check-card"><input type="checkbox" value="soy" /> <span data-al-name="soy">Đậu nành (Soy)</span></label>
+            <label class="check-card"><input type="checkbox" value="gluten" /> <span data-al-name="gluten">Gluten</span></label>
+            <label class="check-card"><input type="checkbox" value="tree_nuts" checked /> <span data-al-name="tree_nuts">Hạt cây (Tree Nuts)</span></label>
+            <label class="check-card"><input type="checkbox" value="sesame" /> <span data-al-name="sesame">Mè / Vừng (Sesame)</span></label>
+          </div>
+
+          <span class="field-label" id="lbl-sim-chronics">4 Bệnh lý nền (Chronic -> YELLOW):</span>
+          <div class="check-grid" id="sim-chronic-checks">
+            <label class="check-card"><input type="checkbox" value="hypertension" checked /> <span data-ch-name="hypertension">Tăng huyết áp</span></label>
+            <label class="check-card"><input type="checkbox" value="diabetes" /> <span data-ch-name="diabetes">Tiểu đường</span></label>
+            <label class="check-card"><input type="checkbox" value="gout" /> <span data-ch-name="gout">Bệnh Gút (Gout)</span></label>
+            <label class="check-card"><input type="checkbox" value="cholesterol" /> <span data-ch-name="cholesterol">Mỡ máu cao</span></label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="rec-title" id="ui-sim-label-title" style="margin-bottom: 10px;">Danh sách Thành phần trên Bao bì (OCR / Nhập tay)</h2>
+          <div class="chip-list" style="margin-bottom: 10px;">
+            <span class="chip-group-label" id="lbl-sim-presets">Mẫu bao bì:</span>
+            <button type="button" class="chip" onclick="loadPackagingPreset(1)">Bánh quy Bơ Sữa & Hạt</button>
+            <button type="button" class="chip" onclick="loadPackagingPreset(2)">Sữa đậu nành nguyên chất</button>
+            <button type="button" class="chip" onclick="loadPackagingPreset(3)">Mì tôm chua cay (E621)</button>
+            <button type="button" class="chip" onclick="loadPackagingPreset(4)">Nhãn bị lỗi OCR mất dấu</button>
+          </div>
+
+          <textarea id="sim-ingredients-input" class="textarea-input" aria-label="Packaging ingredients">Bột mì, Đường, Dầu cọ, Sữa bột (8%), Whey protein, Bơ đậu phộng (5%), Chất điều vị (E621), Muối</textarea>
+
+          <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+            <button type="button" class="primary-btn" id="btn-run-eval" onclick="runPackagingEval()">
+              Đánh giá An toàn Nhãn Bao bì (Evaluate)
+            </button>
+          </div>
+
+          <div id="sim-result-container"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Bilingual UI Dictionary (VI / EN)
+    const I18N = {
+      vi: {
+        appTitle: "NutriViet — Bộ Tìm Kiếm & Kiểm Thử FoodOn + Kala",
+        appSubtitle: "Kết nối 100% Data-Driven giữa FoodOn Ontology (EN) & Từ điển Kala (VI) • Không Fallback Hardcode",
+        tabSearch: "1. Tra cứu Từ vựng & Đồ thị FoodOn (Search & Lineage)",
+        tabPackaging: "2. Giả lập Quét Nhãn Bao bì (UC09 Packaging Evaluator)",
+        lblSearchInput: "Nhập nguyên liệu, từ vựng tiếng Việt, tiếng Anh, mã phụ gia (E/INS) hoặc lỗi OCR mất dấu:",
+        searchPlaceholder: "VD: đậu phộng, lạc, sữa đậu nành, casein, E621, đâu phông (28%), peanut butter...",
+        lblLangScope: "Ngôn ngữ tìm kiếm (Search Scope):",
+        scopeAll: "Song ngữ (VI + EN)",
+        scopeVi: "Chỉ Tiếng Việt (VI)",
+        scopeEn: "Chỉ Tiếng Anh (EN)",
+        scopeEcode: "Mã E / INS",
+        lblQuickSamples: "Thử nhanh (Quick Test):",
+        lblAllergenFilter: "Lọc theo Nhóm Dị ứng:",
+        recHeading: "Kết quả Phân tích Pipeline 4 Tầng (4-Stage Recognition & Ontology Trace)",
+        tableHeading: "Danh sách Khái niệm FoodOn & Từ vựng Kala khớp truy vấn",
+        thCurie: "Mã FoodOn / ChEBI",
+        thEn: "Nhãn Tiếng Anh (FoodOn)",
+        thVi: "Từ vựng Tiếng Việt kết nối (Kala)",
+        thAllergen: "Cảnh báo Dị ứng & Bệnh nền",
+        thLineage: "Cây Phả hệ Ontology (Lineage)",
+        noMatch: "Không tìm thấy khái niệm khớp trong phạm vi ngôn ngữ đã chọn.",
+        safeLabel: "[OK] An toàn / Không thuộc 8 nhóm dị ứng",
+        simProfileTitle: "Hồ sơ Dị ứng & Bệnh nền Người dùng",
+        simProfileDesc: "Chọn các nhóm dị ứng (Cảnh báo ĐỎ) và bệnh lý nền (Cảnh báo VÀNG):",
+        simLabelTitle: "Danh sách Thành phần trên Bao bì (Phân cách bằng dấu phẩy)",
+        btnRunEval: "Đánh giá An toàn Nhãn Bao bì (Evaluate)",
+        allergens: {
+          peanuts: "Đậu phộng (Lạc)",
+          milk: "Sữa & Chế phẩm Sữa",
+          seafood: "Hải sản / Giáp xác / Cá",
+          eggs: "Trứng & Albumin",
+          soy: "Đậu nành (Đỗ tương)",
+          gluten: "Gluten / Ngũ cốc",
+          tree_nuts: "Hạt cây (Điều, Hạnh nhân, Óc chó...)",
+          sesame: "Mè (Vừng)"
+        },
+        chronics: {
+          hypertension: "Tăng huyết áp (Muối/Natri)",
+          diabetes: "Tiểu đường (Đường/Ngọt)",
+          gout: "Gút (Purine/E621)",
+          cholesterol: "Mỡ máu cao (Béo bão hòa)"
+        }
+      },
+      en: {
+        appTitle: "NutriViet — FoodOn + Kala Hybrid Ontology Explorer",
+        appSubtitle: "100% Data-Driven Connection between FoodOn Ontology (EN) & Kala Dictionary (VI) • Zero Hardcoded Fallbacks",
+        tabSearch: "1. Vocabulary & FoodOn Graph Search (Search & Lineage)",
+        tabPackaging: "2. Packaging Label Hazard Simulator (UC09 Evaluator)",
+        lblSearchInput: "Enter ingredient, Vietnamese term, English term, E/INS code, or unaccented OCR string:",
+        searchPlaceholder: "e.g., đậu phộng, lạc, sữa đậu nành, casein, E621, đâu phông (28%), peanut butter...",
+        lblLangScope: "Search Language Scope:",
+        scopeAll: "Bilingual (VI + EN)",
+        scopeVi: "Vietnamese Only (VI)",
+        scopeEn: "English Only (EN)",
+        scopeEcode: "E / INS Codes",
+        lblQuickSamples: "Quick Test Samples:",
+        lblAllergenFilter: "Filter by Allergen Group:",
+        recHeading: "4-Stage Recognition Pipeline & Ontology Trace Result",
+        tableHeading: "Matching FoodOn Concepts & Connected Kala Vietnamese Terms",
+        thCurie: "FoodOn / ChEBI CURIE",
+        thEn: "English Label (FoodOn)",
+        thVi: "Connected Vietnamese Terms (Kala)",
+        thAllergen: "Allergen & Chronic Flags",
+        thLineage: "Ontology Lineage Hierarchy",
+        noMatch: "No matching concepts found in the selected language scope.",
+        safeLabel: "[OK] Safe / Non-Allergen Ingredient",
+        simProfileTitle: "User Allergy & Chronic Condition Profile",
+        simProfileDesc: "Select active allergies (triggers RED) and chronic conditions (triggers YELLOW):",
+        simLabelTitle: "Packaging Ingredient List (Comma-separated)",
+        btnRunEval: "Evaluate Packaging Label Safety",
+        allergens: {
+          peanuts: "Peanuts (Arachis hypogaea)",
+          milk: "Dairy / Cow Milk (Casein/Whey/Lactose)",
+          seafood: "Seafood / Crustaceans / Fish",
+          eggs: "Eggs & Egg Albumen",
+          soy: "Soybeans (Glycine max)",
+          gluten: "Gluten / Cereal Grains",
+          tree_nuts: "Tree Nuts (Cashew, Almond, Walnut...)",
+          sesame: "Sesame Seeds"
+        },
+        chronics: {
+          hypertension: "Hypertension (Sodium/Salt)",
+          diabetes: "Diabetes (Added Sugars/Syrup)",
+          gout: "Gout (Purines/MSG E621)",
+          cholesterol: "High Cholesterol (Animal Fat/Palm Oil)"
+        }
+      }
+    };
+
+    let state = {
+      uiLang: "vi",
+      searchScope: "all",
+      allergenFilter: "",
+      lastData: null,
+      lastSimData: null
+    };
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function setUiLang(lang) {
+      state.uiLang = lang;
+      document.documentElement.lang = lang;
+      document.getElementById("btn-ui-vi").classList.toggle("active", lang === "vi");
+      document.getElementById("btn-ui-en").classList.toggle("active", lang === "en");
+
+      const t = I18N[lang];
+      document.getElementById("ui-app-title").textContent = t.appTitle;
+      document.getElementById("ui-app-subtitle").textContent = t.appSubtitle;
+      document.getElementById("tab-btn-search").textContent = t.tabSearch;
+      document.getElementById("tab-btn-packaging").textContent = t.tabPackaging;
+      document.getElementById("lbl-search-input").textContent = t.lblSearchInput;
+      document.getElementById("search-input").placeholder = t.searchPlaceholder;
+      document.getElementById("lbl-lang-scope").textContent = t.lblLangScope;
+      document.getElementById("scope-all").textContent = t.scopeAll;
+      document.getElementById("scope-vi").textContent = t.scopeVi;
+      document.getElementById("scope-en").textContent = t.scopeEn;
+      document.getElementById("scope-ecode").textContent = t.scopeEcode;
+      document.getElementById("lbl-quick-samples").textContent = t.lblQuickSamples;
+      document.getElementById("lbl-allergen-filter").textContent = t.lblAllergenFilter;
+      document.getElementById("ui-rec-heading").textContent = t.recHeading;
+      document.getElementById("ui-table-heading").textContent = t.tableHeading;
+      document.getElementById("th-curie").textContent = t.thCurie;
+      document.getElementById("th-en").textContent = t.thEn;
+      document.getElementById("th-vi").textContent = t.thVi;
+      document.getElementById("th-allergen").textContent = t.thAllergen;
+      document.getElementById("th-lineage").textContent = t.thLineage;
+      document.getElementById("ui-sim-profile-title").textContent = t.simProfileTitle;
+      document.getElementById("ui-sim-profile-desc").textContent = t.simProfileDesc;
+      document.getElementById("ui-sim-label-title").textContent = t.simLabelTitle;
+      document.getElementById("btn-run-eval").textContent = t.btnRunEval;
+
+      document.querySelectorAll("[data-al-name]").forEach(el => {
+        const code = el.getAttribute("data-al-name");
+        if (t.allergens[code]) el.textContent = t.allergens[code];
+      });
+      document.querySelectorAll("[data-ch-name]").forEach(el => {
+        const code = el.getAttribute("data-ch-name");
+        if (t.chronics[code]) el.textContent = t.chronics[code];
+      });
+
+      if (state.lastData) renderSearchResults(state.lastData);
+      if (state.lastSimData) renderPackagingEval(state.lastSimData);
+    }
+
+    function switchTab(tab) {
+      const isSearch = tab === "search";
+      document.getElementById("tab-btn-search").classList.toggle("active", isSearch);
+      document.getElementById("tab-btn-packaging").classList.toggle("active", !isSearch);
+      document.getElementById("tab-btn-search").setAttribute("aria-selected", isSearch);
+      document.getElementById("tab-btn-packaging").setAttribute("aria-selected", !isSearch);
+      document.getElementById("tab-panel-search").classList.toggle("hidden", !isSearch);
+      document.getElementById("tab-panel-packaging").classList.toggle("hidden", isSearch);
+      if (!isSearch && !state.lastSimData) {
+        runPackagingEval();
+      }
+    }
+
+    function setSearchScope(scope) {
+      state.searchScope = scope;
+      document.querySelectorAll(".scope-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-scope") === scope);
+      });
+      performSearch();
+    }
+
+    function setAllergenFilter(al) {
+      state.allergenFilter = al;
+      document.querySelectorAll("#allergen-filter-bar .chip").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-al") === al);
+      });
+      performSearch();
+    }
+
+    function quickSearch(query, scope) {
+      document.getElementById("search-input").value = query;
+      state.searchScope = scope || "all";
+      document.querySelectorAll(".scope-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-scope") === state.searchScope);
+      });
+      performSearch();
+    }
+
+    function clearSearch() {
+      const inp = document.getElementById("search-input");
+      inp.value = "";
+      inp.focus();
+      performSearch();
+    }
+
+    function renderLineageHtml(nodes) {
+      if (!nodes || !nodes.length) return "";
+      return `<div class="lineage-chain">` + nodes.map((n, idx) => {
+        const viSub = n.label_vi ? `<span class="lineage-node-vi">${escapeHtml(n.label_vi)}</span>` : "";
+        const box = `<div class="lineage-node" onclick="quickSearch('${escapeHtml(n.curie)}', 'all')" title="Click to inspect ${escapeHtml(n.curie)}">
+          <span class="lineage-node-id">${escapeHtml(n.curie)}</span>
+          <span class="lineage-node-en">${escapeHtml(n.label_en)}</span>
+          ${viSub}
+        </div>`;
+        return idx < nodes.length - 1 ? box + `<span class="lineage-arrow">→</span>` : box;
+      }).join("") + `</div>`;
+    }
+
+    function renderBadgesHtml(allergens, chronics) {
+      const t = I18N[state.uiLang];
+      const parts = [];
+      (allergens || []).forEach(al => {
+        parts.push(`<span class="badge badge-allergen">[!X] ${escapeHtml(t.allergens[al] || al)}</span>`);
+      });
+      (chronics || []).forEach(ch => {
+        parts.push(`<span class="badge badge-chronic">[!?] ${escapeHtml(t.chronics[ch] || ch)}</span>`);
+      });
+      if (!parts.length) {
+        parts.push(`<span class="badge badge-safe">${escapeHtml(t.safeLabel)}</span>`);
+      }
+      return parts.join(" ");
+    }
+
+    function renderSearchResults(data) {
+      state.lastData = data;
+      const t = I18N[state.uiLang];
+      document.getElementById("rec-latency").textContent = `${data.latency_ms} ms`;
+
+      // Render 4-Stage Recognition Box
+      const recPanel = document.getElementById("recognition-panel");
+      const recBody = document.getElementById("recognition-body");
+      if (!data.query) {
+        recPanel.classList.add("hidden");
+      } else {
+        recPanel.classList.remove("hidden");
+        const rec = data.recognition;
+        if (!rec || !rec.matched) {
+          recBody.innerHTML = `<div style="color: var(--text-muted);">${escapeHtml(t.noMatch)}</div>`;
+        } else {
+          const topBadges = renderBadgesHtml(rec.allergens, rec.chronics);
+          const matchCards = rec.matches.map(m => {
+            const viTags = (m.terms_vi || []).map(w => `<span class="vi-tag">${escapeHtml(w)}</span>`).join("") || `<span style="color:var(--text-muted);font-size:12px;">—</span>`;
+            const ecodeTags = (m.ecodes || []).map(e => `<span class="badge badge-stage">${escapeHtml(e.toUpperCase())}</span>`).join(" ");
+            return `
+              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                  <span class="badge badge-curie">${escapeHtml(m.curie)}</span>
+                  <strong style="font-size:15px;">${escapeHtml(m.label_en)}</strong>
+                  <span class="badge badge-stage">Stage: ${escapeHtml(m.match_type)} (Conf: ${Math.round(m.confidence * 100)}%)</span>
+                  ${ecodeTags}
+                </div>
+                <div style="margin-top:6px;">
+                  <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Kala (VI): </span>
+                  ${viTags}
+                </div>
+                ${renderLineageHtml(m.lineage_nodes)}
+              </div>
+            `;
+          }).join("");
+
+          recBody.innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <span style="font-size:13px; color:var(--text-secondary);">Input: <strong>"${escapeHtml(rec.input)}"</strong></span>
+              <span>→</span>
+              ${topBadges}
+            </div>
+            ${matchCards}
+          `;
+        }
+      }
+
+      // Render Table
+      const countLbl = document.getElementById("table-count-label");
+      countLbl.textContent = state.uiLang === "vi"
+        ? `Hiển thị ${data.returned_count} / ${data.total_matched} khái niệm (${data.latency_ms} ms)`
+        : `Showing ${data.returned_count} of ${data.total_matched} concepts (${data.latency_ms} ms)`;
+
+      const tbody = document.getElementById("results-tbody");
+      if (!data.results || !data.results.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t.noMatch)}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.results.map(r => {
+        const viPills = (r.terms_vi || []).map(w => `<span class="vi-tag" onclick="quickSearch('${escapeHtml(w)}', 'vi')" style="cursor:pointer;">${escapeHtml(w)}</span>`).join("") || `<span style="color:var(--text-muted);font-size:12px;">(Chưa có từ tương đương trong Kala)</span>`;
+        const enPills = (r.terms_en || []).slice(0, 4).map(w => `<span class="en-tag">${escapeHtml(w)}</span>`).join("");
+        const ecodeBadges = (r.ecodes || []).slice(0, 4).map(e => `<span class="badge badge-stage">${escapeHtml(e.toUpperCase())}</span>`).join(" ");
+        return `
+          <tr class="result-row">
+            <td>
+              <span class="badge badge-curie">${escapeHtml(r.curie)}</span>
+              ${r.food_type ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">type: ${escapeHtml(r.food_type)}</div>` : ""}
+              ${ecodeBadges ? `<div style="margin-top:4px;">${ecodeBadges}</div>` : ""}
+            </td>
+            <td>
+              <div style="font-weight:700; color:var(--text-primary);">${escapeHtml(r.label_en)}</div>
+              <div style="margin-top:4px;">${enPills}</div>
+            </td>
+            <td>${viPills}</td>
+            <td>${renderBadgesHtml(r.allergens, r.chronics)}</td>
+            <td>${renderLineageHtml(r.lineage_nodes)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function performSearch() {
+      const q = document.getElementById("search-input").value;
+      const params = new URLSearchParams({
+        q: q,
+        lang: state.searchScope,
+        allergen: state.allergenFilter,
+        limit: "30"
+      });
+      try {
+        const res = await fetch(`/api/v1/foodon/search?${params.toString()}`);
+        const data = await res.json();
+        renderSearchResults(data);
+      } catch (err) {
+        console.error("Search failed:", err);
+      }
+    }
+
+    const PACKAGING_PRESETS = {
+      1: "Bột mì, Đường, Dầu cọ, Sữa bột (8%), Whey protein, Bơ đậu phộng (5%), Chất điều vị (E621), Muối",
+      2: "Nước, Sữa đậu nành (92%), Đường mía, Muối",
+      3: "Bột mì, Dầu cọ, Muối, Bột tôm (2.5%), Chất điều vị (E621), Hành, Tỏi, Ớt",
+      4: "Đường, Mạch nha, đâu phông (25%), hanh nhan, sua bo, mè"
+    };
+
+    function loadPackagingPreset(id) {
+      document.getElementById("sim-ingredients-input").value = PACKAGING_PRESETS[id] || "";
+      runPackagingEval();
+    }
+
+    async function runPackagingEval() {
+      const rawText = document.getElementById("sim-ingredients-input").value || "";
+      const tokens = rawText.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+      const allergens = Array.from(document.querySelectorAll("#sim-allergen-checks input:checked")).map(el => ({
+        code: el.value,
+        severity: "high"
+      }));
+      const chronics = Array.from(document.querySelectorAll("#sim-chronic-checks input:checked")).map(el => el.value);
+
+      try {
+        const res = await fetch("/api/v1/foodon/evaluate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ingredients: tokens,
+            allergens: allergens,
+            chronics: chronics
+          })
+        });
+        const data = await res.json();
+        renderPackagingEval(data);
+      } catch (err) {
+        console.error("Packaging evaluation error:", err);
+      }
+    }
+
+    function renderPackagingEval(data) {
+      state.lastSimData = data;
+      const t = I18N[state.uiLang];
+      const container = document.getElementById("sim-result-container");
+
+      const redList = (data.red_triggers || []).map(rt => `
+        <div style="margin-top:8px; padding:8px 10px; background:#FFFFFF; border-radius:6px; border:1px solid var(--danger-border); color:var(--text-primary);">
+          <span class="badge badge-allergen">[!X] RED</span>
+          <strong>"${escapeHtml(rt.token)}"</strong> → <strong>${escapeHtml(t.allergens[rt.allergen_code] || rt.allergen_name_vi)}</strong>
+          <div style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); margin-top:4px;">${escapeHtml(rt.lineage)}</div>
+        </div>
+      `).join("");
+
+      const yellowList = (data.yellow_triggers || []).map(yt => {
+        const name = yt.allergen_code ? (t.allergens[yt.allergen_code] || yt.allergen_name_vi) : (t.chronics[yt.chronic_code] || yt.chronic_name_vi);
+        return `
+          <div style="margin-top:8px; padding:8px 10px; background:#FFFFFF; border-radius:6px; border:1px solid var(--warn-border); color:var(--text-primary);">
+            <span class="badge badge-chronic">[!?] YELLOW</span>
+            <strong>"${escapeHtml(yt.token)}"</strong> → <strong>${escapeHtml(name)}</strong>
+            <div style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); margin-top:4px;">${escapeHtml(yt.lineage)}</div>
+          </div>
+        `;
+      }).join("");
+
+      container.innerHTML = `
+        <div class="verdict-banner verdict-${escapeHtml(data.verdict)}">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="font-size:16px; font-weight:800;">
+              ${escapeHtml(data.wcag_glyph)} ${escapeHtml(data.verdict)} — ${escapeHtml(data.title_vi)}
+            </div>
+            <span class="badge badge-curie">${data.latency_ms} ms (${data.tokens_analyzed} tokens)</span>
+          </div>
+          ${redList}
+          ${yellowList}
+        </div>
+      `;
+    }
+
+    // Debounced live search on input
+    let debounceTimer = null;
+    document.getElementById("search-input").addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(performSearch, 150);
+    });
+
+    // Initial load
+    performSearch();
+  </script>
+</body>
+</html>
+
