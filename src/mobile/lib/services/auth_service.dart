@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../l10n/app_locale.dart';
 
 class AuthService {
   // Production Cloud Backend API (PythonAnywhere)
@@ -37,7 +38,10 @@ class AuthService {
       } catch (_) {
         return {
           'success': false,
-          'message': 'Lỗi máy chủ (${response.statusCode}).',
+          'message': AppLocale.t(
+            'Lỗi máy chủ (${response.statusCode}).',
+            'Server error (${response.statusCode}).',
+          ),
         };
       }
 
@@ -45,13 +49,18 @@ class AuthService {
         return {
           'success': true,
           'requires_verification': data['requires_verification'] ?? true,
-          'message': data['message'] ?? 'Vui lòng kiểm tra email để kích hoạt tài khoản.',
+          'message': data['message'] ??
+              AppLocale.t(
+                'Vui lòng kiểm tra email để kích hoạt tài khoản.',
+                'Please check your email to activate your account.',
+              ),
           'user': data['user']
         };
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Đăng ký không thành công',
+          'message': data['message'] ??
+              AppLocale.t('Đăng ký không thành công', 'Registration failed'),
           'code': data['code'] ?? 'REGISTRATION_FAILED',
         };
       }
@@ -59,7 +68,10 @@ class AuthService {
       debugPrint('[AUTH REGISTER ERROR] $e');
       return {
         'success': false,
-        'message': 'Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng hoặc DNS của máy ảo.',
+        'message': AppLocale.t(
+          'Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng.',
+          'Unable to connect to the server. Please check your internet connection.',
+        ),
         'error': e.toString(),
       };
     }
@@ -93,7 +105,10 @@ class AuthService {
       } catch (_) {
         return {
           'success': false,
-          'message': 'Lỗi phản hồi máy chủ (${response.statusCode}).',
+          'message': AppLocale.t(
+            'Lỗi phản hồi máy chủ (${response.statusCode}).',
+            'Server response error (${response.statusCode}).',
+          ),
         };
       }
 
@@ -104,12 +119,20 @@ class AuthService {
         return {
           'success': false,
           'code': 'EMAIL_NOT_VERIFIED',
-          'message': data['message'] ?? 'Tài khoản chưa được kích hoạt qua email.',
+          'message': data['message'] ??
+              AppLocale.t(
+                'Tài khoản chưa được kích hoạt qua email.',
+                'Your account has not been verified via email.',
+              ),
         };
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Email hoặc mật khẩu không chính xác.',
+          'message': data['message'] ??
+              AppLocale.t(
+                'Email hoặc mật khẩu không chính xác.',
+                'Incorrect email or password.',
+              ),
           'code': data['code'] ?? 'AUTH_FAILED',
         };
       }
@@ -117,7 +140,10 @@ class AuthService {
       debugPrint('[AUTH LOGIN ERROR] $e');
       return {
         'success': false,
-        'message': 'Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng hoặc DNS máy ảo.',
+        'message': AppLocale.t(
+          'Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng.',
+          'Unable to connect to the server. Please check your internet connection.',
+        ),
         'error': e.toString(),
       };
     }
@@ -140,13 +166,20 @@ class AuthService {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return {
         'success': response.statusCode == 200,
-        'message': data['message'] ?? 'Đã gửi lại link xác thực vào hộp thư của bạn.',
+        'message': data['message'] ??
+            AppLocale.t(
+              'Đã gửi lại link xác thực vào hộp thư của bạn.',
+              'Verification link resent to your inbox.',
+            ),
       };
     } catch (e) {
       debugPrint('[AUTH RESEND ERROR] $e');
       return {
         'success': false,
-        'message': 'Không thể kết nối tới máy chủ khi gửi lại email.',
+        'message': AppLocale.t(
+          'Không thể kết nối tới máy chủ khi gửi lại email.',
+          'Unable to connect to the server while resending email.',
+        ),
       };
     }
   }
@@ -168,13 +201,20 @@ class AuthService {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return {
         'success': response.statusCode == 200,
-        'message': data['message'] ?? 'Đã gửi hướng dẫn khôi phục mật khẩu vào hộp thư Gmail của bạn.',
+        'message': data['message'] ??
+            AppLocale.t(
+              'Đã gửi hướng dẫn khôi phục mật khẩu vào hộp thư của bạn.',
+              'Password recovery instructions sent to your inbox.',
+            ),
       };
     } catch (e) {
       debugPrint('[AUTH FORGOT PWD ERROR] $e');
       return {
         'success': false,
-        'message': 'Không thể kết nối tới máy chủ khi yêu cầu khôi phục mật khẩu.',
+        'message': AppLocale.t(
+          'Không thể kết nối tới máy chủ khi yêu cầu khôi phục mật khẩu.',
+          'Unable to connect to the server for password recovery.',
+        ),
       };
     }
   }
@@ -204,13 +244,19 @@ class AuthService {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return {
         'success': response.statusCode == 200,
-        'message': data['message'] ?? (response.statusCode == 200 ? 'Đổi mật khẩu thành công!' : 'Đổi mật khẩu thất bại.'),
+        'message': data['message'] ??
+            (response.statusCode == 200
+                ? AppLocale.t('Đổi mật khẩu thành công!', 'Password changed successfully!')
+                : AppLocale.t('Đổi mật khẩu thất bại.', 'Failed to change password.')),
       };
     } catch (e) {
       debugPrint('[AUTH CHANGE PWD ERROR] $e');
       return {
         'success': false,
-        'message': 'Không thể kết nối máy chủ để đổi mật khẩu ($e).',
+        'message': AppLocale.t(
+          'Không thể kết nối máy chủ để đổi mật khẩu ($e).',
+          'Unable to connect to server to change password ($e).',
+        ),
       };
     }
   }
@@ -241,19 +287,24 @@ class AuthService {
         await prefs.setString('user_name', fullName.trim());
         return {
           'success': true,
-          'message': data['message'] ?? 'Cập nhật thông tin thành công!',
+          'message': data['message'] ??
+              AppLocale.t('Cập nhật thông tin thành công!', 'Profile updated successfully!'),
           'user': data['user'],
         };
       }
       return {
         'success': false,
-        'message': data['message'] ?? 'Cập nhật thất bại.',
+        'message': data['message'] ??
+            AppLocale.t('Cập nhật thất bại.', 'Failed to update profile.'),
       };
     } catch (e) {
       debugPrint('[AUTH UPDATE PROFILE ERROR] $e');
       return {
         'success': false,
-        'message': 'Không thể kết nối máy chủ để cập nhật thông tin.',
+        'message': AppLocale.t(
+          'Không thể kết nối máy chủ để cập nhật thông tin.',
+          'Unable to connect to server to update profile.',
+        ),
       };
     }
   }
@@ -280,6 +331,10 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedLang = prefs.getString('nutriviet_ui_lang');
     await prefs.clear();
+    if (savedLang != null) {
+      await prefs.setString('nutriviet_ui_lang', savedLang);
+    }
   }
 }
