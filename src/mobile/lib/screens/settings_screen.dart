@@ -5,6 +5,7 @@ import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'allergy_profile_screen.dart';
 import 'login_screen.dart';
@@ -534,67 +535,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.transparent,
+    return Material(
+      type: MaterialType.transparency,
       child: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
-          children: [
-            Text(
-              AppLocale.t('Cài đặt', 'Settings'),
-              style: const TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF111827),
-                letterSpacing: -0.5,
+        child: NutriVietGlassScrollArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
+            children: [
+              Text(
+                AppLocale.t('Cài đặt', 'Settings'),
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                  letterSpacing: -0.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-            // Section 1: Hồ sơ sức khỏe của bạn / Your health profile
-            Text(
-              AppLocale.t('Hồ sơ sức khỏe của bạn', 'Your health profile'),
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF4B5563),
+              // Section 1: Hồ sơ sức khỏe của bạn / Your health profile
+              Text(
+                AppLocale.t('Hồ sơ sức khỏe của bạn', 'Your health profile'),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4B5563),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            NutriVietGlassCard(
-              cornerRadius: 22,
-              child: Column(
-                children: [
-                  _buildSettingRow(
-                    icon: PhosphorIconsDuotone.heartbeat,
-                    iconColor: _brandGreen,
-                    title: AppLocale.t('Tình trạng của tôi', 'My conditions'),
-                    trailingText: _isLoading ? '...' : _chronicsSummary,
-                    onTap: _openChronicsSheet,
-                  ),
-                  _buildSettingRow(
-                    icon: PhosphorIconsDuotone.usersThree,
-                    iconColor: _brandGreen,
-                    title: AppLocale.t('Quản lý hồ sơ', 'Manage profiles'),
-                    trailingText: _shortName,
-                    onTap: _openAllergyProfile,
-                  ),
-                  _buildSettingRow(
-                    icon: PhosphorIconsDuotone.shieldWarning,
-                    iconColor: _brandGreen,
-                    title: AppLocale.t('Quản lý dị ứng', 'Manage allergies'),
-                    trailingText: _allergens.isEmpty
-                        ? ''
-                        : AppLocale.t(
-                            '${_allergens.length} nhóm',
-                            '${_allergens.length} groups',
-                          ),
-                    onTap: _openAllergyProfile,
-                  ),
-                ],
+              const SizedBox(height: 10),
+              NutriVietGlassCard(
+                cornerRadius: 22,
+                child: Column(
+                  children: [
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.heartbeat,
+                      iconColor: _brandGreen,
+                      title: AppLocale.t('Tình trạng của tôi', 'My conditions'),
+                      trailingText: _chronicsSummary,
+                      isRowLoading: _isLoading,
+                      onTap: _openChronicsSheet,
+                    ),
+                    Divider(
+                      height: 1,
+                      indent: 68,
+                      color: Colors.black.withValues(alpha: 0.05),
+                    ),
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.usersThree,
+                      iconColor: _brandGreen,
+                      title: AppLocale.t('Quản lý hồ sơ', 'Manage profiles'),
+                      trailingText: _shortName,
+                      isRowLoading: _isLoading,
+                      onTap: _openAllergyProfile,
+                    ),
+                    Divider(
+                      height: 1,
+                      indent: 68,
+                      color: Colors.black.withValues(alpha: 0.05),
+                    ),
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.shieldWarning,
+                      iconColor: _brandGreen,
+                      title: AppLocale.t('Quản lý dị ứng', 'Manage allergies'),
+                      trailingText: _allergens.isEmpty
+                          ? ''
+                          : AppLocale.t(
+                              '${_allergens.length} nhóm',
+                              '${_allergens.length} groups',
+                            ),
+                      isRowLoading: _isLoading,
+                      onTap: _openAllergyProfile,
+                    ),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -742,6 +757,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -752,6 +768,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required String trailingText,
     required VoidCallback onTap,
+    bool isRowLoading = false,
   }) {
     return NutriVietPressScale(
       pressedScale: 0.985,
@@ -778,7 +795,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              if (trailingText.isNotEmpty) ...[
+              if (isRowLoading) ...[
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: NutriVietSettingsRowSkeleton(width: 84),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ] else if (trailingText.isNotEmpty) ...[
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
@@ -871,11 +896,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          LiquidGlassSwitch(
-            value: value,
-            activeColor: _brandGreen,
-            inactiveColor: const Color(0xFFD1D5DB),
-            onChanged: onChanged,
+          LiquidGlassBatch.exclude(
+            child: LiquidGlassSwitch(
+              value: value,
+              activeColor: _brandGreen,
+              inactiveColor: const Color(0xFFD1D5DB),
+              onChanged: onChanged,
+            ),
           ),
         ],
       ),
