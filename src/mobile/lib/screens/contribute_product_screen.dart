@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
+import '../widgets/nutriviet_ui.dart';
 
 class ContributeProductScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -24,16 +27,17 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
   bool _isSubmitting = false;
 
   final List<String> _selectedAllergens = [];
-  final List<Map<String, String>> _availableAllergens = [
-    {'code': 'peanuts', 'name': '🥜 Đậu phộng'},
-    {'code': 'seafood', 'name': '🦐 Hải sản'},
-    {'code': 'milk', 'name': '🥛 Sữa bò'},
-    {'code': 'gluten', 'name': '🌾 Gluten / Lúa mì'},
-    {'code': 'eggs', 'name': '🥚 Trứng'},
-    {'code': 'soy', 'name': '🌱 Đậu nành'},
-    {'code': 'tree_nuts', 'name': '🌰 Hạt cây'},
-    {'code': 'sesame', 'name': '🌿 Mè (Vừng)'},
-  ];
+
+  List<Map<String, String>> get _availableAllergens => [
+        {'code': 'peanuts', 'name': AppLocale.t('🥜 Đậu phộng', '🥜 Peanuts')},
+        {'code': 'seafood', 'name': AppLocale.t('🦐 Hải sản', '🦐 Seafood')},
+        {'code': 'milk', 'name': AppLocale.t('🥛 Sữa bò', '🥛 Cow\'s milk')},
+        {'code': 'gluten', 'name': AppLocale.t('🌾 Lúa mì / Gluten', '🌾 Wheat / Gluten')},
+        {'code': 'eggs', 'name': AppLocale.t('🥚 Trứng', '🥚 Eggs')},
+        {'code': 'soy', 'name': AppLocale.t('🌱 Đậu nành', '🌱 Soybeans')},
+        {'code': 'tree_nuts', 'name': AppLocale.t('🌰 Hạt cây', '🌰 Tree nuts')},
+        {'code': 'sesame', 'name': AppLocale.t('🌿 Mè (Vừng)', '🌿 Sesame')},
+      ];
 
   @override
   void dispose() {
@@ -47,7 +51,9 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
   void _showPhotoOptions(String type) {
     final bool isFront = type == 'front';
     final bool isSelected = isFront ? _frontPhotoSelected : _ingredientPhotoSelected;
-    final String label = isFront ? 'Mặt Trước Bao Bì' : 'Bảng Thành Phần Dinh Dưỡng';
+    final String label = isFront
+        ? AppLocale.t('Mặt Trước Bao Bì', 'Front Packaging')
+        : AppLocale.t('Bảng Thành Phần Dinh Dưỡng', 'Nutrition & Ingredients');
 
     showModalBottomSheet(
       context: context,
@@ -74,64 +80,108 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Tải Ảnh: $label',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              AppLocale.t('Tải Ảnh: $label', 'Upload Photo: $label'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Chọn phương thức để đính kèm ảnh sản phẩm rõ nét',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            Text(
+              AppLocale.t(
+                'Chọn phương thức để đính kèm ảnh sản phẩm rõ nét',
+                'Choose a method to attach a clear product photo',
+              ),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 14),
             ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFFD1FAE5), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF10B981), size: 22),
+              leading: const NutriVietGlassIconTile(
+                icon: PhosphorIconsDuotone.camera,
+                color: Color(0xFF14803C),
+                size: 38,
               ),
-              title: const Text('Chụp ảnh trực tiếp từ Camera', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: const Text('Mở máy ảnh và chụp trực diện sản phẩm', style: TextStyle(fontSize: 12)),
+              title: Text(
+                AppLocale.t('Chụp ảnh trực tiếp từ máy ảnh', 'Take photo with Camera'),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              subtitle: Text(
+                AppLocale.t(
+                  'Mở máy ảnh và chụp trực diện sản phẩm',
+                  'Open camera and capture the product directly',
+                ),
+                style: const TextStyle(fontSize: 12),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 setState(() {
                   if (isFront) {
                     _frontPhotoSelected = true;
-                    _frontPhotoSource = 'Camera (bao_bi_front.jpg)';
+                    _frontPhotoSource = AppLocale.t(
+                      'Máy ảnh (Ảnh mặt trước)',
+                      'Camera (Front photo)',
+                    );
                   } else {
                     _ingredientPhotoSelected = true;
-                    _ingredientPhotoSource = 'Camera (thanh_phan_ocr.jpg)';
+                    _ingredientPhotoSource = AppLocale.t(
+                      'Máy ảnh (Bảng thành phần)',
+                      'Camera (Ingredients photo)',
+                    );
                   }
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('✓ Đã chụp và đính kèm ảnh $label!'),
+                    content: Text(
+                      AppLocale.t(
+                        'Đã chụp và đính kèm ảnh $label!',
+                        'Captured and attached $label photo!',
+                      ),
+                    ),
                     backgroundColor: const Color(0xFF10B981),
                   ),
                 );
               },
             ),
             ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.photo_library_rounded, color: Color(0xFF0284C7), size: 22),
+              leading: const NutriVietGlassIconTile(
+                icon: PhosphorIconsDuotone.images,
+                color: Color(0xFF0284C7),
+                size: 38,
               ),
-              title: const Text('Chọn ảnh từ Thư viện (Bộ sưu tập)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: const Text('Tải ảnh đã lưu sẵn trong máy', style: TextStyle(fontSize: 12)),
+              title: Text(
+                AppLocale.t('Chọn ảnh từ Thư viện', 'Choose from Photo Library'),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              subtitle: Text(
+                AppLocale.t('Tải ảnh đã lưu sẵn trong máy', 'Select an existing photo from device'),
+                style: const TextStyle(fontSize: 12),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 setState(() {
                   if (isFront) {
                     _frontPhotoSelected = true;
-                    _frontPhotoSource = 'Thư viện (gallery_image.jpg)';
+                    _frontPhotoSource = AppLocale.t(
+                      'Thư viện (Ảnh mặt trước)',
+                      'Library (Front photo)',
+                    );
                   } else {
                     _ingredientPhotoSelected = true;
-                    _ingredientPhotoSource = 'Thư viện (ingredients_scan.jpg)';
+                    _ingredientPhotoSource = AppLocale.t(
+                      'Thư viện (Bảng thành phần)',
+                      'Library (Ingredients photo)',
+                    );
                   }
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('✓ Đã chọn ảnh $label từ bộ sưu tập!'),
+                    content: Text(
+                      AppLocale.t(
+                        'Đã chọn ảnh $label từ thư viện!',
+                        'Selected $label photo from library!',
+                      ),
+                    ),
                     backgroundColor: const Color(0xFF10B981),
                   ),
                 );
@@ -139,12 +189,19 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
             ),
             if (isSelected)
               ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 22),
+                leading: const NutriVietGlassIconTile(
+                  icon: PhosphorIconsDuotone.trash,
+                  color: Color(0xFFDC2626),
+                  size: 38,
                 ),
-                title: const Text('Gỡ bỏ ảnh này', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFFDC2626), fontSize: 14)),
+                title: Text(
+                  AppLocale.t('Gỡ bỏ ảnh này', 'Remove this photo'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFDC2626),
+                    fontSize: 14,
+                  ),
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   setState(() {
@@ -158,7 +215,9 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Đã gỡ ảnh $label'),
+                      content: Text(
+                        AppLocale.t('Đã gỡ ảnh $label', 'Removed $label photo'),
+                      ),
                       backgroundColor: const Color(0xFF64748B),
                     ),
                   );
@@ -176,9 +235,14 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
 
     if (!_frontPhotoSelected && !_ingredientPhotoSelected) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn hoặc chụp ít nhất 1 ảnh bao bì sản phẩm!'),
-          backgroundColor: Color(0xFFEF4444),
+        SnackBar(
+          content: Text(
+            AppLocale.t(
+              'Vui lòng chọn hoặc chụp ít nhất 1 ảnh bao bì sản phẩm!',
+              'Please take or select at least 1 product packaging photo!',
+            ),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
         ),
       );
       return;
@@ -192,23 +256,36 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
 
     final newPost = {
       'id': DateTime.now().millisecondsSinceEpoch,
-      'author': widget.user['full_name'] ?? 'Tôi (Người dùng)',
+      'author': widget.user['full_name'] ?? AppLocale.t('Tôi (Người dùng)', 'Me (User)'),
       'avatar': '👤',
-      'time': 'Vừa xong',
+      'time': AppLocale.t('Vừa xong', 'Just now'),
       'product_name': _nameController.text.trim(),
-      'brand': _brandController.text.trim().isNotEmpty ? _brandController.text.trim() : 'Đã xác minh bởi cộng đồng',
+      'brand': _brandController.text.trim().isNotEmpty
+          ? _brandController.text.trim()
+          : AppLocale.t('Đã xác minh bởi cộng đồng', 'Community verified'),
       'is_warning': _selectedAllergens.isNotEmpty,
       'allergen_badge': _selectedAllergens.isNotEmpty
-          ? '🚨 Chứa ${_selectedAllergens.join(", ")}'
-          : '✅ An toàn theo nhãn',
+          ? AppLocale.t(
+              '🚨 Chứa ${_selectedAllergens.join(", ")}',
+              '🚨 Contains ${_selectedAllergens.join(", ")}',
+            )
+          : AppLocale.t('✅ An toàn theo nhãn', '✅ Safe per label'),
       'content': _ingredientsController.text.trim().isNotEmpty
-          ? 'Bảng thành phần: ${_ingredientsController.text.trim()}'
-          : 'Người dùng đã chia sẻ ảnh bao bì sản phẩm thực tế.',
+          ? AppLocale.t(
+              'Bảng thành phần: ${_ingredientsController.text.trim()}',
+              'Ingredients: ${_ingredientsController.text.trim()}',
+            )
+          : AppLocale.t(
+              'Người dùng đã chia sẻ ảnh bao bì sản phẩm thực tế.',
+              'User shared real product packaging photos.',
+            ),
       'barcode': _barcodeController.text.trim(),
       'likes': 1,
       'is_liked': true,
       'comments': 0,
-      'photo_label': _frontPhotoSource ?? _ingredientPhotoSource ?? 'Ảnh bao bì sản phẩm',
+      'photo_label': _frontPhotoSource ??
+          _ingredientPhotoSource ??
+          AppLocale.t('Ảnh bao bì sản phẩm', 'Product packaging photo'),
     };
 
     showDialog(
@@ -217,14 +294,24 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
-          children: const [
-            Icon(Icons.check_circle_rounded, color: Color(0xFF10B981)),
-            SizedBox(width: 8),
-            Text('Đăng Tải Thành Công!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          children: [
+            const PhosphorIcon(
+              PhosphorIconsFill.checkCircle,
+              color: Color(0xFF14803C),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              AppLocale.t('Đăng Tải Thành Công!', 'Published Successfully!'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ],
         ),
         content: Text(
-          'Sản phẩm "${_nameController.text.trim()}" đã được chia sẻ lên Mạng xã hội cộng đồng NutriViet thành công!\n\nẢnh bao bì và thành phần dinh dưỡng đã sẵn sàng để mọi người cùng xem và cảnh báo.',
+          AppLocale.t(
+            'Sản phẩm "${_nameController.text.trim()}" đã được chia sẻ lên Mạng xã hội cộng đồng NutriViet thành công!\n\nẢnh bao bì và thành phần dinh dưỡng đã sẵn sàng để mọi người cùng xem và cảnh báo.',
+            'Product "${_nameController.text.trim()}" has been shared to the NutriViet Community Network!\n\nPackaging and ingredient details are now visible to help others.',
+          ),
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
         ),
         actions: [
@@ -238,7 +325,7 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Xem Bảng Tin Cộng Đồng'),
+            child: Text(AppLocale.t('Xem Bảng Tin Cộng Đồng', 'View Community Feed')),
           ),
         ],
       ),
@@ -253,12 +340,20 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF334155), size: 20),
+          icon: const PhosphorIcon(
+            PhosphorIconsBold.caretLeft,
+            color: Color(0xFF334155),
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Đóng Góp Sản Phẩm Mới',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+        title: Text(
+          AppLocale.t('Đóng Góp Sản Phẩm Mới', 'Contribute New Product'),
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
         ),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
@@ -272,7 +367,6 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Intro card
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -281,13 +375,24 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                   border: Border.all(color: const Color(0xFFA7F3D0)),
                 ),
                 child: Row(
-                  children: const [
-                    Icon(Icons.volunteer_activism_rounded, color: Color(0xFF059669), size: 24),
-                    SizedBox(width: 12),
+                  children: [
+                    const PhosphorIcon(
+                      PhosphorIconsDuotone.handHeart,
+                      color: Color(0xFF14803C),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Đăng tải ảnh thực phẩm lên Mạng xã hội cộng đồng giúp hàng ngàn người dị ứng ăn uống an toàn hơn.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF065F46), height: 1.4),
+                        AppLocale.t(
+                          'Đăng tải ảnh thực phẩm lên Mạng xã hội cộng đồng giúp hàng ngàn người dị ứng ăn uống an toàn hơn.',
+                          'Sharing food packaging photos with the community helps thousands of people with allergies eat safely.',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF065F46),
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
@@ -295,7 +400,7 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
               ),
               const SizedBox(height: 16),
 
-              // SECTION 1: PHOTO UPLOADER
+              // Photo Uploader
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -306,62 +411,89 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Ảnh Chụp Bao Bì Sản Phẩm (Bắt buộc)*',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                    Text(
+                      AppLocale.t(
+                        'Ảnh Chụp Bao Bì Sản Phẩm (Bắt buộc)*',
+                        'Product Packaging Photos (Required)*',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Chụp rõ nét mặt trước bao bì và phần bảng thành phần / dinh dưỡng.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    Text(
+                      AppLocale.t(
+                        'Chụp rõ nét mặt trước bao bì và phần bảng thành phần / dinh dưỡng.',
+                        'Capture a clear photo of the front packaging and the ingredient list.',
+                      ),
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 14),
 
                     Row(
                       children: [
-                        // Front Photo Box
                         Expanded(
                           child: InkWell(
                             onTap: () => _showPhotoOptions('front'),
                             borderRadius: BorderRadius.circular(12),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
                               height: 125,
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: _frontPhotoSelected ? const Color(0xFFD1FAE5) : const Color(0xFFF8FAFC),
+                                color: _frontPhotoSelected
+                                    ? const Color(0xFFD1FAE5)
+                                    : const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: _frontPhotoSelected ? const Color(0xFF10B981) : const Color(0xFFCBD5E1),
+                                  color: _frontPhotoSelected
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFFCBD5E1),
                                   width: _frontPhotoSelected ? 2 : 1,
                                 ),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    _frontPhotoSelected ? Icons.check_circle_rounded : Icons.add_a_photo_outlined,
-                                    color: _frontPhotoSelected ? const Color(0xFF059669) : const Color(0xFF64748B),
+                                  PhosphorIcon(
+                                    _frontPhotoSelected
+                                        ? PhosphorIconsFill.checkCircle
+                                        : PhosphorIconsDuotone.camera,
+                                    color: _frontPhotoSelected
+                                        ? const Color(0xFF14803C)
+                                        : const Color(0xFF64748B),
                                     size: 30,
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    _frontPhotoSelected ? '✓ Ảnh mặt trước' : '📸 Mặt trước',
+                                    _frontPhotoSelected
+                                        ? AppLocale.t('Đã chọn mặt trước', 'Front photo selected')
+                                        : AppLocale.t('Ảnh mặt trước', 'Front photo'),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: _frontPhotoSelected ? const Color(0xFF065F46) : const Color(0xFF0F172A),
+                                      color: _frontPhotoSelected
+                                          ? const Color(0xFF065F46)
+                                          : const Color(0xFF0F172A),
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    _frontPhotoSelected ? (_frontPhotoSource ?? 'Chạm để đổi ảnh') : 'Chạm để chụp/chọn',
+                                    _frontPhotoSelected
+                                        ? (_frontPhotoSource ??
+                                            AppLocale.t('Chạm để đổi ảnh', 'Tap to change'))
+                                        : AppLocale.t('Chạm để chụp/chọn', 'Tap to capture/select'),
                                     textAlign: TextAlign.center,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: _frontPhotoSelected ? const Color(0xFF047857) : const Color(0xFF64748B),
+                                      color: _frontPhotoSelected
+                                          ? const Color(0xFF047857)
+                                          : const Color(0xFF64748B),
                                     ),
                                   ),
                                 ],
@@ -371,49 +503,69 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                         ),
                         const SizedBox(width: 12),
 
-                        // Ingredients Photo Box
                         Expanded(
                           child: InkWell(
                             onTap: () => _showPhotoOptions('ingredient'),
                             borderRadius: BorderRadius.circular(12),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
                               height: 125,
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: _ingredientPhotoSelected ? const Color(0xFFD1FAE5) : const Color(0xFFF8FAFC),
+                                color: _ingredientPhotoSelected
+                                    ? const Color(0xFFD1FAE5)
+                                    : const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: _ingredientPhotoSelected ? const Color(0xFF10B981) : const Color(0xFFCBD5E1),
+                                  color: _ingredientPhotoSelected
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFFCBD5E1),
                                   width: _ingredientPhotoSelected ? 2 : 1,
                                 ),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    _ingredientPhotoSelected ? Icons.check_circle_rounded : Icons.document_scanner_outlined,
-                                    color: _ingredientPhotoSelected ? const Color(0xFF059669) : const Color(0xFF64748B),
+                                  PhosphorIcon(
+                                    _ingredientPhotoSelected
+                                        ? PhosphorIconsFill.checkCircle
+                                        : PhosphorIconsDuotone.scan,
+                                    color: _ingredientPhotoSelected
+                                        ? const Color(0xFF14803C)
+                                        : const Color(0xFF64748B),
                                     size: 30,
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    _ingredientPhotoSelected ? '✓ Ảnh thành phần' : '📸 Bảng thành phần',
+                                    _ingredientPhotoSelected
+                                        ? AppLocale.t(
+                                            'Đã chọn thành phần',
+                                            'Ingredients selected',
+                                          )
+                                        : AppLocale.t('Bảng thành phần', 'Ingredient list'),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: _ingredientPhotoSelected ? const Color(0xFF065F46) : const Color(0xFF0F172A),
+                                      color: _ingredientPhotoSelected
+                                          ? const Color(0xFF065F46)
+                                          : const Color(0xFF0F172A),
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    _ingredientPhotoSelected ? (_ingredientPhotoSource ?? 'Chạm để đổi ảnh') : 'Chạm để chụp/chọn',
+                                    _ingredientPhotoSelected
+                                        ? (_ingredientPhotoSource ??
+                                            AppLocale.t('Chạm để đổi ảnh', 'Tap to change'))
+                                        : AppLocale.t('Chạm để chụp/chọn', 'Tap to capture/select'),
                                     textAlign: TextAlign.center,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: _ingredientPhotoSelected ? const Color(0xFF047857) : const Color(0xFF64748B),
+                                      color: _ingredientPhotoSelected
+                                          ? const Color(0xFF047857)
+                                          : const Color(0xFF64748B),
                                     ),
                                   ),
                                 ],
@@ -428,7 +580,7 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
               ),
               const SizedBox(height: 16),
 
-              // SECTION 2: PRODUCT METADATA
+              // Product Metadata
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -439,14 +591,24 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Thông Tin Sản Phẩm',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                    Text(
+                      AppLocale.t('Thông Tin Sản Phẩm', 'Product Information'),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Barcode
-                    const Text('Mã vạch Barcode / EAN:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                    Text(
+                      AppLocale.t('Mã số mã vạch:', 'Barcode number:'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -454,9 +616,18 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                           child: TextFormField(
                             controller: _barcodeController,
                             decoration: InputDecoration(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                              prefixIcon: const Icon(Icons.qr_code_rounded, size: 20, color: Color(0xFF94A3B8)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 11,
+                              ),
+                              prefixIcon: const PhosphorIcon(
+                                PhosphorIconsDuotone.qrCode,
+                                size: 20,
+                                color: Color(0xFF64748B),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                           ),
                         ),
@@ -464,64 +635,124 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                         OutlinedButton(
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Đã nhận diện mã vạch 8934567891234'), backgroundColor: Color(0xFF10B981)),
+                              SnackBar(
+                                content: Text(
+                                  AppLocale.t(
+                                    'Đã nhận diện mã vạch 8934567891234',
+                                    'Detected barcode 8934567891234',
+                                  ),
+                                ),
+                                backgroundColor: const Color(0xFF10B981),
+                              ),
                             );
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF10B981),
                             side: const BorderSide(color: Color(0xFF10B981)),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          child: const Text('Quét mã'),
+                          child: Text(AppLocale.t('Quét mã', 'Scan code')),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
 
-                    // Product Name
-                    const Text('Tên sản phẩm:*', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                    Text(
+                      AppLocale.t('Tên sản phẩm:*', 'Product name:*'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _nameController,
                       decoration: InputDecoration(
-                        hintText: 'Ví dụ: Bánh Que Giòn Cay Ngũ Vị',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        hintText: AppLocale.t(
+                          'Ví dụ: Bánh Que Giòn Cay Ngũ Vị',
+                          'e.g., Crispy Five-Spice Biscuit Sticks',
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 11,
+                        ),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Vui lòng nhập tên sản phẩm' : null,
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? AppLocale.t(
+                              'Vui lòng nhập tên sản phẩm',
+                              'Please enter the product name',
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 12),
 
-                    // Brand Name
-                    const Text('Nhà sản xuất / Thương hiệu:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                    Text(
+                      AppLocale.t('Nhà sản xuất / Thương hiệu:', 'Manufacturer / Brand:'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _brandController,
                       decoration: InputDecoration(
-                        hintText: 'Ví dụ: Công ty TNHH VinaFood',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        hintText: AppLocale.t(
+                          'Ví dụ: Công ty Thực phẩm Việt',
+                          'e.g., VietFood Co., Ltd.',
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 11,
+                        ),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
                     const SizedBox(height: 12),
 
-                    // Ingredients
-                    const Text('Bảng thành phần dinh dưỡng (dán từ OCR hoặc gõ):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                    Text(
+                      AppLocale.t(
+                        'Bảng thành phần dinh dưỡng:',
+                        'Nutrition & Ingredient list:',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _ingredientsController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: 'Bột mì, dầu cọ, đường kính, muối ăn, bột ớt, hương tôm...',
+                        hintText: AppLocale.t(
+                          'Bột mì, dầu cọ, đường kính, muối ăn, bột ớt, hương tôm...',
+                          'Wheat flour, palm oil, refined sugar, table salt, chili powder, shrimp flavor...',
+                        ),
                         contentPadding: const EdgeInsets.all(12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Allergen tags
-                    const Text('Cảnh báo dị ứng có trong sản phẩm:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                    Text(
+                      AppLocale.t(
+                        'Cảnh báo dị ứng có trong sản phẩm:',
+                        'Allergens present in this product:',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -546,10 +777,14 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
                           labelStyle: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: isSelected ? const Color(0xFFDC2626) : const Color(0xFF475569),
+                            color: isSelected
+                                ? const Color(0xFFDC2626)
+                                : const Color(0xFF475569),
                           ),
                           backgroundColor: const Color(0xFFF1F5F9),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         );
                       }).toList(),
                     ),
@@ -558,13 +793,28 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Submit Button
               ElevatedButton.icon(
                 icon: _isSubmitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.cloud_upload_rounded, size: 20),
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const PhosphorIcon(
+                        PhosphorIconsDuotone.cloudArrowUp,
+                        size: 20,
+                        color: Colors.white,
+                      ),
                 label: Text(
-                  _isSubmitting ? 'Đang Tải Lên...' : 'Đăng Tải Sản Phẩm Lên Mạng Xã Hội',
+                  _isSubmitting
+                      ? AppLocale.t('Đang Tải Lên...', 'Uploading...')
+                      : AppLocale.t(
+                          'Đăng Tải Sản Phẩm Lên Cộng Đồng',
+                          'Publish Product to Community',
+                        ),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 style: ElevatedButton.styleFrom(
