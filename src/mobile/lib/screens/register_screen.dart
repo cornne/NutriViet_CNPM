@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import 'verify_email_screen.dart';
 
@@ -11,7 +13,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  // Requirement: Không điền sẵn nội dung
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -32,7 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // Password strength calculator
   int _calculateStrength(String pass) {
     if (pass.isEmpty) return 0;
     int score = 0;
@@ -46,7 +46,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleRegister() async {
     if (!_agreeTerms) {
       setState(() {
-        _errorMessage = 'Vui lòng đồng ý với Điều khoản & Cam kết bảo mật y tế.';
+        _errorMessage = AppLocale.t(
+          'Vui lòng đồng ý với Điều khoản & Cam kết bảo mật y tế.',
+          'Please agree to the Terms & Health Privacy Policy.',
+        );
       });
       return;
     }
@@ -82,8 +85,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       setState(() {
         final err = result['error'];
-        final msg = result['message'] ?? 'Đăng ký tài khoản thất bại';
-        _errorMessage = err != null ? '$msg\nChi tiết: $err' : msg;
+        final msg = result['message'] ??
+            AppLocale.t('Đăng ký tài khoản thất bại', 'Account registration failed');
+        _errorMessage = err != null
+            ? AppLocale.t('$msg\nChi tiết: $err', '$msg\nDetails: $err')
+            : msg;
       });
     }
   }
@@ -98,7 +104,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF334155), size: 20),
+          icon: const PhosphorIcon(
+            PhosphorIconsBold.caretLeft,
+            color: Color(0xFF334155),
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -111,10 +121,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Title matching prototype
-                  const Text(
-                    'Đăng Ký Tài Khoản',
-                    style: TextStyle(
+                  Text(
+                    AppLocale.t('Đăng Ký Tài Khoản', 'Create Account'),
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF0F172A),
@@ -123,17 +132,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 4),
 
-                  // Subtitle
-                  const Text(
-                    'Tạo hồ sơ bảo vệ sức khỏe cho bạn và gia đình',
-                    style: TextStyle(
+                  Text(
+                    AppLocale.t(
+                      'Tạo hồ sơ bảo vệ sức khỏe cho bạn và gia đình',
+                      'Create a health protection profile for you and your family',
+                    ),
+                    style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF64748B),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Error Banner
                   if (_errorMessage != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -144,7 +154,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                          const PhosphorIcon(
+                            PhosphorIconsDuotone.warningOctagon,
+                            color: Color(0xFFDC2626),
+                            size: 20,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -162,27 +176,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Full Name
-                  const Text(
-                    'Họ và tên',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  Text(
+                    AppLocale.t('Họ và tên', 'Full Name'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF475569),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _nameController,
                     style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
-                    decoration: const InputDecoration(
-                      hintText: 'Nhập họ tên',
-                      prefixIcon: Icon(Icons.person_outline_rounded, size: 20, color: Color(0xFF94A3B8)),
+                    decoration: InputDecoration(
+                      hintText: AppLocale.t('Nhập họ tên', 'Enter full name'),
+                      prefixIcon: const PhosphorIcon(
+                        PhosphorIconsDuotone.user,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập họ và tên' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? AppLocale.t('Vui lòng nhập họ và tên', 'Please enter your full name')
+                        : null,
                   ),
                   const SizedBox(height: 14),
 
-                  // Email
-                  const Text(
-                    'Địa chỉ Email',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  Text(
+                    AppLocale.t('Địa chỉ Email', 'Email Address'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF475569),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -191,22 +217,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
                     decoration: const InputDecoration(
                       hintText: 'email@example.com',
-                      prefixIcon: Icon(Icons.email_outlined, size: 20, color: Color(0xFF94A3B8)),
+                      prefixIcon: PhosphorIcon(
+                        PhosphorIconsDuotone.envelope,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập email';
+                      if (v == null || v.trim().isEmpty) {
+                        return AppLocale.t('Vui lòng nhập email', 'Please enter your email');
+                      }
                       if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) {
-                        return 'Định dạng email không hợp lệ';
+                        return AppLocale.t('Định dạng email không hợp lệ', 'Invalid email format');
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 14),
 
-                  // Password
-                  const Text(
-                    'Mật khẩu (tối thiểu 8 ký tự)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  Text(
+                    AppLocale.t(
+                      'Mật khẩu (tối thiểu 8 ký tự)',
+                      'Password (at least 8 characters)',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF475569),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -215,26 +253,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
                     onChanged: (val) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: 'Tối thiểu 8 ký tự',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: Color(0xFF94A3B8)),
+                      hintText: AppLocale.t('Tối thiểu 8 ký tự', 'At least 8 characters'),
+                      prefixIcon: const PhosphorIcon(
+                        PhosphorIconsDuotone.lock,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        icon: PhosphorIcon(
+                          _obscurePassword
+                              ? PhosphorIconsDuotone.eyeSlash
+                              : PhosphorIconsDuotone.eye,
                           size: 20,
-                          color: const Color(0xFF94A3B8),
+                          color: const Color(0xFF64748B),
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
-                      if (v.length < 8) return 'Mật khẩu phải chứa ít nhất 8 ký tự';
+                      if (v == null || v.isEmpty) {
+                        return AppLocale.t('Vui lòng nhập mật khẩu', 'Please enter a password');
+                      }
+                      if (v.length < 8) {
+                        return AppLocale.t(
+                          'Mật khẩu phải chứa ít nhất 8 ký tự',
+                          'Password must be at least 8 characters',
+                        );
+                      }
                       return null;
                     },
                   ),
                   const SizedBox(height: 6),
 
-                  // Password strength bar matching prototype
                   Row(
                     children: [
                       Container(
@@ -243,31 +293,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: BoxDecoration(
                           color: strength >= 3
                               ? const Color(0xFF10B981)
-                              : (strength >= 2 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)),
+                              : (strength >= 2
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFFEF4444)),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         strength >= 3
-                            ? 'Độ mạnh: Rất mạnh'
-                            : (strength >= 2 ? 'Độ mạnh: Trung bình' : 'Độ mạnh: Yếu'),
+                            ? AppLocale.t('Độ mạnh: Rất mạnh', 'Strength: Strong')
+                            : (strength >= 2
+                                ? AppLocale.t('Độ mạnh: Trung bình', 'Strength: Medium')
+                                : AppLocale.t('Độ mạnh: Yếu', 'Strength: Weak')),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: strength >= 3
                               ? const Color(0xFF10B981)
-                              : (strength >= 2 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)),
+                              : (strength >= 2
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFFEF4444)),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
 
-                  // Confirm Password
-                  const Text(
-                    'Xác nhận mật khẩu',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  Text(
+                    AppLocale.t('Xác nhận mật khẩu', 'Confirm Password'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF475569),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -275,25 +334,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscureConfirmPassword,
                     style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
                     decoration: InputDecoration(
-                      hintText: 'Nhập lại mật khẩu',
-                      prefixIcon: const Icon(Icons.lock_reset_rounded, size: 20, color: Color(0xFF94A3B8)),
+                      hintText: AppLocale.t('Nhập lại mật khẩu', 'Re-enter password'),
+                      prefixIcon: const PhosphorIcon(
+                        PhosphorIconsDuotone.lockKey,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        icon: PhosphorIcon(
+                          _obscureConfirmPassword
+                              ? PhosphorIconsDuotone.eyeSlash
+                              : PhosphorIconsDuotone.eye,
                           size: 20,
-                          color: const Color(0xFF94A3B8),
+                          color: const Color(0xFF64748B),
                         ),
-                        onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                        onPressed: () =>
+                            setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                       ),
                     ),
                     validator: (v) {
-                      if (v != _passwordController.text) return 'Mật khẩu xác nhận không trùng khớp';
+                      if (v != _passwordController.text) {
+                        return AppLocale.t(
+                          'Mật khẩu xác nhận không trùng khớp',
+                          'Passwords do not match',
+                        );
+                      }
                       return null;
                     },
                   ),
                   const SizedBox(height: 14),
 
-                  // Terms & Conditions Checkbox
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -308,17 +378,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Tôi đồng ý với Điều khoản & Cam kết bảo mật y tế',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                          AppLocale.t(
+                            'Tôi đồng ý với Điều khoản & Cam kết bảo mật y tế',
+                            'I agree to the Terms & Health Privacy Policy',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF475569),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 22),
 
-                  // Submit Button "Hoàn tất & Cài đặt Hồ sơ"
                   Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -347,29 +423,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Colors.white,
+                              ),
                             )
-                          : const Text(
-                              'Hoàn tất & Cài đặt Hồ sơ',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                          : Text(
+                              AppLocale.t(
+                                'Hoàn tất & Cài đặt Hồ sơ',
+                                'Complete & Set Up Profile',
+                              ),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Switch to Login
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Đã có tài khoản? ',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      Text(
+                        AppLocale.t('Đã có tài khoản? ', 'Already have an account? '),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                       ),
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
-                        child: const Text(
-                          'Đăng nhập ngay',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocale.t('Đăng nhập ngay', 'Sign in now'),
+                          style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF10B981),
                             fontWeight: FontWeight.w700,
