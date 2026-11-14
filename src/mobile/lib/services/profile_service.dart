@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/app_locale.dart';
 
 class ProfileService {
   static const String cloudApiRoot = 'https://ngobinh2006.pythonanywhere.com/api/v1';
@@ -14,10 +15,15 @@ class ProfileService {
   /// Never returns fake/mock data if unreachable.
   static List<String> get _apiRoots {
     final base = kIsWeb
-        ? ['http://127.0.0.1:8050/api/v1', cloudApiRoot]
+        ? ['http://127.0.0.1:8050/api/v1', 'http://192.168.1.15:8050/api/v1', cloudApiRoot]
         : (defaultTargetPlatform == TargetPlatform.android
-            ? ['http://127.0.0.1:8050/api/v1', 'http://10.0.2.2:8050/api/v1', cloudApiRoot]
-            : ['http://127.0.0.1:8050/api/v1', cloudApiRoot]);
+            ? [
+                'http://127.0.0.1:8050/api/v1',
+                'http://192.168.1.15:8050/api/v1',
+                'http://10.0.2.2:8050/api/v1',
+                cloudApiRoot,
+              ]
+            : ['http://127.0.0.1:8050/api/v1', 'http://192.168.1.15:8050/api/v1', cloudApiRoot]);
     final cached = _cachedWorkingRoot;
     if (cached != null && base.contains(cached) && base.first != cached) {
       return [cached, ...base.where((r) => r != cached)];
@@ -26,8 +32,8 @@ class ProfileService {
   }
 
   static Duration _timeoutForRoot(String root) {
-    if (root.contains('127.0.0.1')) {
-      return const Duration(seconds: 3);
+    if (root.contains('127.0.0.1') || root.contains('192.168.')) {
+      return const Duration(milliseconds: 2200);
     }
     if (root.contains('10.0.2.2')) {
       return const Duration(milliseconds: 1200);
@@ -51,7 +57,10 @@ class ProfileService {
         ? [cloudApiRoot, ..._apiRoots.where((r) => r != cloudApiRoot)]
         : _apiRoots;
 
-    String lastError = 'Không thể kết nối tới máy chủ.';
+    String lastError = AppLocale.t(
+      'Không thể kết nối tới máy chủ.',
+      'Unable to connect to the server.',
+    );
     for (final root in roots) {
       final url = Uri.parse('$root$subPath');
       try {
@@ -64,17 +73,29 @@ class ProfileService {
             _cachedWorkingRoot = root;
             return {'_ok': true, ...data};
           }
-        } else if (response.statusCode != 404) {
+        } else if (response.statusCode == 404) {
+          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
+        } else {
           try {
             final errData = await _decodeJsonBytes(response.bodyBytes);
-            lastError = errData['message'] ?? 'Lỗi máy chủ (${response.statusCode})';
+            lastError = errData['message'] ??
+                AppLocale.t(
+                  'Lỗi máy chủ (${response.statusCode})',
+                  'Server error (${response.statusCode})',
+                );
           } catch (_) {
-            lastError = 'Lỗi máy chủ (${response.statusCode})';
+            lastError = AppLocale.t(
+              'Lỗi máy chủ (${response.statusCode})',
+              'Server error (${response.statusCode})',
+            );
           }
         }
       } catch (e) {
         if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        lastError = 'Không thể kết nối máy chủ ($e)';
+        lastError = AppLocale.t(
+          'Không thể kết nối máy chủ ($e)',
+          'Unable to connect to server ($e)',
+        );
       }
     }
     return {'_ok': false, 'success': false, 'message': lastError};
@@ -87,7 +108,10 @@ class ProfileService {
   }) async {
     bool anySuccess = false;
     Map<String, dynamic> bestResponse = {};
-    String lastError = 'Không thể kết nối tới máy chủ.';
+    String lastError = AppLocale.t(
+      'Không thể kết nối tới máy chủ.',
+      'Unable to connect to the server.',
+    );
 
     for (final root in _apiRoots) {
       final url = Uri.parse('$root$subPath');
@@ -111,17 +135,29 @@ class ProfileService {
               return bestResponse;
             }
           }
-        } else if (response.statusCode != 404) {
+        } else if (response.statusCode == 404) {
+          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
+        } else {
           try {
             final errData = await _decodeJsonBytes(response.bodyBytes);
-            lastError = errData['message'] ?? 'Lỗi máy chủ (${response.statusCode})';
+            lastError = errData['message'] ??
+                AppLocale.t(
+                  'Lỗi máy chủ (${response.statusCode})',
+                  'Server error (${response.statusCode})',
+                );
           } catch (_) {
-            lastError = 'Lỗi máy chủ (${response.statusCode})';
+            lastError = AppLocale.t(
+              'Lỗi máy chủ (${response.statusCode})',
+              'Server error (${response.statusCode})',
+            );
           }
         }
       } catch (e) {
         if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        lastError = 'Không thể kết nối máy chủ ($e)';
+        lastError = AppLocale.t(
+          'Không thể kết nối máy chủ ($e)',
+          'Unable to connect to server ($e)',
+        );
       }
     }
 
@@ -144,7 +180,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải hồ sơ dị ứng từ máy chủ.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải hồ sơ dị ứng từ máy chủ.',
+            'Unable to load allergy profile from server.',
+          ),
     };
   }
 
@@ -160,12 +200,14 @@ class ProfileService {
     if (res['_ok'] == true) {
       return {
         'success': true,
-        'message': res['message'] ?? 'Đã lưu hồ sơ dị ứng thành công.',
+        'message': res['message'] ??
+            AppLocale.t('Đã lưu hồ sơ dị ứng thành công.', 'Allergy profile saved successfully.'),
       };
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Lưu hồ sơ dị ứng thất bại.',
+      'message': res['message'] ??
+          AppLocale.t('Lưu hồ sơ dị ứng thất bại.', 'Failed to save allergy profile.'),
     };
   }
 
@@ -182,7 +224,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải tình trạng sức khỏe từ máy chủ.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải tình trạng sức khỏe từ máy chủ.',
+            'Unable to load health conditions from server.',
+          ),
     };
   }
 
@@ -198,12 +244,20 @@ class ProfileService {
     if (res['_ok'] == true) {
       return {
         'success': true,
-        'message': res['message'] ?? 'Đã lưu tình trạng sức khỏe thành công.',
+        'message': res['message'] ??
+            AppLocale.t(
+              'Đã lưu tình trạng sức khỏe thành công.',
+              'Health conditions saved successfully.',
+            ),
       };
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Lưu tình trạng sức khỏe thất bại.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Lưu tình trạng sức khỏe thất bại.',
+            'Failed to save health conditions.',
+          ),
     };
   }
 
@@ -224,7 +278,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải chỉ số thể trạng từ máy chủ.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải chỉ số thể trạng từ máy chủ.',
+            'Unable to load body metrics from server.',
+          ),
     };
   }
 
@@ -251,13 +309,21 @@ class ProfileService {
     if (res['_ok'] == true) {
       return {
         'success': true,
-        'message': res['message'] ?? 'Đã cập nhật chỉ số thể trạng thành công!',
+        'message': res['message'] ??
+            AppLocale.t(
+              'Đã cập nhật chỉ số thể trạng thành công!',
+              'Body metrics updated successfully!',
+            ),
         'metrics': res['metrics'],
       };
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể lưu chỉ số thể trạng lên máy chủ.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể lưu chỉ số thể trạng lên máy chủ.',
+            'Unable to save body metrics to server.',
+          ),
     };
   }
 
@@ -274,7 +340,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải cài đặt từ máy chủ.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải cài đặt từ máy chủ.',
+            'Unable to load settings from server.',
+          ),
     };
   }
 
@@ -290,7 +360,7 @@ class ProfileService {
       '/profile/settings',
       {
         'user_id': userId,
-        'language': language,
+        'language': AppLocale.normalize(language),
         'notify_badges': notifyBadges,
         'notify_reminders': notifyReminders,
         'scan_derivatives': scanDerivatives,
@@ -301,12 +371,16 @@ class ProfileService {
     if (res['_ok'] == true) {
       return {
         'success': true,
-        'message': res['message'] ?? 'Đã lưu cài đặt.',
+        'message': res['message'] ?? AppLocale.t('Đã lưu cài đặt.', 'Settings saved.'),
       };
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể lưu cài đặt lên máy chủ.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể lưu cài đặt lên máy chủ.',
+            'Unable to save settings to server.',
+          ),
     };
   }
 
@@ -323,14 +397,18 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải danh sách hồ sơ gia đình.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải danh sách hồ sơ gia đình.',
+            'Unable to load family profiles.',
+          ),
     };
   }
 
   static Future<Map<String, dynamic>> addFamilyMember({
     required int userId,
     required String memberName,
-    String relationship = 'Thành viên',
+    String relationship = 'Người thân',
   }) async {
     final res = await _postJson('/profile/family', {
       'user_id': userId,
@@ -346,7 +424,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể thêm hồ sơ thành viên.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể thêm hồ sơ thành viên.',
+            'Unable to add family member profile.',
+          ),
     };
   }
 
@@ -367,7 +449,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể xóa hồ sơ thành viên.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể xóa hồ sơ thành viên.',
+            'Unable to delete family member profile.',
+          ),
     };
   }
 
@@ -388,21 +474,26 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải lịch sử quét nhãn.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải lịch sử quét nhãn.',
+            'Unable to load scan history.',
+          ),
     };
   }
 
   static Future<Map<String, dynamic>> createScan({
     required int userId,
     required String rawText,
-    String labelTitle = 'Kết quả quét',
+    String? labelTitle,
     String memberName = '',
   }) async {
     final res = await _postJson('/scans', {
       'user_id': userId,
       'raw_text': rawText,
-      'label_title': labelTitle,
+      'label_title': labelTitle ?? AppLocale.t('Kết quả quét', 'Scan result'),
       'member_name': memberName,
+      'lang': AppLocale.code,
     });
     if (res['_ok'] == true) {
       return {
@@ -417,7 +508,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể phân tích nhãn bao bì.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể phân tích nhãn bao bì.',
+            'Unable to analyze packaging label.',
+          ),
     };
   }
 
@@ -426,11 +521,12 @@ class ProfileService {
   // ---------------------------------------------------------------------------
   static Future<Map<String, dynamic>> getAdditives({
     String query = '',
-    String lang = 'all',
+    String? lang,
     int limit = 60,
   }) async {
+    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final qEnc = Uri.encodeQueryComponent(query);
-    final res = await _getJson('/foodon/additives?q=$qEnc&lang=$lang&limit=$limit');
+    final res = await _getJson('/foodon/additives?q=$qEnc&lang=$activeLang&limit=$limit');
     if (res['_ok'] == true) {
       return {
         'success': true,
@@ -441,7 +537,11 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể truy vấn cơ sở dữ liệu FoodOn.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể truy vấn cơ sở dữ liệu FoodOn.',
+            'Unable to query the FoodOn database.',
+          ),
       'items': [],
     };
   }
@@ -449,10 +549,14 @@ class ProfileService {
   static Future<Map<String, dynamic>> getCategoryConcepts({
     required String category,
     List<String> allergens = const [],
+    String? lang,
     int limit = 20,
   }) async {
+    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final alParam = Uri.encodeQueryComponent(allergens.join(','));
-    final res = await _getJson('/foodon/category?category=$category&allergens=$alParam&limit=$limit');
+    final res = await _getJson(
+      '/foodon/category?category=$category&allergens=$alParam&lang=$activeLang&limit=$limit',
+    );
     if (res['_ok'] == true) {
       return {
         'success': true,
@@ -462,7 +566,39 @@ class ProfileService {
     }
     return {
       'success': false,
-      'message': res['message'] ?? 'Không thể tải danh mục FoodOn.',
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tải danh mục FoodOn.',
+            'Unable to load FoodOn category.',
+          ),
+      'items': [],
+    };
+  }
+
+  static Future<Map<String, dynamic>> searchAllergyFoods({
+    String query = '',
+    String? lang,
+    int limit = 12,
+  }) async {
+    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
+    final qEnc = Uri.encodeQueryComponent(query);
+    final res = await _getJson(
+      '/foodon/allergy-lookup?q=$qEnc&lang=$activeLang&limit=$limit',
+    );
+    if (res['_ok'] == true) {
+      return {
+        'success': true,
+        'count': res['count'] ?? 0,
+        'items': res['items'] ?? [],
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể tra cứu thực phẩm gây dị ứng.',
+            'Unable to look up allergy foods.',
+          ),
       'items': [],
     };
   }
