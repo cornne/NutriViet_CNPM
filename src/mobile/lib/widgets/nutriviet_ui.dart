@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
+import '../theme/nutriviet_glass.dart';
+import 'nutriviet_shimmer.dart';
 
 /// Tactile 120 Hz spring press feedback wrapper that preserves vertical ListView
 /// drags by releasing its pressed scale immediately if the pointer moves > 12px.
@@ -27,12 +31,21 @@ class NutriVietPressScale extends StatefulWidget {
 class _NutriVietPressScaleState extends State<NutriVietPressScale> {
   bool _pressed = false;
   Offset? _downPosition;
+  Timer? _pressDelay;
 
   void _release() {
+    _pressDelay?.cancel();
+    _pressDelay = null;
     _downPosition = null;
     if (_pressed && mounted) {
       setState(() => _pressed = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _pressDelay?.cancel();
+    super.dispose();
   }
 
   @override
@@ -42,19 +55,23 @@ class _NutriVietPressScaleState extends State<NutriVietPressScale> {
       behavior: HitTestBehavior.translucent,
       onPointerDown: (e) {
         _downPosition = e.position;
-        if (!_pressed && mounted) {
-          setState(() => _pressed = true);
-        }
+        _pressDelay?.cancel();
+        // Wait past initial scroll-slop (~45ms) so vertical ListView flings
+        // never scale cards down mid-scroll.
+        _pressDelay = Timer(const Duration(milliseconds: 45), () {
+          if (mounted && _downPosition != null && !_pressed) {
+            setState(() => _pressed = true);
+          }
+        });
       },
       onPointerMove: (e) {
-        if (_pressed &&
-            _downPosition != null &&
-            (e.position - _downPosition!).distance > 12.0) {
+        if (_downPosition != null &&
+            (e.position - _downPosition!).distance > 10.0) {
           _release();
         }
       },
       onPointerUp: (_) {
-        if (_pressed && widget.enableHaptic) {
+        if (_downPosition != null && widget.enableHaptic) {
           HapticFeedback.selectionClick();
         }
         _release();
@@ -106,18 +123,20 @@ class NutriVietGlassIconTile extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            tint.withValues(alpha: 0.17),
-            tint.withValues(alpha: 0.06),
+            Colors.white.withValues(alpha: 0.72),
+            tint.withValues(alpha: 0.19),
+            tint.withValues(alpha: 0.08),
           ],
+          stops: const [0.0, 0.36, 1.0],
         ),
         border: Border.all(
-          color: tint.withValues(alpha: 0.24),
-          width: 1.05,
+          color: Colors.white.withValues(alpha: 0.85),
+          width: 1.15,
         ),
         boxShadow: [
           BoxShadow(
-            color: tint.withValues(alpha: 0.08),
-            blurRadius: 8,
+            color: tint.withValues(alpha: 0.14),
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
@@ -163,10 +182,11 @@ class _NutriVietPulseHaloState extends State<NutriVietPulseHalo>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 900),
+      value: widget.active ? 1.0 : 0.0,
     );
     if (widget.active) {
-      _ctrl.repeat(reverse: true);
+      _ctrl.forward(from: 0.0);
     }
   }
 
@@ -175,7 +195,7 @@ class _NutriVietPulseHaloState extends State<NutriVietPulseHalo>
     super.didUpdateWidget(oldWidget);
     if (widget.active != oldWidget.active) {
       if (widget.active) {
-        _ctrl.repeat(reverse: true);
+        _ctrl.forward(from: 0.0);
       } else {
         _ctrl.stop();
       }
@@ -195,15 +215,16 @@ class _NutriVietPulseHaloState extends State<NutriVietPulseHalo>
       child: AnimatedBuilder(
         animation: _ctrl,
         builder: (context, child) {
-          final t = Curves.easeInOutSine.transform(_ctrl.value);
-          return Container(
+          final pulse = math.sin(_ctrl.value * math.pi);
+          final alpha = 0.16 + 0.14 * pulse;
+          return DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: widget.glowColor.withValues(alpha: 0.14 + 0.14 * t),
-                  blurRadius: 10 + 8 * t,
-                  spreadRadius: 1 + 2.5 * t,
+                  color: widget.glowColor.withValues(alpha: alpha),
+                  blurRadius: 12 + 5 * pulse,
+                  spreadRadius: 1.5 + 1.5 * pulse,
                 ),
               ],
             ),
@@ -242,7 +263,7 @@ class _NutriVietTabViewState extends State<NutriVietTabView>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 230),
+      duration: const Duration(milliseconds: 160),
       value: 1.0,
     );
   }
@@ -269,30 +290,23 @@ class _NutriVietTabViewState extends State<NutriVietTabView>
       children: List<Widget>.generate(widget.children.length, (i) {
         final isActive = i == widget.index;
         return Offstage(
+          key: ValueKey(i),
           offstage: !isActive,
           child: TickerMode(
             enabled: isActive,
-            child: isActive
-                ? AnimatedBuilder(
-                    animation: _ctrl,
-                    builder: (context, child) {
-                      final t = Curves.easeOutCubic.transform(_ctrl.value);
-                      final dx = (1.0 - t) * 18.0 * _direction;
-                      final scale = 0.988 + 0.012 * t;
-                      return Opacity(
-                        opacity: (0.25 + 0.75 * t).clamp(0.0, 1.0),
-                        child: Transform.translate(
-                          offset: Offset(dx, 0),
-                          child: Transform.scale(
-                            scale: scale,
-                            child: child,
-                          ),
-                        ),
-                      );
-                    },
-                    child: widget.children[i],
-                  )
-                : widget.children[i],
+            child: AnimatedBuilder(
+              animation: _ctrl,
+              child: RepaintBoundary(child: widget.children[i]),
+              builder: (context, repaintedChild) {
+                if (!isActive || _ctrl.isCompleted) return repaintedChild!;
+                final t = Curves.easeOutCubic.transform(_ctrl.value);
+                final dx = (1.0 - t) * 14.0 * _direction;
+                return Transform.translate(
+                  offset: Offset(dx, 0),
+                  child: repaintedChild,
+                );
+              },
+            ),
           ),
         );
       }),
@@ -317,8 +331,8 @@ class _NutriVietHeroSheenState extends State<NutriVietHeroSheen>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 5200),
-    )..repeat();
+      duration: const Duration(milliseconds: 1100),
+    )..forward();
   }
 
   @override
@@ -337,8 +351,7 @@ class _NutriVietHeroSheenState extends State<NutriVietHeroSheen>
             child: AnimatedBuilder(
               animation: _ctrl,
               builder: (context, _) {
-                // Sweep rapidly in first 32% of cycle, then rest cleanly.
-                final raw = (_ctrl.value / 0.34).clamp(0.0, 1.0);
+                final raw = _ctrl.value;
                 final sweep = Curves.easeInOutSine.transform(raw);
                 final alignmentX = -1.7 + sweep * 3.4;
                 final alpha = raw > 0.0 && raw < 1.0
@@ -622,4 +635,136 @@ class _ScannerReticlePainter extends CustomPainter {
   bool shouldRepaint(covariant _ScannerReticlePainter oldDelegate) =>
       oldDelegate.progress != progress || oldDelegate.isScanning != isScanning;
 }
+
+/// Interactive Liquid Glass CTA pill built over [LiquidGlassButton] with
+/// soft-body finger flex ([LiquidGlassTouch.flexing]) and a frosted pearl
+/// shimmer sweep during async operations instead of a bare spinner.
+class NutriVietGlassActionButton extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  final bool isPrimary;
+  final bool isDanger;
+  final double height;
+  final double? width;
+  final LiquidGlassStyle? style;
+  final Color? foregroundColor;
+
+  const NutriVietGlassActionButton({
+    super.key,
+    required this.label,
+    this.icon,
+    this.onPressed,
+    this.isLoading = false,
+    this.isPrimary = true,
+    this.isDanger = false,
+    this.height = 50,
+    this.width,
+    this.style,
+    this.foregroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveStyle = style ??
+        (isDanger
+            ? NutriVietGlass.dangerButton
+            : (isPrimary
+                ? NutriVietGlass.emeraldButton
+                : NutriVietGlass.neutralButton));
+    final fg = foregroundColor ??
+        (isPrimary || isDanger ? Colors.white : NutriVietGlass.inkPrimary);
+
+    return LiquidGlassButton(
+      width: width,
+      height: height,
+      style: effectiveStyle,
+      touch: NutriVietGlass.touchHorizontalCapsule,
+      foregroundColor: fg,
+      onPressed: isLoading ? null : onPressed,
+      child: isLoading
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NutriVietShimmerBox.circle(
+                  size: 16,
+                  baseColor: fg.withValues(alpha: 0.28),
+                  highlightColor: Colors.white,
+                ),
+                const SizedBox(width: 10),
+                NutriVietShimmerBox(
+                  width: 88,
+                  height: 12,
+                  borderRadius: 6,
+                  baseColor: fg.withValues(alpha: 0.30),
+                  highlightColor: Colors.white,
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  PhosphorIcon(icon!, size: 19, color: fg),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Morphing Liquid Glass surface powered by [LiquidGlassMorph] — smoothly
+/// stretches and reforms its glass capsule whenever its keyed child state flips
+/// (e.g. collapsed summary ↔ expanded detail card).
+class NutriVietGlassMorphCard extends StatelessWidget {
+  final Widget child;
+  final LiquidGlassMorphMotion motion;
+  final LiquidGlassStyle? style;
+  final Alignment alignment;
+  final double smoothness;
+  final double? width;
+  final LiquidGlassTouch? touch;
+
+  const NutriVietGlassMorphCard({
+    super.key,
+    required this.child,
+    this.motion = LiquidGlassMorphMotion.calm,
+    this.style,
+    this.alignment = Alignment.topCenter,
+    this.smoothness = 26,
+    this.width,
+    this.touch,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LiquidGlassMorph(
+      width: width,
+      alignment: alignment,
+      motion: motion,
+      smoothness: smoothness,
+      touch: touch,
+      style: style ?? NutriVietGlass.cardGlass(cornerRadius: 22),
+      child: child,
+    );
+  }
+}
+
 
