@@ -12,7 +12,7 @@ class ContributeProductScreen extends StatefulWidget {
 class _ContributeProductScreenState extends State<ContributeProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _barcodeController = TextEditingController(text: '8934567891234');
+  final _barcodeController = TextEditingController();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _ingredientsController = TextEditingController();
@@ -31,6 +31,8 @@ class _ContributeProductScreenState extends State<ContributeProductScreen> {
     {'code': 'gluten', 'name': '🌾 Gluten / Lúa mì'},
     {'code': 'eggs', 'name': '🥚 Trứng'},
     {'code': 'soy', 'name': '🌱 Đậu nành'},
+    {'code': 'tree_nuts', 'name': '🌰 Hạt cây'},
+    {'code': 'sesame', 'name': '🌿 Mè (Vừng)'},
   ];
 
   @override
