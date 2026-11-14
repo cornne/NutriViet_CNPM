@@ -7,6 +7,7 @@ import 'package:nutriviet_mobile/main.dart';
 import 'package:nutriviet_mobile/screens/login_screen.dart';
 import 'package:nutriviet_mobile/screens/settings_screen.dart';
 import 'package:nutriviet_mobile/theme/nutriviet_glass.dart';
+import 'package:nutriviet_mobile/widgets/nutriviet_glass_modal.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_shimmer.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_ui.dart';
 
@@ -185,4 +186,189 @@ void main() {
     expect(find.text('Language'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('NutriVietHorizontalFadeScroll fades only overflowing edges', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: NutriVietHorizontalFadeScroll(
+              child: Row(
+                children: [
+                  SizedBox(width: 80, height: 40),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(ShaderMask), findsNothing);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: NutriVietHorizontalFadeScroll(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  SizedBox(width: 120, height: 40, child: Text('Đường')),
+                  SizedBox(width: 10),
+                  SizedBox(width: 120, height: 40, child: Text('Muối')),
+                  SizedBox(width: 10),
+                  SizedBox(width: 120, height: 40, child: Text('Chất béo')),
+                  SizedBox(width: 10),
+                  SizedBox(width: 120, height: 40, child: Text('Dị ứng')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(ShaderMask), findsOneWidget);
+
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(-160, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ShaderMask), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('showNutriVietGlassSheet toggles check rows and dismisses cleanly', (
+    WidgetTester tester,
+  ) async {
+    final ValueNotifier<Set<String>> selected = ValueNotifier<Set<String>>({});
+    addTearDown(selected.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  showNutriVietGlassSheet<void>(
+                    context: context,
+                    builder: (ctx) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text('Tình trạng của tôi'),
+                        ValueListenableBuilder<Set<String>>(
+                          valueListenable: selected,
+                          builder: (_, items, __) => NutriVietGlassCheckRow(
+                            title: 'Tiểu đường',
+                            subtitle: 'Cảnh báo đường tinh luyện',
+                            checked: items.contains('diabetes'),
+                            onTap: () {
+                              final next = Set<String>.from(items);
+                              if (!next.add('diabetes')) {
+                                next.remove('diabetes');
+                              }
+                              selected.value = next;
+                            },
+                          ),
+                        ),
+                        const NutriVietGlassOptionRow(
+                          title: 'Tiếng Việt',
+                          subtitle: 'Giao diện tiếng Việt',
+                          selected: true,
+                          onTap: _noop,
+                        ),
+                        NutriVietGlassPillButton(
+                          label: 'Xong',
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Mở sheet'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Mở sheet'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tình trạng của tôi'), findsOneWidget);
+    expect(selected.value, isEmpty);
+
+    await tester.tap(find.text('Tiểu đường'));
+    await tester.pumpAndSettle();
+    expect(selected.value, contains('diabetes'));
+
+    await tester.tap(find.text('Xong'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tình trạng của tôi'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('showNutriVietGlassDialog renders and dismisses cleanly', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  showNutriVietGlassDialog<void>(
+                    context: context,
+                    builder: (ctx) => NutriVietGlassDialog(
+                      title: const Text('Đổi mật khẩu tài khoản'),
+                      content: const TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Mật khẩu hiện tại',
+                        ),
+                      ),
+                      actions: [
+                        NutriVietGlassPillButton(
+                          label: 'Hủy',
+                          variant: NutriVietGlassButtonVariant.neutral,
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                        const NutriVietGlassPillButton(
+                          label: 'Lưu mật khẩu',
+                          onPressed: _noop,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Mở dialog'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Mở dialog'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đổi mật khẩu tài khoản'), findsOneWidget);
+    expect(find.text('Lưu mật khẩu'), findsOneWidget);
+
+    await tester.tap(find.text('Hủy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Đổi mật khẩu tài khoản'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
+
+void _noop() {}
