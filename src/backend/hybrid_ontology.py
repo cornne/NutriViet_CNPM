@@ -20,6 +20,7 @@ import sqlite3
 import unicodedata
 from difflib import SequenceMatcher
 import yaml
+import monolingual_catalog as mono_cat
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 FOODON_DIR = os.path.join(DATA_DIR, "foodon")
@@ -489,17 +490,63 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
         for c in subtree:
             curie_chronics.setdefault(c, set()).add(ch_code)
 
+    # Connect OWL restriction-inferred meat/poultry cuts to their canonical FoodOn food product parent classes
+    owl_meat_links = [
+        ("FOODON:00002574", "FOODON:00001134"),  # butchery cut of beef -> bovine meat food product
+        ("FOODON:02000403", "FOODON:00001134"),  # piece of beef -> bovine meat food product
+        ("FOODON:00005738", "FOODON:00001006"),  # red meat -> mammalian meat food product
+        ("FOODON:00002935", "FOODON:00001006"),  # venison -> mammalian meat food product
+        ("FOODON:03411669", "FOODON:00001287"),  # lamb -> sheep meat food product
+        ("FOODON:00001287", "FOODON:00001006"),  # sheep meat food product -> mammalian meat food product
+        ("FOODON:03411316", "FOODON:00001284"),  # duck -> duck meat food product
+        ("FOODON:00001284", "FOODON:00001131"),  # duck meat food product -> poultry meat food product
+        ("FOODON:00001009", "FOODON:00001007"),  # sausage -> meat sausage food product
+        ("FOODON:03315904", "FOODON:00001007"),  # sausage (whole or pieces) -> meat sausage food product
+        ("FOODON:00005591", "FOODON:00001038"),  # ham -> pork meat food product
+        ("FOODON:00001061", "FOODON:00001038"),  # bacon -> pork meat food product
+        ("FOODON:03302051", "FOODON:00001038"),  # lard -> pork meat food product
+        ("FOODON:00005450", "FOODON:00001038"),  # pork fat -> pork meat food product
+        ("FOODON:03302092", "FOODON:00001134"),  # beef fat -> bovine meat food product
+        ("FOODON:00005487", "FOODON:00001134"),  # beef tallow -> bovine meat food product
+    ]
+    for child_c, par_c in owl_meat_links:
+        parents_map.setdefault(child_c, set()).add(par_c)
+        children_map.setdefault(par_c, set()).add(child_c)
+
+    preferred_food_family_parents = {
+        "FOODON:00001006", "FOODON:00001134", "FOODON:00001038", "FOODON:00001040",
+        "FOODON:00001131", "FOODON:00001284", "FOODON:00001287", "FOODON:00001092",
+        "FOODON:00001010", "FOODON:00001007", "FOODON:03317170",
+    }
+    anatomical_noise_parents = {
+        "FOODON:00004328", "FOODON:00004332", "FOODON:00004335", "FOODON:02010107",
+        "FOODON:02010223", "FOODON:02010216", "FOODON:02000403", "FOODON:00004530",
+        "FOODON:03420116", "FOODON:03420164", "FOODON:03530146",
+    }
+
     # Choose single best parent_curie per node for compact O(1) lineage reconstruction
     best_parent_map = {}
     for c, pars in parents_map.items():
         valid_pars = [p for p in pars if p != c and p in labels_map and p.startswith(("FOODON:", "CHEBI:", "NCBITaxon:", "UBERON:"))]
         if valid_pars:
-            al_pars = [p for p in valid_pars if curie_allergens.get(p)]
-            best_parent_map[c] = sorted(al_pars)[0] if al_pars else sorted(valid_pars)[0]
+            def _parent_rank(p_curie: str):
+                has_al = 0 if curie_allergens.get(p_curie) else 1
+                is_pref_fam = 0 if p_curie in preferred_food_family_parents else 1
+                is_food_prod = 0 if "food product" in labels_map.get(p_curie, "").lower() else 1
+                is_anat_noise = 1 if p_curie in anatomical_noise_parents else 0
+                return (has_al, is_pref_fam, is_anat_noise, is_food_prod, p_curie)
+            best_parent_map[c] = sorted(valid_pars, key=_parent_rank)[0]
 
     # Build English -> CURIE Index from FoodOn
     en_index = {}
-    active_curies = set(yaml_ingredients.keys()) | set(curie_allergens.keys()) | set(curie_chronics.keys()) | set(curie_ecodes.keys())
+    active_curies = (
+        set(yaml_ingredients.keys())
+        | set(curie_allergens.keys())
+        | set(curie_chronics.keys())
+        | set(curie_ecodes.keys())
+        | preferred_food_family_parents
+        | {ch for ch, _ in owl_meat_links}
+    )
     anc_to_add = set()
     for c in list(active_curies):
         curr = c
@@ -517,12 +564,18 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
             return
         en_index.setdefault(norm, []).append((curie, tier))
 
+    # Canonical root mappings for mammalian meat ("meat") and poultry ("poultry")
+    register_en_term("meat", "FOODON:00001006", 0)
+    register_en_term("mammalian meat", "FOODON:00001006", 0)
+    register_en_term("poultry", "FOODON:00001131", 0)
+    register_en_term("poultry meat", "FOODON:00001131", 0)
+
     for c in active_curies:
         lbl = labels_map.get(c, "")
         if not lbl:
             continue
         register_en_term(lbl, c, 1)
-        for suffix in (" food product", " plant", " tree", " type"):
+        for suffix in (" meat food product", " food product", " plant", " tree", " type"):
             if lbl.lower().endswith(suffix):
                 base_lbl = lbl[:-len(suffix)].strip()
                 if len(base_lbl) >= 3:
@@ -567,7 +620,14 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
     conn_va.close()
 
     va_lookup = {}
-    va_redirect_groups = {}  # target_word -> set of alias_words (e.g. 'đậu phụng' -> {'đậu phộng', 'lạc'})
+    va_redirect_groups = {
+        "lợn": {"heo"},
+        "heo": {"lợn"},
+        "đậu phụng": {"đậu phộng", "lạc"},
+        "đậu phộng": {"lạc", "đậu phụng"},
+        "vừng": {"mè"},
+        "mè": {"vừng"},
+    }  # target_word -> set of alias_words
     for w, w_kd, mean, va_blob in va_rows:
         w_clean = (w or "").strip()
         if not w_clean:
@@ -578,6 +638,12 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
         if m_clean.startswith("@"):
             tgt = m_clean[1:].strip().lower()
             va_redirect_groups.setdefault(tgt, set()).add(w_low)
+        else:
+            m_xem_redir = re.match(r"^(?:\([^)]+\)\s*)?xem\s+([a-zA-Zà-ỹÀ-Ỹ\s\-]+?)(?:\s+\d+)?$", m_clean, flags=re.IGNORECASE)
+            if m_xem_redir:
+                tgt = m_xem_redir.group(1).strip().lower()
+                if tgt and len(tgt.split()) <= 2:
+                    va_redirect_groups.setdefault(tgt, set()).add(w_low)
 
     def resolve_va_senses(w_key: str, depth: int = 0) -> list[tuple[str, int]]:
         if depth > 3 or w_key not in va_lookup:
@@ -614,6 +680,8 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
     def add_vi_candidate(vi_word: str, curie: str, tier: int):
         vi_clean = re.sub(r"\s+", " ", vi_word.strip().lower()).strip(".,;:!?\"'()-")
         if not vi_clean or len(vi_clean) < 2 or len(vi_clean.split()) > 5:
+            return
+        if vi_clean in mono_cat.BAD_KALA_VI_TERMS:
             return
         # Reject strings that still contain HTML/encoding artifacts or English definitions
         if any(ch in vi_clean for ch in ("<", ">", "=", "/", "\\", "@", "#")):
@@ -665,6 +733,11 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
                 if matched_c:
                     tier = 1 if rank == 1 else (2 if rank <= 2 else 3)
                     add_vi_candidate(w_orig, matched_c, tier)
+                    w_low_orig = w_orig.lower()
+                    for tgt_word, aliases in va_redirect_groups.items():
+                        if tgt_word in w_low_orig and w_low_orig != tgt_word:
+                            for al_w in aliases:
+                                add_vi_candidate(w_low_orig.replace(tgt_word, al_w), matched_c, tier)
 
     # Load av_v3.db
     conn_av = sqlite3.connect(av_db_path)
@@ -801,7 +874,8 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
         best_curies = [c for c, t in cur_map.items() if t == min_tier]
         # Sort best_curies: prefer those with allergen/chronic tags, in yaml_ingredients, shorter label
         best_curies.sort(key=lambda c: (
-            0 if (c in curie_allergens or c in curie_chronics) else 1,
+            0 if (c in curie_allergens or c in curie_chronics or c in preferred_food_family_parents) else 1,
+            0 if c in preferred_food_family_parents else 1,
             0 if c in yaml_ingredients else 1,
             len(labels_map.get(c, "")),
             c,
@@ -984,6 +1058,8 @@ class HybridFoodOnEngine:
                 self.first_char_buckets.setdefault(key, []).append((tn, ta, lang, c, tier))
 
         conn.close()
+        if "FOODON:03317197" in self.concepts and "seafood" not in self.concepts["FOODON:03317197"]["allergens"]:
+            self.concepts["FOODON:03317197"]["allergens"].append("seafood")
 
     def get_lineage(self, curie: str, max_hops: int = 4) -> list[dict]:
         chain = []
@@ -1094,12 +1170,29 @@ class HybridFoodOnEngine:
             info = self.concepts[curie]
             vi_terms = self.curie_vi_terms.get(curie, [])
             en_terms = self.curie_en_terms.get(curie, [])
+            raw_lineage = self.get_lineage(curie)
+            risk = self.classify_concept_risk(curie)
+            mono = mono_cat.build_monolingual_card_fields(
+                curie=curie,
+                label_en=info["label_en"],
+                vi_terms=vi_terms,
+                en_terms=en_terms,
+                lineage_nodes=raw_lineage,
+                allergens=info["allergens"],
+                chronics=info["chronics"],
+                ecodes=info["ecodes"],
+                risk_level=risk["risk_level"],
+            )
             matched_records.append({
                 "curie": curie,
                 "label_en": info["label_en"],
-                "terms_vi": vi_terms[:8],
-                "terms_en": en_terms[:8],
+                "title_vi": mono["title_vi"],
+                "title_en": mono["title_en"],
+                "terms_vi": mono["clean_vi_terms"],
+                "terms_en": mono["clean_en_terms"],
                 "matched_term": matched_term,
+                "matched_vi": mono["title_vi"],
+                "matched_en": mono["title_en"],
                 "match_type": match_type,
                 "confidence": confidence,
                 "food_type": info["food_type"],
@@ -1107,7 +1200,7 @@ class HybridFoodOnEngine:
                 "chronics": info["chronics"],
                 "ecodes": info["ecodes"],
                 "lineage": self.get_lineage_string(curie),
-                "lineage_nodes": self.get_lineage(curie),
+                "lineage_nodes": mono["enriched_lineage"],
             })
 
         # Stage 1: Check E-numbers / INS codes via strict Regex (Never fuzzy match E-codes!)
@@ -1163,7 +1256,7 @@ class HybridFoodOnEngine:
         functional_stopwords = {
             "chất", "điều", "vị", "chỉnh", "độ", "làm", "dày", "tạo", "ngọt", "nhũ", "hóa", "hoá",
             "ổn", "định", "bảo", "quản", "chống", "oxy", "hương", "màu", "tự", "nhiên", "tổng", "hợp",
-            "chiết", "xuất", "tinh", "dầu", "bột", "nước", "không", "chứa", "Và", "và", "hoặc",
+            "chiết", "xuất", "tinh", "dầu", "bột", "đạm", "protein", "nước", "không", "chứa", "Và", "và", "hoặc",
         }
         for p_norm in unmatched_parts:
             words = p_norm.split()
@@ -1220,6 +1313,14 @@ class HybridFoodOnEngine:
                     continue
                 all_chronics.add(ch)
 
+        matched_records.sort(
+            key=lambda r: (
+                0 if r.get("allergens") else 1,
+                0 if r.get("chronics") else 1,
+                0 if r.get("ecodes") else 1,
+            )
+        )
+
         return {
             "input": raw_token,
             "matched": len(matched_records) > 0,
@@ -1233,24 +1334,58 @@ class HybridFoodOnEngine:
         ingredient_tokens: list[str],
         user_allergens: list[dict] | list[str],
         user_chronics: list[str] | None = None,
+        lang: str = "vi",
     ) -> dict:
         """
         Full UC09 Packaging Hazard Evaluation:
           - Compares extracted ingredient tokens against the user's allergy profile & chronic conditions.
           - Returns RED (Dangerous), YELLOW (Caution), or GREEN (Safe) verdict with WCAG dual-coded glyphs
-            (`[X]`, `[!]`, `[OK]`) and FoodOn ontological lineage explanations.
+            (`[X]`, `[!]`, `[OK]`) and strictly monolingual Vietnamese (`_vi`) and English (`_en`) fields.
         """
         t0 = time.perf_counter()
+        is_en = (lang or "vi").strip().lower().startswith("en")
         user_chronics = set(user_chronics or [])
         profile_severity = {}
+        profile_source_food_vi = {}
+        profile_source_food_en = {}
+        custom_curie_targets = {}
+
+        # Map known everyday food names between VI and EN so switching language translates source_food
+        everyday_by_code = {}
+        everyday_name_map = {}
+        for ef in getattr(mono_cat, "EVERYDAY_ALLERGY_FOODS", []):
+            everyday_by_code.setdefault(ef["allergen_code"], ef)
+            everyday_name_map[ef["food_name_vi"].lower()] = (ef["food_name_vi"], ef["food_name_en"])
+            everyday_name_map[ef["food_name_en"].lower()] = (ef["food_name_vi"], ef["food_name_en"])
+            for kw in ef.get("keywords", []):
+                everyday_name_map[kw.lower()] = (ef["food_name_vi"], ef["food_name_en"])
+
         for item in user_allergens:
             if isinstance(item, str):
-                profile_severity[item] = "high"
+                code = item.strip()
+                if code:
+                    profile_severity[code] = "high"
             elif isinstance(item, dict):
-                code = item.get("code") or item.get("allergen_code")
+                code = (item.get("code") or item.get("allergen_code") or "").strip()
                 sev = (item.get("severity") or "high").lower()
+                raw_name = (item.get("name") or item.get("allergen_name") or "").strip()
                 if code:
                     profile_severity[code] = sev
+                    if raw_name:
+                        low_rn = raw_name.lower()
+                        if low_rn in everyday_name_map:
+                            profile_source_food_vi[code], profile_source_food_en[code] = everyday_name_map[low_rn]
+                        elif raw_name not in (
+                            mono_cat.ALLERGEN_DISPLAY_NAMES_VI.get(code, ""),
+                            mono_cat.ALLERGEN_DISPLAY_NAMES_EN.get(code, ""),
+                            code,
+                        ):
+                            profile_source_food_vi[code] = raw_name
+                            profile_source_food_en[code] = raw_name
+                    if code.startswith("curie:"):
+                        target_c = code.split("curie:", 1)[1].strip().upper()
+                        if target_c:
+                            custom_curie_targets[target_c] = code
 
         token_results = []
         red_triggers = []
@@ -1258,17 +1393,35 @@ class HybridFoodOnEngine:
 
         for tok in ingredient_tokens:
             res = self.recognize_ingredient(tok)
-            token_results.append(res)
+            triggered_codes_for_tok = []
+            triggered_chronics_for_tok = []
 
-            # Check allergen intersections
+            # 1. Check standard FoodOn allergen family intersections
             for al_code in res["allergens"]:
                 if al_code in profile_severity:
                     sev = profile_severity[al_code]
-                    primary_match = res["matches"][0] if res["matches"] else {}
+                    triggered_codes_for_tok.append(al_code)
+                    primary_match = next(
+                        (m for m in res["matches"] if al_code in m.get("allergens", [])),
+                        res["matches"][0] if res["matches"] else {},
+                    )
+                    al_vi = mono_cat.ALLERGEN_DISPLAY_NAMES_VI.get(al_code, al_code)
+                    al_en = mono_cat.ALLERGEN_DISPLAY_NAMES_EN.get(al_code, al_code)
+                    m_vi = primary_match.get("title_vi") or tok
+                    m_en = primary_match.get("title_en") or primary_match.get("label_en") or tok
+                    src_vi = profile_source_food_vi.get(al_code, "")
+                    src_en = profile_source_food_en.get(al_code, "")
                     trigger_info = {
                         "token": tok,
                         "allergen_code": al_code,
-                        "allergen_name_vi": ALLERGEN_DISPLAY_NAMES_VI.get(al_code, al_code),
+                        "allergen_name": al_en if is_en else al_vi,
+                        "allergen_name_vi": al_vi,
+                        "allergen_name_en": al_en,
+                        "source_food": src_en if is_en else src_vi,
+                        "source_food_vi": src_vi,
+                        "source_food_en": src_en,
+                        "matched_vi": m_vi,
+                        "matched_en": m_en,
                         "severity": sev,
                         "curie": primary_match.get("curie", ""),
                         "label_en": primary_match.get("label_en", ""),
@@ -1276,19 +1429,68 @@ class HybridFoodOnEngine:
                         "match_type": primary_match.get("match_type", ""),
                         "confidence": primary_match.get("confidence", 1.0),
                     }
-                    if sev in ("anaphylaxis", "high"):
-                        red_triggers.append(trigger_info)
-                    else:
-                        yellow_triggers.append(trigger_info)
+                    # Any allergen in user's allergy profile flags RED (Báo đỏ)
+                    red_triggers.append(trigger_info)
 
-            # Check chronic condition intersections
+            # 2. Check custom FoodOn CURIE lineage intersections (for non-Big-8 foods)
+            if custom_curie_targets and res["matches"]:
+                for m in res["matches"]:
+                    lineage_c_set = {n["curie"] for n in m.get("lineage_nodes", [])}
+                    lineage_c_set.add(m["curie"])
+                    m_fam = self.infer_foodon_family(m["curie"])
+                    for target_c, full_code in custom_curie_targets.items():
+                        target_fam = self.infer_foodon_family(target_c)
+                        is_lineage_hit = (target_c in lineage_c_set) or (m_fam == full_code) or (m_fam == target_fam)
+                        if is_lineage_hit and full_code not in triggered_codes_for_tok:
+                            triggered_codes_for_tok.append(full_code)
+                            fam_vi = mono_cat.ALLERGEN_DISPLAY_NAMES_VI.get(full_code) or mono_cat.ALLERGEN_DISPLAY_NAMES_VI.get(target_fam)
+                            fam_en = mono_cat.ALLERGEN_DISPLAY_NAMES_EN.get(full_code) or mono_cat.ALLERGEN_DISPLAY_NAMES_EN.get(target_fam)
+                            card_target = self._build_concept_card(target_c, lang=lang) if target_c in self.concepts else {}
+                            if not fam_vi:
+                                fam_vi = card_target.get("title_vi") or profile_source_food_vi.get(full_code) or target_c
+                            if not fam_en:
+                                fam_en = card_target.get("title_en") or profile_source_food_en.get(full_code) or target_c
+                            src_vi = profile_source_food_vi.get(full_code) or card_target.get("title_vi") or fam_vi
+                            src_en = profile_source_food_en.get(full_code) or card_target.get("title_en") or fam_en
+                            red_triggers.append({
+                                "token": tok,
+                                "allergen_code": full_code,
+                                "allergen_name": fam_en if is_en else fam_vi,
+                                "allergen_name_vi": fam_vi,
+                                "allergen_name_en": fam_en,
+                                "source_food": src_en if is_en else src_vi,
+                                "source_food_vi": src_vi,
+                                "source_food_en": src_en,
+                                "matched_vi": m.get("title_vi") or tok,
+                                "matched_en": m.get("title_en") or tok,
+                                "severity": "high",
+                                "curie": m.get("curie", ""),
+                                "label_en": m.get("label_en", ""),
+                                "lineage": m.get("lineage", ""),
+                                "match_type": m.get("match_type", ""),
+                                "confidence": m.get("confidence", 1.0),
+                            })
+
+            # 3. Check chronic condition intersections
             for ch_code in res["chronics"]:
                 if ch_code in user_chronics:
-                    primary_match = res["matches"][0] if res["matches"] else {}
+                    triggered_chronics_for_tok.append(ch_code)
+                    primary_match = next(
+                        (m for m in res["matches"] if ch_code in m.get("chronics", [])),
+                        res["matches"][0] if res["matches"] else {},
+                    )
+                    ch_vi = mono_cat.CHRONIC_DISPLAY_NAMES_VI.get(ch_code, ch_code)
+                    ch_en = mono_cat.CHRONIC_DISPLAY_NAMES_EN.get(ch_code, ch_code)
+                    m_vi = primary_match.get("title_vi") or tok
+                    m_en = primary_match.get("title_en") or primary_match.get("label_en") or tok
                     yellow_triggers.append({
                         "token": tok,
                         "chronic_code": ch_code,
-                        "chronic_name_vi": CHRONIC_DISPLAY_NAMES_VI.get(ch_code, ch_code),
+                        "chronic_name": ch_en if is_en else ch_vi,
+                        "chronic_name_vi": ch_vi,
+                        "chronic_name_en": ch_en,
+                        "matched_vi": m_vi,
+                        "matched_en": m_en,
                         "severity": "caution",
                         "curie": primary_match.get("curie", ""),
                         "label_en": primary_match.get("label_en", ""),
@@ -1297,24 +1499,34 @@ class HybridFoodOnEngine:
                         "confidence": primary_match.get("confidence", 1.0),
                     })
 
+            res["is_allergy_trigger"] = len(triggered_codes_for_tok) > 0
+            res["triggered_allergen_codes"] = triggered_codes_for_tok
+            res["is_chronic_trigger"] = len(triggered_chronics_for_tok) > 0
+            token_results.append(res)
+
         if red_triggers:
             verdict = "RED"
             wcag_glyph = "[!X]"
             title_vi = "NGUY HIỂM: PHÁT HIỆN DỊ ỨNG - KHÔNG NÊN SỬ DỤNG"
+            title_en = "HIGH RISK: ALLERGEN DETECTED - DO NOT CONSUME"
         elif yellow_triggers:
             verdict = "YELLOW"
             wcag_glyph = "[!?]"
             title_vi = "CẢNH BÁO: CẦN THẬN TRỌNG - CHỨA CHẤT CẦN KIÊNG / TIẾT CHẾ"
+            title_en = "CAUTION: CONTAINS INGREDIENTS TO LIMIT OR AVOID"
         else:
             verdict = "GREEN"
             wcag_glyph = "[OK]"
             title_vi = "AN TOÀN SỬ DỤNG - KHÔNG PHÁT HIỆN DỊ ỨNG"
+            title_en = "SAFE TO CONSUME - NO ALLERGEN TRIGGERS DETECTED"
 
         latency_ms = round((time.perf_counter() - t0) * 1000, 2)
         return {
             "verdict": verdict,
             "wcag_glyph": wcag_glyph,
+            "title": title_en if is_en else title_vi,
             "title_vi": title_vi,
+            "title_en": title_en,
             "latency_ms": latency_ms,
             "red_triggers": red_triggers,
             "yellow_triggers": yellow_triggers,
@@ -1390,22 +1602,31 @@ class HybridFoodOnEngine:
                         record_hit(curie, rk, ec.upper(), "ecode")
 
             # 3. Vietnamese lexical search
+            q_has_vi_accents = any(ord(c) > 127 for c in q_norm)
             if lang_scope in ("all", "vi"):
                 for tn, (curie, tier) in self.vi_exact.items():
+                    if re.search(r"[aâàảãáạấầẩẫậ]y[a-zà-ỹ]", tn):
+                        continue
+                    cat_bonus = -8 if curie in mono_cat.CONCEPT_CATALOG else 0
                     if tn == q_norm:
                         record_hit(curie, 3 + tier, tn, "vi")
+                    elif tn.startswith(q_norm + " "):
+                        record_hit(curie, max(5, 14 + tier * 2 + cat_bonus + min(len(tn), 20)), tn, "vi")
                     elif tn.startswith(q_norm):
-                        record_hit(curie, 20 + tier * 2 + min(len(tn), 30), tn, "vi")
+                        record_hit(curie, max(8, 24 + tier * 2 + cat_bonus + min(len(tn), 25)), tn, "vi")
+                    elif f" {q_norm} " in f" {tn} ":
+                        record_hit(curie, max(10, 32 + tier * 2 + cat_bonus + min(len(tn), 25)), tn, "vi")
                     elif q_norm in tn:
-                        record_hit(curie, 50 + tier * 2 + min(len(tn), 30), tn, "vi")
-                # Also check unaccented ASCII index for Vietnamese
-                if q_ascii:
+                        record_hit(curie, 55 + tier * 2 + min(len(tn), 30), tn, "vi")
+                # Only fall back to unaccented ASCII index when the query itself has no Vietnamese diacritics
+                if q_ascii and not q_has_vi_accents:
                     for ta, entries in self.ascii_index.items():
-                        if ta == q_ascii or ta.startswith(q_ascii) or (len(q_ascii) >= 3 and q_ascii in ta):
+                        if ta == q_ascii or ta.startswith(q_ascii + " ") or (len(q_ascii) >= 3 and ta.startswith(q_ascii)):
                             for tn, lg, curie, tier in entries:
                                 if lg != "vi":
                                     continue
-                                rk = 8 + tier if ta == q_ascii else (30 + tier if ta.startswith(q_ascii) else 65 + tier)
+                                cat_bonus = -6 if curie in mono_cat.CONCEPT_CATALOG else 0
+                                rk = (8 + tier) if ta == q_ascii else (28 + tier + cat_bonus if ta.startswith(q_ascii + " ") else 45 + tier)
                                 record_hit(curie, rk, tn, "vi")
 
             # 4. English lexical search
@@ -1413,12 +1634,17 @@ class HybridFoodOnEngine:
                 q_en = normalize_en_key(q_norm)
                 if q_en:
                     for tn, (curie, tier) in self.en_exact.items():
+                        cat_bonus = -10 if curie in mono_cat.CONCEPT_CATALOG else 0
                         if tn == q_en:
                             record_hit(curie, 4 + tier, tn, "en")
+                        elif tn.startswith(q_en + " ") or tn.endswith(" " + q_en):
+                            record_hit(curie, max(6, 16 + tier * 2 + cat_bonus + min(len(tn), 20)), tn, "en")
+                        elif f" {q_en} " in f" {tn} ":
+                            record_hit(curie, max(8, 22 + tier * 2 + cat_bonus + min(len(tn), 25)), tn, "en")
                         elif tn.startswith(q_en):
-                            record_hit(curie, 25 + tier * 2 + min(len(tn), 30), tn, "en")
+                            record_hit(curie, max(12, 34 + tier * 2 + cat_bonus + min(len(tn), 25)), tn, "en")
                         elif len(q_en) >= 3 and q_en in tn:
-                            record_hit(curie, 55 + tier * 2 + min(len(tn), 30), tn, "en")
+                            record_hit(curie, 58 + tier * 2 + min(len(tn), 30), tn, "en")
 
             # 5. Also include any 4-stage recognition matches (e.g. fuzzy or component matches)
             if recognition and recognition["matched"]:
@@ -1506,70 +1732,73 @@ class HybridFoodOnEngine:
         # 3. Low Risk (Nguy cơ thấp): Natural extracts/pigments or mild food-grade compounds
         return {"risk_level": "low", "risk_label_vi": "Nguy cơ thấp", "risk_label_en": "Low risk"}
 
-    def _build_concept_card(self, curie: str, primary_code: str = "") -> dict:
+    def _build_concept_card(
+        self,
+        curie: str,
+        primary_code: str = "",
+        lang: str = "vi",
+        preferred_vi_term: str = "",
+    ) -> dict:
         info = self.concepts[curie]
         vi_terms = self.curie_vi_terms.get(curie, [])
         en_terms = self.curie_en_terms.get(curie, [])
         lineage_nodes = self.get_lineage(curie, max_hops=4)
         risk = self.classify_concept_risk(curie)
-
-        raw_label = info["label_en"].replace("/", "; ")
-        display_en = raw_label[0].upper() + raw_label[1:] if raw_label else curie
-        primary_vi = vi_terms[0] if vi_terms else ""
-        if primary_vi and primary_vi.lower() not in display_en.lower():
-            display_title = f"{display_en} ({primary_vi})"
-        else:
-            display_title = display_en
-
-        # Build ontological description from lineage + Kala Vietnamese synonyms + allergen/chronic tags
-        parent_labels = [
-            f"{n['label_vi'] or n['label_en']} ({n['curie']})"
-            for n in lineage_nodes[1:3]
-            if n.get("label_en")
-        ]
-        desc_parts = []
-        if vi_terms:
-            desc_parts.append(f"Thuật ngữ tiếng Việt (Kala): {', '.join(vi_terms[:4])}.")
-        if parent_labels:
-            desc_parts.append(f"Phân loại FoodOn: {' → '.join(parent_labels)}.")
-        if info["allergens"]:
-            al_names = [ALLERGEN_DISPLAY_NAMES_VI.get(a, a) for a in info["allergens"]]
-            desc_parts.append(f"Cảnh báo dị ứng: {', '.join(al_names)}.")
-        if info["chronics"]:
-            ch_names = [CHRONIC_DISPLAY_NAMES_VI.get(c, c) for c in info["chronics"]]
-            desc_parts.append(f"Lưu ý bệnh lý: {', '.join(ch_names)}.")
-        if not desc_parts:
-            desc_parts.append(f"Phân loại Ontology: {info['food_type'] or 'food component'} ({curie}).")
+        is_en = (lang or "vi").strip().lower().startswith("en")
 
         code_badge = (primary_code or (info["ecodes"][0] if info["ecodes"] else curie)).upper()
+        mono = mono_cat.build_monolingual_card_fields(
+            curie=curie,
+            label_en=info["label_en"],
+            vi_terms=vi_terms,
+            en_terms=en_terms,
+            lineage_nodes=lineage_nodes,
+            allergens=info["allergens"],
+            chronics=info["chronics"],
+            ecodes=info["ecodes"],
+            risk_level=risk["risk_level"],
+            primary_code=code_badge,
+            preferred_vi_term=preferred_vi_term,
+        )
+
+        title_vi = mono["title_vi"]
+        title_en = mono["title_en"]
+        desc_vi = mono["description_vi"]
+        desc_en = mono["description_en"]
+
         return {
             "code": code_badge,
             "curie": curie,
-            "title": display_title,
-            "label_en": info["label_en"],
-            "label_vi": primary_vi,
-            "terms_vi": vi_terms[:8],
-            "terms_en": en_terms[:8],
-            "description": " ".join(desc_parts),
+            "title": title_en if is_en else title_vi,
+            "title_vi": title_vi,
+            "title_en": title_en,
+            "label_en": title_en,
+            "label_vi": title_vi,
+            "terms_vi": mono["clean_vi_terms"],
+            "terms_en": mono["clean_en_terms"],
+            "description": desc_en if is_en else desc_vi,
+            "description_vi": desc_vi,
+            "description_en": desc_en,
             "food_type": info["food_type"],
             "allergens": info["allergens"],
             "chronics": info["chronics"],
             "ecodes": [e.upper() for e in info["ecodes"]],
             "risk_level": risk["risk_level"],
+            "risk_label": risk["risk_label_en"] if is_en else risk["risk_label_vi"],
             "risk_label_vi": risk["risk_label_vi"],
             "risk_label_en": risk["risk_label_en"],
             "lineage": self.get_lineage_string(curie),
-            "lineage_nodes": lineage_nodes,
+            "lineage_nodes": mono["enriched_lineage"],
         }
 
-    def list_additives(self, query: str = "", lang: str = "all", limit: int = 60) -> dict:
+    def list_additives(self, query: str = "", lang: str = "vi", limit: int = 60) -> dict:
         """
-        Lists E-code additives and/or searched ingredients directly from `nutriviet_hybrid.db`.
-        When query is empty, returns canonical E-codes sorted numerically (E100, E101, E102, E104, E110...).
-        When query is provided, searches both E-codes and the full bilingual FoodOn+Kala ontology.
+        Lists E-code additives and/or searched ingredients directly from `nutriviet_hybrid.db`
+        in strictly monolingual format (`lang='vi'` or `lang='en'`).
         """
         t0 = time.perf_counter()
         q = (query or "").strip()
+        lang_code = "en" if (lang or "vi").strip().lower().startswith("en") else "vi"
         limit = max(1, min(int(limit or 60), 150))
 
         def sort_ecode_key(ec_str: str):
@@ -1581,24 +1810,26 @@ class HybridFoodOnEngine:
         items = []
         seen_curies = set()
 
+        e_entries = [
+            (ec, curie)
+            for ec, curie in self.ecode_map.items()
+            if ec.startswith("e") and "(" not in ec
+        ]
+        e_entries.sort(key=lambda x: sort_ecode_key(x[0]))
+
         if not q:
-            # Default view: canonical E-numbers in numerical order (E100, E101, E102, E104, E110...)
-            e_entries = [
-                (ec, curie)
-                for ec, curie in self.ecode_map.items()
-                if ec.startswith("e") and "(" not in ec
-            ]
-            e_entries.sort(key=lambda x: sort_ecode_key(x[0]))
             for ec, curie in e_entries:
                 if curie in seen_curies or curie not in self.concepts:
                     continue
                 seen_curies.add(curie)
-                items.append(self._build_concept_card(curie, primary_code=ec.upper()))
+                items.append(self._build_concept_card(curie, primary_code=ec.upper(), lang=lang_code))
                 if len(items) >= limit:
                     break
         else:
             q_low = q.lower().strip()
+            q_ascii = remove_vietnamese_accents(q_low)
             q_compact = re.sub(r"\s+", "", q_low)
+
             # 1. Exact/Prefix E-code matches first
             e_matches = []
             for ec, curie in self.ecode_map.items():
@@ -1610,13 +1841,27 @@ class HybridFoodOnEngine:
                     continue
                 seen_curies.add(curie)
                 display_ec = ec.upper() if ec.startswith("e") else f"E{ec[3:].upper()}"
-                items.append(self._build_concept_card(curie, primary_code=display_ec))
+                items.append(self._build_concept_card(curie, primary_code=display_ec, lang=lang_code))
                 if len(items) >= limit:
                     break
 
-            # 2. Full Bilingual Ontology search for ingredients & additives
+            # 2. Match against curated Vietnamese & English E-code titles/descriptions
             if len(items) < limit:
-                search_res = self.search_concepts(query=q, lang_scope=lang, limit=limit)
+                for ec, curie in e_entries:
+                    if curie in seen_curies or curie not in self.concepts:
+                        continue
+                    card = self._build_concept_card(curie, primary_code=ec.upper(), lang=lang_code)
+                    haystack = f"{card['title_vi']} {card['title_en']} {card['description_vi']} {card['description_en']}".lower()
+                    haystack_ascii = remove_vietnamese_accents(haystack)
+                    if q_low in haystack or (q_ascii and q_ascii in haystack_ascii):
+                        seen_curies.add(curie)
+                        items.append(card)
+                        if len(items) >= limit:
+                            break
+
+            # 3. Full Ontology search for ingredients & additives
+            if len(items) < limit:
+                search_res = self.search_concepts(query=q, lang_scope="all", limit=limit)
                 for r in search_res.get("results", []):
                     c = r["curie"]
                     if c in seen_curies:
@@ -1624,51 +1869,314 @@ class HybridFoodOnEngine:
                     seen_curies.add(c)
                     e_list = [e for e in r.get("ecodes", []) if e.lower().startswith("e")]
                     p_code = e_list[0].upper() if e_list else c
-                    items.append(self._build_concept_card(c, primary_code=p_code))
+                    items.append(self._build_concept_card(c, primary_code=p_code, lang=lang_code))
                     if len(items) >= limit:
                         break
 
         return {
             "query": q,
+            "lang": lang_code,
             "count": len(items),
             "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
             "items": items,
         }
 
-    def get_category_concepts(self, category: str, user_allergens: list[str] | None = None, limit: int = 20) -> dict:
+    def get_category_concepts(
+        self,
+        category: str,
+        user_allergens: list[str] | None = None,
+        lang: str = "vi",
+        limit: int = 20,
+    ) -> dict:
         """
-        Returns real FoodOn concepts for the 4 Home Screen filter categories:
-          - 'sugar' (Đường -> chronic: diabetes)
-          - 'salt'  (Muối -> chronic: hypertension)
-          - 'fat'   (Chất béo -> chronic: cholesterol)
-          - 'allergen' (Dị ứng -> user's active allergen groups or all 8 allergen groups)
+        Returns curated & verified FoodOn concepts for the 4 Home Screen filter categories
+        in strictly monolingual format (`lang='vi'` or `lang='en'`):
+          - 'sugar' (Đường / Sugar -> chronic: diabetes)
+          - 'salt'  (Muối / Salt -> chronic: hypertension)
+          - 'fat'   (Chất béo / Fat -> chronic: cholesterol)
+          - 'allergen' (Dị ứng / Allergens -> user's active allergen groups or all 8 allergen groups)
         """
         cat = (category or "sugar").lower().strip()
+        lang_code = "en" if (lang or "vi").strip().lower().startswith("en") else "vi"
         chronic_map = {"sugar": "diabetes", "salt": "hypertension", "fat": "cholesterol"}
         items = []
+        seen = set()
 
         if cat in chronic_map:
-            target_ch = chronic_map[cat]
-            candidates = [
-                curie for curie, info in self.concepts.items()
-                if target_ch in info["chronics"] and self.curie_vi_terms.get(curie)
-            ]
-            candidates.sort(key=lambda c: (0 if self.concepts[c]["ecodes"] else 1, len(self.concepts[c]["label_en"]), c))
-            for c in candidates[:limit]:
-                items.append(self._build_concept_card(c))
+            curated_list = mono_cat.CURATED_CATEGORY_CURIES.get(cat, [])
+            for c in curated_list:
+                if c in self.concepts and c not in seen:
+                    seen.add(c)
+                    items.append(self._build_concept_card(c, lang=lang_code))
+                    if len(items) >= limit:
+                        break
+            if len(items) < limit:
+                target_ch = chronic_map[cat]
+                candidates = [
+                    curie for curie, info in self.concepts.items()
+                    if target_ch in info["chronics"] and curie not in seen and info["ecodes"]
+                ]
+                candidates.sort(key=lambda c: (len(self.concepts[c]["label_en"]), c))
+                for c in candidates:
+                    seen.add(c)
+                    items.append(self._build_concept_card(c, lang=lang_code))
+                    if len(items) >= limit:
+                        break
         else:
-            active_als = set(user_allergens or [])
-            candidates = [
-                curie for curie, info in self.concepts.items()
-                if info["allergens"]
-                and (not active_als or any(a in active_als for a in info["allergens"]))
-                and self.curie_vi_terms.get(curie)
-            ]
-            candidates.sort(key=lambda c: (0 if self.concepts[c]["ecodes"] else 1, len(self.concepts[c]["label_en"]), c))
-            for c in candidates[:limit]:
-                items.append(self._build_concept_card(c))
+            active_als = [a for a in (user_allergens or []) if a in mono_cat.CURATED_CATEGORY_CURIES["allergen"]]
+            if not active_als:
+                active_als = list(mono_cat.CURATED_CATEGORY_CURIES["allergen"].keys())
+            for al_code in active_als:
+                for c in mono_cat.CURATED_CATEGORY_CURIES["allergen"].get(al_code, []):
+                    if c in self.concepts and c not in seen:
+                        seen.add(c)
+                        items.append(self._build_concept_card(c, lang=lang_code))
+                        if len(items) >= limit:
+                            break
+                if len(items) >= limit:
+                    break
 
-        return {"category": cat, "count": len(items), "items": items}
+        return {"category": cat, "lang": lang_code, "count": len(items), "items": items}
+
+    def infer_foodon_family(self, curie: str) -> str:
+        """
+        Dynamically infers the underlying FoodOn allergen or food family root from the
+        ontology hierarchy in `nutriviet_hybrid.db`:
+          - Returns one of the 8 major FoodOn allergen subtree codes ('milk', 'peanuts', 'seafood',
+            'gluten', 'eggs', 'soy', 'tree_nuts', 'sesame') if present;
+          - Otherwise traverses the FoodOn parent lineage to find the semantic food family root
+            (e.g. 'curie:FOODON:00001006' for mammalian/red meat, 'curie:FOODON:00001131' for poultry,
+            or the parent FoodOn food class).
+        """
+        info = self.concepts.get(curie)
+        if not info:
+            return f"curie:{curie}"
+        if info["allergens"]:
+            return info["allergens"][0]
+
+        lineage = self.get_lineage(curie, max_hops=5)
+        lineage_curies = [n["curie"] for n in lineage]
+
+        if "FOODON:00001006" in lineage_curies:
+            return "curie:FOODON:00001006"
+        if "FOODON:00001131" in lineage_curies:
+            return "curie:FOODON:00001131"
+        if "FOODON:00001092" in lineage_curies:
+            return "curie:FOODON:00001092"
+
+        generic_roots = {
+            "FOODON:00001002", "FOODON:00002403", "FOODON:00001714",
+            "FOODON:00001015", "FOODON:00004242", "FOODON:00004328",
+            "FOODON:03420116", "FOODON:03420164", "FOODON:00002196",
+            "FOODON:00002131", "FOODON:03311737",
+        }
+        if len(lineage_curies) >= 2 and lineage_curies[1] not in generic_roots:
+            return f"curie:{lineage_curies[1]}"
+        return f"curie:{curie}"
+
+    def _get_dynamic_family_metadata(
+        self,
+        allergen_code: str,
+        fallback_food_vi: str,
+        fallback_food_en: str,
+    ) -> tuple[str, str, str, str]:
+        """Returns (fam_vi, fam_en, rel_vi, rel_en) directly from FoodOn ontology & catalog."""
+        fam_vi = mono_cat.ALLERGEN_DISPLAY_NAMES_VI.get(allergen_code)
+        fam_en = mono_cat.ALLERGEN_DISPLAY_NAMES_EN.get(allergen_code)
+        rel_vi = mono_cat.ALLERGEN_RELATED_INGREDIENTS_VI.get(allergen_code)
+        rel_en = mono_cat.ALLERGEN_RELATED_INGREDIENTS_EN.get(allergen_code)
+
+        if allergen_code.startswith("curie:"):
+            fam_curie = allergen_code.split("curie:", 1)[1].strip()
+            if fam_curie in self.concepts:
+                fam_card = self._build_concept_card(fam_curie, lang="vi")
+                if not fam_vi:
+                    fam_vi = fam_card["title_vi"]
+                if not fam_en:
+                    fam_en = fam_card["title_en"]
+                if not rel_vi or not rel_en:
+                    # Gather real child/sibling examples sharing this FoodOn family in nutriviet_hybrid.db
+                    sib_vi = []
+                    sib_en = []
+                    for c_id, c_info in self.concepts.items():
+                        if c_info["parent_curie"] == fam_curie or c_id == fam_curie:
+                            c_card = self._build_concept_card(c_id, lang="vi")
+                            if c_card["title_vi"] not in sib_vi and "Hợp phần" not in c_card["title_vi"]:
+                                sib_vi.append(c_card["title_vi"])
+                            if c_card["title_en"] not in sib_en:
+                                sib_en.append(c_card["title_en"])
+                            if len(sib_vi) >= 6:
+                                break
+                    if not rel_vi:
+                        rel_vi = ", ".join(sib_vi) if sib_vi else f"Các thành phần và dẫn xuất thuộc nhóm {fam_vi}"
+                    if not rel_en:
+                        rel_en = ", ".join(sib_en) if sib_en else f"Ingredients and derivatives under {fam_en}"
+
+        return (
+            fam_vi or fallback_food_vi,
+            fam_en or fallback_food_en,
+            rel_vi or f"Các thành phần và dẫn xuất cùng họ với {fallback_food_vi} trên cây phân loại FoodOn",
+            rel_en or f"Ingredients and derivatives in the same FoodOn family as {fallback_food_en}",
+        )
+
+    def search_allergy_foods(self, query: str = "", lang: str = "vi", limit: int = 12) -> dict:
+        """
+        100% Data-Driven Smart FoodOn Allergy Lookup over `nutriviet_hybrid.db`:
+        Allows users to search ANY food or ingredient in Vietnamese or English (e.g., "meat", "thịt",
+        "thịt bò", "thịt heo", "bơ", "butter", "phô mai", "bánh mì", "tôm", "đậu phụ", etc.)
+        and traverses the FoodOn ontology graph to infer the underlying allergen/food family root
+        so that scanning any packaging label containing sibling derivatives automatically triggers a RED alert!
+        """
+        t0 = time.perf_counter()
+        q = (query or "").strip()
+        q_low = q.lower()
+        q_ascii = remove_vietnamese_accents(q_low)
+        is_en = (lang or "vi").strip().lower().startswith("en")
+        lang_code = "en" if is_en else "vi"
+        limit = max(1, min(int(limit or 12), 30))
+
+        items = []
+        seen_curies = set()
+
+        def _emoji_for_family(al_code: str, curie: str) -> str:
+            if al_code == "milk":
+                return "🧈" if curie == "FOODON:03310351" else ("🧀" if curie == "FOODON:03000287" else "🥛")
+            if al_code == "peanuts":
+                return "🥜"
+            if al_code == "seafood":
+                return "🦐"
+            if al_code == "gluten":
+                return "🍞"
+            if al_code == "eggs":
+                return "🥚"
+            if al_code == "soy":
+                return "🌱"
+            if al_code == "tree_nuts":
+                return "🌰"
+            if al_code == "sesame":
+                return "🌿"
+            if al_code in ("curie:FOODON:00001006", "curie:FOODON:00001134", "curie:FOODON:00001038", "curie:FOODON:00001092"):
+                return "🥩"
+            if al_code in ("curie:FOODON:00001131", "curie:FOODON:00001040"):
+                return "🍗"
+            return "🍽️"
+
+        def _make_item(
+            curie: str,
+            allergen_code: str,
+            food_vi: str,
+            food_en: str,
+            emoji: str = "",
+            preferred_vi_term: str = "",
+        ) -> dict:
+            seen_curies.add(curie)
+            card = (
+                self._build_concept_card(curie, lang=lang_code, preferred_vi_term=preferred_vi_term)
+                if curie in self.concepts
+                else {}
+            )
+            f_vi = food_vi or card.get("title_vi") or curie
+            f_en = food_en or card.get("title_en") or curie
+            fam_vi, fam_en, rel_vi, rel_en = self._get_dynamic_family_metadata(allergen_code, f_vi, f_en)
+            icon = emoji or _emoji_for_family(allergen_code, curie)
+            exp_vi = (
+                f"Khi bạn chọn dị ứng \"{f_vi}\", hệ thống FoodOn tự động suy luận liên kết tới \"{fam_vi}\". "
+                f"Khi quét nhãn có chứa: {rel_vi} → Hệ thống sẽ BÁO ĐỎ ngay lập tức!"
+            )
+            exp_en = (
+                f"Selecting \"{f_en}\" automatically links to \"{fam_en}\" via FoodOn Ontology. "
+                f"Scanning labels containing: {rel_en} → Automatically triggers a RED Alert!"
+            )
+            return {
+                "curie": curie,
+                "allergen_code": allergen_code,
+                "emoji": icon,
+                "food_name": f_en if is_en else f_vi,
+                "food_name_vi": f_vi,
+                "food_name_en": f_en,
+                "family_name": fam_en if is_en else fam_vi,
+                "family_name_vi": fam_vi,
+                "family_name_en": fam_en,
+                "related_ingredients": rel_en if is_en else rel_vi,
+                "related_ingredients_vi": rel_vi,
+                "related_ingredients_en": rel_en,
+                "explanation": exp_en if is_en else exp_vi,
+                "explanation_vi": exp_vi,
+                "explanation_en": exp_en,
+                "lineage_nodes": card.get("lineage_nodes", []),
+            }
+
+        if not q_low:
+            # Default browse suggestions when search box is empty
+            for ef in mono_cat.EVERYDAY_ALLERGY_FOODS:
+                if ef["curie"] in seen_curies:
+                    continue
+                items.append(_make_item(ef["curie"], ef["allergen_code"], ef["food_name_vi"], ef["food_name_en"], ef["emoji"]))
+                if len(items) >= limit:
+                    break
+        else:
+            # 1. Direct FoodOn Ontology 4-stage recognition on nutriviet_hybrid.db
+            rec = self.recognize_ingredient(q)
+            for m in rec.get("matches", []):
+                c = m["curie"]
+                if c in seen_curies or c not in self.concepts:
+                    continue
+                al_code = self.infer_foodon_family(c)
+                pref_vi = m.get("matched_term", "") if "vi" in m.get("match_type", "") else ""
+                card = self._build_concept_card(c, lang=lang_code, preferred_vi_term=pref_vi)
+                items.append(
+                    _make_item(
+                        curie=c,
+                        allergen_code=al_code,
+                        food_vi=card["title_vi"],
+                        food_en=card["title_en"],
+                        preferred_vi_term=pref_vi,
+                    )
+                )
+                if len(items) >= limit:
+                    break
+
+            # 2. Full FoodOn lexical & ontology search across nutriviet_hybrid.db
+            if len(items) < limit:
+                s_res = self.search_concepts(query=q, lang_scope="all", limit=24)
+                for r in s_res.get("results", []):
+                    c = r["curie"]
+                    if c in seen_curies or c not in self.concepts:
+                        continue
+                    al_code = self.infer_foodon_family(c)
+                    pref_vi = r.get("matched_term", "") if r.get("matched_lang") == "vi" else ""
+                    card = self._build_concept_card(c, lang=lang_code, preferred_vi_term=pref_vi)
+                    items.append(
+                        _make_item(
+                            curie=c,
+                            allergen_code=al_code,
+                            food_vi=card["title_vi"],
+                            food_en=card["title_en"],
+                            preferred_vi_term=pref_vi,
+                        )
+                    )
+                    if len(items) >= limit:
+                        break
+
+            # 3. Also include any matching common items if not yet in results
+            if len(items) < limit:
+                for ef in mono_cat.EVERYDAY_ALLERGY_FOODS:
+                    if ef["curie"] in seen_curies:
+                        continue
+                    haystack = f"{ef['food_name_vi']} {ef['food_name_en']} {' '.join(ef['keywords'])}".lower()
+                    haystack_ascii = remove_vietnamese_accents(haystack)
+                    if q_low in haystack or (q_ascii and q_ascii in haystack_ascii):
+                        items.append(_make_item(ef["curie"], ef["allergen_code"], ef["food_name_vi"], ef["food_name_en"], ef["emoji"]))
+                        if len(items) >= limit:
+                            break
+
+        return {
+            "query": q,
+            "lang": lang_code,
+            "count": len(items),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
+            "items": items,
+        }
 
 
 if __name__ == "__main__":
