@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_ui.dart';
 import 'allergy_profile_screen.dart';
 import 'login_screen.dart';
 
@@ -31,38 +34,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late String _currentName;
   List<Map<String, dynamic>> _chronics = [];
   List<Map<String, dynamic>> _allergens = [];
-  String _language = 'system';
+  String _language = AppLocale.code;
   bool _notifyBadges = true;
   bool _notifyReminders = false;
   bool _isLoading = true;
 
-  static const List<Map<String, String>> _chronicCatalog = [
-    {
-      'code': 'diabetes',
-      'name': 'Tiểu đường',
-      'desc': 'Cảnh báo đường tinh luyện, si-rô, maltose, glucose trong thực phẩm',
-    },
-    {
-      'code': 'hypertension',
-      'name': 'Tăng huyết áp',
-      'desc': 'Cảnh báo muối natri, bột ngọt (E621) và phụ gia giàu natri',
-    },
-    {
-      'code': 'gout',
-      'name': 'Bệnh Gút (Axit Uric)',
-      'desc': 'Cảnh báo hải sản giàu purin, chất điều vị E621 và đồ uống lên men',
-    },
-    {
-      'code': 'cholesterol',
-      'name': 'Mỡ máu / Cholesterol cao',
-      'desc': 'Cảnh báo mỡ động vật, dầu cọ tinh luyện và axit béo bão hòa',
-    },
-  ];
+  List<Map<String, String>> get _chronicCatalog => [
+        {
+          'code': 'diabetes',
+          'name': AppLocale.t('Tiểu đường', 'Diabetes'),
+          'desc': AppLocale.t(
+            'Cảnh báo đường tinh luyện, si-rô, mạch nha và đường đơn trong thực phẩm',
+            'Warns about refined sugar, syrups, maltose, and glucose in food products',
+          ),
+        },
+        {
+          'code': 'hypertension',
+          'name': AppLocale.t('Tăng huyết áp', 'Hypertension'),
+          'desc': AppLocale.t(
+            'Cảnh báo muối natri, bột ngọt (E621) và các phụ gia giàu natri',
+            'Warns about dietary sodium, MSG (E621), and high-sodium food additives',
+          ),
+        },
+        {
+          'code': 'gout',
+          'name': AppLocale.t('Bệnh Gút (Axit Uric)', 'Gout (High Uric Acid)'),
+          'desc': AppLocale.t(
+            'Cảnh báo hải sản giàu purin, chất điều vị và đồ uống lên men',
+            'Warns about high-purine seafood, flavor enhancers, and fermented drinks',
+          ),
+        },
+        {
+          'code': 'cholesterol',
+          'name': AppLocale.t('Mỡ máu / Cholesterol cao', 'High Cholesterol'),
+          'desc': AppLocale.t(
+            'Cảnh báo mỡ động vật, dầu cọ tinh luyện và chất béo bão hòa',
+            'Warns about animal fats, refined palm oil, and saturated fatty acids',
+          ),
+        },
+      ];
 
   @override
   void initState() {
     super.initState();
     _currentName = widget.userName;
+    _language = AppLocale.code;
     _loadData();
   }
 
@@ -76,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String get _shortName {
     final trimmed = _currentName.trim();
-    if (trimmed.isEmpty) return 'Bình';
+    if (trimmed.isEmpty) return AppLocale.t('Tôi', 'Me');
     final parts = trimmed.split(RegExp(r'\s+'));
     for (final p in parts) {
       if (p.toLowerCase() == 'bình' || p.toLowerCase() == 'binh') {
@@ -88,21 +104,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String get _chronicsSummary {
-    if (_chronics.isEmpty) return 'Không có';
-    final names = _chronics.map((c) => (c['name'] ?? c['code']).toString()).toList();
-    if (names.length == 1) return names.first;
-    return '${names.length} tình trạng';
+    if (_chronics.isEmpty) return AppLocale.t('Không có', 'None');
+    if (_chronics.length == 1) {
+      final c = _chronics.first;
+      return AppLocale.translateChronicCode(
+        c['code']?.toString(),
+        fallback: (c['name'] ?? c['code']).toString(),
+      );
+    }
+    return AppLocale.t(
+      '${_chronics.length} tình trạng',
+      '${_chronics.length} conditions',
+    );
   }
 
   String get _languageLabel {
-    switch (_language) {
-      case 'vi':
-        return 'Tiếng Việt (VI)';
-      case 'en':
-        return 'English (EN)';
-      default:
-        return 'Mặc định của hệ thống';
-    }
+    return AppLocale.isEn ? 'English' : 'Tiếng Việt';
   }
 
   Future<void> _loadData() async {
@@ -122,7 +139,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (results[2]['success'] == true && results[2]['settings'] is Map) {
       final s = results[2]['settings'] as Map;
-      _language = (s['language'] ?? 'system').toString();
+      final backendLang = (s['language'] ?? '').toString();
+      if (backendLang == 'en' || backendLang == 'vi') {
+        _language = backendLang;
+        await AppLocale.setLanguage(_language);
+      } else {
+        _language = AppLocale.code;
+      }
       _notifyBadges = s['notify_badges'] ?? true;
       _notifyReminders = s['notify_reminders'] ?? false;
     }
@@ -141,6 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _openChronicsSheet() async {
     final activeCodes = _chronics.map((c) => c['code'].toString()).toSet();
+    final catalog = _chronicCatalog;
     await showLiquidGlassSheet(
       context: context,
       isScrollControlled: true,
@@ -159,21 +183,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 8),
-                  const Text(
-                    'Tình trạng của tôi',
-                    style: TextStyle(
+                  Text(
+                    AppLocale.t('Tình trạng của tôi', 'My Health Conditions'),
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF111827),
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Chọn các tình trạng sức khỏe để hệ thống FoodOn tự động cảnh báo đường, muối hoặc chất béo khi quét nhãn.',
-                    style: TextStyle(fontSize: 13.5, color: Color(0xFF4B5563)),
+                  Text(
+                    AppLocale.t(
+                      'Chọn các tình trạng sức khỏe để hệ thống tự động cảnh báo đường, muối hoặc chất béo khi quét nhãn.',
+                      'Select your health conditions so the system automatically flags sugar, salt, or fat when scanning labels.',
+                    ),
+                    style: const TextStyle(fontSize: 13.5, color: Color(0xFF4B5563)),
                   ),
                   const SizedBox(height: 14),
-                  ..._chronicCatalog.map((item) {
+                  ...catalog.map((item) {
                     final code = item['code']!;
                     final isChecked = activeCodes.contains(code);
                     return CheckboxListTile(
@@ -209,10 +236,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 50,
                     style: NutriVietGlass.emeraldButton,
                     foregroundColor: Colors.white,
-                    label: 'Lưu tình trạng sức khỏe',
+                    label: AppLocale.t('Lưu tình trạng sức khỏe', 'Save health conditions'),
                     touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
                     onPressed: () async {
-                      final payload = _chronicCatalog
+                      final payload = catalog
                           .where((c) => activeCodes.contains(c['code']))
                           .map((c) => {'code': c['code']!, 'name': c['name']!})
                           .toList();
@@ -228,7 +255,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       } else if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(res['message'] ?? 'Không thể lưu tình trạng sức khỏe.'),
+                            content: Text(
+                              res['message'] ??
+                                  AppLocale.t(
+                                    'Không thể lưu tình trạng sức khỏe.',
+                                    'Unable to save health conditions.',
+                                  ),
+                            ),
                             backgroundColor: const Color(0xFFDC2626),
                           ),
                         );
@@ -246,9 +279,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _openLanguageSheet() async {
     final options = [
-      {'value': 'system', 'label': 'Mặc định của hệ thống', 'sub': 'Tự động nhận diện Song ngữ (Tiếng Việt + Tiếng Anh)'},
-      {'value': 'vi', 'label': 'Tiếng Việt (VI)', 'sub': 'Ưu tiên thuật ngữ Tiếng Việt từ Kala + FoodOn'},
-      {'value': 'en', 'label': 'English (EN)', 'sub': 'Ưu tiên thuật ngữ chuẩn quốc tế FoodOn OWL'},
+      {
+        'value': 'vi',
+        'label': 'Tiếng Việt',
+        'sub': AppLocale.t(
+          'Hiển thị toàn bộ giao diện và dữ liệu bằng Tiếng Việt',
+          'Display the entire interface and data in Vietnamese',
+        ),
+      },
+      {
+        'value': 'en',
+        'label': 'English',
+        'sub': AppLocale.t(
+          'Hiển thị toàn bộ giao diện và dữ liệu bằng Tiếng Anh',
+          'Display the entire interface and data in English',
+        ),
+      },
     ];
 
     await showLiquidGlassSheet(
@@ -266,13 +312,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-              const Text(
-                'Ngôn ngữ',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+              Text(
+                AppLocale.t('Ngôn ngữ giao diện', 'App Language'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
               ),
               const SizedBox(height: 10),
               ...options.map((opt) {
-                final selected = _language == opt['value'];
+                final selected = AppLocale.code == opt['value'];
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -286,10 +336,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     opt['sub']!,
                     style: const TextStyle(fontSize: 12.5, color: Color(0xFF6B7280)),
                   ),
-                  trailing: selected ? const Icon(Icons.check_circle_rounded, color: _brandGreen) : null,
+                  trailing: selected
+                      ? const PhosphorIcon(
+                          PhosphorIconsFill.checkCircle,
+                          color: _brandGreen,
+                          size: 22,
+                        )
+                      : null,
                   onTap: () async {
-                    setState(() => _language = opt['value']!);
+                    final newLang = opt['value']!;
                     Navigator.pop(ctx);
+                    await AppLocale.setLanguage(newLang);
+                    if (mounted) {
+                      setState(() => _language = newLang);
+                    }
                     await _persistSettings();
                   },
                 );
@@ -313,8 +373,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (result != null && result is Map) {
-      if (result['name'] != null && result['name'].toString().isNotEmpty) {
-        setState(() => _currentName = result['name'].toString());
+      final updatedName = result['full_name'] ?? result['name'];
+      if (updatedName != null && updatedName.toString().isNotEmpty) {
+        setState(() => _currentName = updatedName.toString());
       }
     }
     await _loadData();
@@ -335,9 +396,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (ctx, setModalState) {
             return LiquidGlassAlertDialog(
               style: NutriVietGlass.lightSheet,
-              title: const Text(
-                'Đổi mật khẩu tài khoản',
-                style: TextStyle(
+              title: Text(
+                AppLocale.t('Đổi mật khẩu tài khoản', 'Change Account Password'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF111827),
@@ -363,21 +424,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       controller: currentCtrl,
                       obscureText: true,
                       style: const TextStyle(color: Color(0xFF111827)),
-                      decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+                      decoration: InputDecoration(
+                        labelText: AppLocale.t('Mật khẩu hiện tại', 'Current password'),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: newCtrl,
                       obscureText: true,
                       style: const TextStyle(color: Color(0xFF111827)),
-                      decoration: const InputDecoration(labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)'),
+                      decoration: InputDecoration(
+                        labelText: AppLocale.t(
+                          'Mật khẩu mới (tối thiểu 6 ký tự)',
+                          'New password (min 6 characters)',
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: confirmCtrl,
                       obscureText: true,
                       style: const TextStyle(color: Color(0xFF111827)),
-                      decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
+                      decoration: InputDecoration(
+                        labelText: AppLocale.t('Xác nhận mật khẩu mới', 'Confirm new password'),
+                      ),
                     ),
                   ],
                 ),
@@ -387,22 +457,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 42,
                   style: NutriVietGlass.neutralButton,
                   foregroundColor: const Color(0xFF1F2937),
-                  label: 'Hủy',
+                  label: AppLocale.t('Hủy', 'Cancel'),
                   onPressed: () => Navigator.pop(ctx),
                 ),
                 LiquidGlassButton(
                   height: 42,
                   style: NutriVietGlass.emeraldButton,
                   foregroundColor: Colors.white,
-                  label: saving ? 'Đang lưu...' : 'Lưu mật khẩu',
+                  label: saving
+                      ? AppLocale.t('Đang lưu...', 'Saving...')
+                      : AppLocale.t('Lưu mật khẩu', 'Save password'),
                   onPressed: () async {
                     if (saving) return;
                     if (newCtrl.text.length < 6) {
-                      setModalState(() => errorMsg = 'Mật khẩu mới phải từ 6 ký tự trở lên.');
+                      setModalState(
+                        () => errorMsg = AppLocale.t(
+                          'Mật khẩu mới phải từ 6 ký tự trở lên.',
+                          'New password must be at least 6 characters.',
+                        ),
+                      );
                       return;
                     }
                     if (newCtrl.text != confirmCtrl.text) {
-                      setModalState(() => errorMsg = 'Xác nhận mật khẩu không khớp.');
+                      setModalState(
+                        () => errorMsg = AppLocale.t(
+                          'Xác nhận mật khẩu không khớp.',
+                          'Password confirmation does not match.',
+                        ),
+                      );
                       return;
                     }
                     setModalState(() {
@@ -420,14 +502,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(res['message'] ?? 'Đổi mật khẩu thành công!'),
+                          content: Text(
+                            res['message'] ??
+                                AppLocale.t(
+                                  'Đổi mật khẩu thành công!',
+                                  'Password changed successfully!',
+                                ),
+                          ),
                           backgroundColor: _brandGreen,
                         ),
                       );
                     } else {
                       setModalState(() {
                         saving = false;
-                        errorMsg = res['message'] ?? 'Đổi mật khẩu thất bại.';
+                        errorMsg = res['message'] ??
+                            AppLocale.t(
+                              'Đổi mật khẩu thất bại.',
+                              'Failed to change password.',
+                            );
                       });
                     }
                   },
@@ -449,9 +541,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
           children: [
-            const Text(
-              'Cài đặt',
-              style: TextStyle(
+            Text(
+              AppLocale.t('Cài đặt', 'Settings'),
+              style: const TextStyle(
                 fontSize: 34,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF111827),
@@ -460,10 +552,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Section 1: Hồ sơ sức khỏe của bạn
-            const Text(
-              'Hồ sơ sức khỏe của bạn',
-              style: TextStyle(
+            // Section 1: Hồ sơ sức khỏe của bạn / Your health profile
+            Text(
+              AppLocale.t('Hồ sơ sức khỏe của bạn', 'Your health profile'),
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF4B5563),
@@ -475,35 +567,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 children: [
                   _buildSettingRow(
-                    icon: Icons.assignment_ind_rounded,
+                    icon: PhosphorIconsDuotone.heartbeat,
                     iconColor: _brandGreen,
-                    title: 'Tình trạng của tôi',
+                    title: AppLocale.t('Tình trạng của tôi', 'My conditions'),
                     trailingText: _isLoading ? '...' : _chronicsSummary,
                     onTap: _openChronicsSheet,
                   ),
                   _buildSettingRow(
-                    icon: Icons.people_alt_rounded,
+                    icon: PhosphorIconsDuotone.usersThree,
                     iconColor: _brandGreen,
-                    title: 'Quản lý hồ sơ',
+                    title: AppLocale.t('Quản lý hồ sơ', 'Manage profiles'),
                     trailingText: _shortName,
                     onTap: _openAllergyProfile,
                   ),
                   _buildSettingRow(
-                    icon: Icons.warning_rounded,
+                    icon: PhosphorIconsDuotone.shieldWarning,
                     iconColor: _brandGreen,
-                    title: 'Quản lý dị ứng',
-                    trailingText: _allergens.isEmpty ? '' : '${_allergens.length} nhóm',
+                    title: AppLocale.t('Quản lý dị ứng', 'Manage allergies'),
+                    trailingText: _allergens.isEmpty
+                        ? ''
+                        : AppLocale.t(
+                            '${_allergens.length} nhóm',
+                            '${_allergens.length} groups',
+                          ),
                     onTap: _openAllergyProfile,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 10),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                'Các cài đặt này cung cấp cảnh báo thực phẩm cá nhân hóa, chẳng hạn như cảnh báo đường cho bệnh tiểu đường.',
-                style: TextStyle(
+                AppLocale.t(
+                  'Các cài đặt này cung cấp cảnh báo thực phẩm cá nhân hóa, chẳng hạn như cảnh báo đường cho bệnh tiểu đường.',
+                  'These settings provide personalized food alerts, such as sugar warnings for diabetes.',
+                ),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF6B7280),
                   height: 1.4,
@@ -513,10 +613,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 24),
 
-            // Section 2: Tùy chọn
-            const Text(
-              'Tùy chọn',
-              style: TextStyle(
+            // Section 2: Tùy chọn / Preferences
+            Text(
+              AppLocale.t('Tùy chọn', 'Preferences'),
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF4B5563),
@@ -526,9 +626,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             NutriVietGlassCard(
               cornerRadius: 22,
               child: _buildSettingRow(
-                icon: Icons.language_rounded,
+                icon: PhosphorIconsDuotone.translate,
                 iconColor: _brandPurple,
-                title: 'Ngôn ngữ',
+                title: AppLocale.t('Ngôn ngữ', 'Language'),
                 trailingText: _languageLabel,
                 onTap: _openLanguageSheet,
               ),
@@ -536,10 +636,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 24),
 
-            // Section 3: Thông báo
-            const Text(
-              'Thông báo',
-              style: TextStyle(
+            // Section 3: Thông báo / Notifications
+            Text(
+              AppLocale.t('Thông báo', 'Notifications'),
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF4B5563),
@@ -552,10 +652,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 children: [
                   _buildSwitchRow(
-                    icon: Icons.workspace_premium_outlined,
+                    icon: PhosphorIconsDuotone.medal,
                     iconColor: _brandPurple,
-                    title: 'Chúc mừng huy hiệu',
-                    subtitle: 'Một thông báo ngắn khi bạn mở khóa huy hiệu mới.',
+                    title: AppLocale.t('Chúc mừng huy hiệu', 'Badge celebrations'),
+                    subtitle: AppLocale.t(
+                      'Một thông báo ngắn khi bạn mở khóa huy hiệu mới.',
+                      'A brief notification when you unlock a new badge.',
+                    ),
                     value: _notifyBadges,
                     onChanged: (v) async {
                       setState(() => _notifyBadges = v);
@@ -564,10 +667,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 6),
                   _buildSwitchRow(
-                    icon: Icons.notifications_rounded,
+                    icon: PhosphorIconsDuotone.bellRinging,
                     iconColor: _brandPurple,
-                    title: 'Nhắc nhở nhẹ nhàng',
-                    subtitle: 'Nhắc nhở đôi khi nếu bạn chưa quét trong một thời gian.',
+                    title: AppLocale.t('Nhắc nhở nhẹ nhàng', 'Gentle reminders'),
+                    subtitle: AppLocale.t(
+                      'Nhắc nhở đôi khi nếu bạn chưa quét trong một thời gian.',
+                      'Occasional reminders if you have not scanned labels in a while.',
+                    ),
                     value: _notifyReminders,
                     onChanged: (v) async {
                       setState(() => _notifyReminders = v);
@@ -578,11 +684,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                'Bạn tự chọn những gì ứng dụng có thể thông báo cho bạn.',
-                style: TextStyle(
+                AppLocale.t(
+                  'Bạn tự chọn những gì ứng dụng có thể thông báo cho bạn.',
+                  'You choose what the app can notify you about.',
+                ),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF6B7280),
                   height: 1.4,
@@ -592,10 +701,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 24),
 
-            // Section 4: Tài khoản & Bảo mật
-            const Text(
-              'Tài khoản',
-              style: TextStyle(
+            // Section 4: Tài khoản & Bảo mật / Account
+            Text(
+              AppLocale.t('Tài khoản', 'Account'),
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF4B5563),
@@ -607,16 +716,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 children: [
                   _buildSettingRow(
-                    icon: Icons.lock_outline_rounded,
+                    icon: PhosphorIconsDuotone.lockKey,
                     iconColor: _brandGreen,
-                    title: 'Đổi mật khẩu',
+                    title: AppLocale.t('Đổi mật khẩu', 'Change password'),
                     trailingText: widget.userEmail,
                     onTap: _openPasswordDialog,
                   ),
                   _buildSettingRow(
-                    icon: Icons.logout_rounded,
+                    icon: PhosphorIconsDuotone.signOut,
                     iconColor: const Color(0xFFDC2626),
-                    title: 'Đăng xuất',
+                    title: AppLocale.t('Đăng xuất', 'Sign out'),
                     trailingText: '',
                     onTap: () async {
                       await AuthService.logout();
@@ -644,45 +753,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String trailingText,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
+    return NutriVietPressScale(
+      pressedScale: 0.985,
+      enableHaptic: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          child: Row(
+            children: [
+              NutriVietGlassIconTile(
+                icon: icon,
+                color: iconColor,
+                size: 38,
+              ),
+              const SizedBox(width: 14),
+              Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 16.5,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF111827),
                 ),
               ),
-            ),
-            if (trailingText.isNotEmpty) ...[
-              Flexible(
-                child: Text(
-                  trailingText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15.5,
-                    color: Color(0xFF6B7280),
+              const SizedBox(width: 12),
+              if (trailingText.isNotEmpty) ...[
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      layoutBuilder: (currentChild, previousChildren) => Stack(
+                        alignment: Alignment.centerRight,
+                        children: [
+                          ...previousChildren,
+                          if (currentChild != null) currentChild,
+                        ],
+                      ),
+                      child: Text(
+                        trailingText,
+                        key: ValueKey(trailingText),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(width: 6),
+              ] else
+                const Spacer(),
+              const PhosphorIcon(
+                PhosphorIconsBold.caretRight,
+                color: Color(0xFF9CA3AF),
+                size: 16,
               ),
-              const SizedBox(width: 6),
             ],
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF9CA3AF),
-              size: 22,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -696,12 +829,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final activeTileColor = value ? iconColor : const Color(0xFF6B7280);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: iconColor, size: 24),
+          AnimatedScale(
+            scale: value ? 1.04 : 0.98,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutBack,
+            child: NutriVietGlassIconTile(
+              icon: icon,
+              color: activeTileColor,
+              size: 38,
+            ),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -710,7 +853,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 16.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF111827),
                   ),
@@ -719,7 +862,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     color: Color(0xFF6B7280),
                     height: 1.35,
                   ),
