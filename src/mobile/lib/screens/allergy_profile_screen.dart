@@ -104,14 +104,14 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   bool _scanDerivatives = true;
   bool _warnTraces = true;
 
-  // Master Allergens Catalog matching prototype
+  // Master Allergens Catalog (All start unselected; loaded strictly from DB)
   final List<AllergenChipItem> _allergens = [
     AllergenChipItem(
       code: 'peanuts',
       emoji: '🥜',
       displayName: 'Đậu phộng (Lạc)',
       description: 'Bơ đậu phộng, dầu phụng, bánh kẹo hạt, sốt satay',
-      isSelected: true,
+      isSelected: false,
       severity: 'anaphylaxis',
     ),
     AllergenChipItem(
@@ -119,7 +119,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       emoji: '🦐',
       displayName: 'Hải sản / Giáp xác',
       description: 'Nước mắm cá tôm, chả cá, bột nêm chiết xuất hải sản',
-      isSelected: true,
+      isSelected: false,
       severity: 'high',
     ),
     AllergenChipItem(
@@ -127,7 +127,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       emoji: '🥛',
       displayName: 'Sữa bò (Casein/Whey)',
       description: 'Casein, đạm whey, bơ thực vật, phô mai, sữa chua',
-      isSelected: true,
+      isSelected: false,
       severity: 'moderate',
     ),
     AllergenChipItem(
@@ -172,9 +172,9 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     ),
   ];
 
-  // Chronic conditions matching prototype
+  // Chronic conditions (All start inactive; loaded strictly from DB)
   final List<ChronicConditionItem> _conditions = [
-    ChronicConditionItem(id: 'gout', title: '🩸 Gút / Axit Uric cao', isActive: true),
+    ChronicConditionItem(id: 'gout', title: '🩸 Gút / Axit Uric cao', isActive: false),
     ChronicConditionItem(id: 'diabetes', title: '🍬 Tiểu đường Type 2', isActive: false),
     ChronicConditionItem(id: 'hypertension', title: '🫀 Tăng huyết áp (Giảm Natri)', isActive: false),
     ChronicConditionItem(id: 'cholesterol', title: '🥗 Giảm chất béo (Mỡ máu)', isActive: false),
@@ -248,37 +248,58 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       _errorMessage = null;
     });
 
-    // Load allergens and metrics in parallel
     final results = await Future.wait([
       ProfileService.getAllergens(widget.userId),
       ProfileService.getMetrics(widget.userId),
+      ProfileService.getChronics(widget.userId),
+      ProfileService.getSettings(widget.userId),
     ]);
 
     if (!mounted) return;
 
     final res = results[0];
     final metricsRes = results[1];
+    final chronicsRes = results[2];
+    final settingsRes = results[3];
 
     if (res['success'] == true) {
       final List saved = res['allergens'] ?? [];
-      if (saved.isNotEmpty) {
-        // Reset selections first
-        for (var a in _allergens) {
-          a.isSelected = false;
-        }
-        for (var savedItem in saved) {
-          final code = savedItem['code'];
-          final severity = savedItem['severity'] ?? 'high';
-          for (var item in _allergens) {
-            if (item.code == code) {
-              item.isSelected = true;
-              item.severity = severity;
-            }
+      for (var a in _allergens) {
+        a.isSelected = false;
+      }
+      for (var savedItem in saved) {
+        final code = savedItem['code'];
+        final severity = savedItem['severity'] ?? 'high';
+        for (var item in _allergens) {
+          if (item.code == code) {
+            item.isSelected = true;
+            item.severity = severity;
           }
         }
       }
     } else {
       _errorMessage = res['message'];
+    }
+
+    if (chronicsRes['success'] == true) {
+      final List savedChronics = chronicsRes['chronics'] ?? [];
+      for (var c in _conditions) {
+        c.isActive = false;
+      }
+      for (var savedCh in savedChronics) {
+        final code = savedCh['code'];
+        for (var c in _conditions) {
+          if (c.id == code) {
+            c.isActive = true;
+          }
+        }
+      }
+    }
+
+    if (settingsRes['success'] == true && settingsRes['settings'] is Map) {
+      final s = settingsRes['settings'] as Map;
+      _scanDerivatives = s['scan_derivatives'] ?? true;
+      _warnTraces = s['warn_traces'] ?? true;
     }
 
     if (metricsRes['success'] == true && metricsRes['metrics'] != null) {
@@ -317,11 +338,23 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
             })
         .toList();
 
-    // Save both metrics and allergens
+    final selectedChronics = _conditions
+        .where((item) => item.isActive)
+        .map((item) => {
+              'code': item.id,
+              'name': item.title,
+            })
+        .toList();
+
+    // Save allergens, chronics, and physical metrics to real backend DB
     final results = await Future.wait([
       ProfileService.saveAllergens(
         userId: widget.userId,
         allergens: selectedAllergens,
+      ),
+      ProfileService.saveChronics(
+        userId: widget.userId,
+        chronics: selectedChronics,
       ),
       ProfileService.saveMetrics(
         userId: widget.userId,
