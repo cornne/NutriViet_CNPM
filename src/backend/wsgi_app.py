@@ -737,6 +737,19 @@ def application(environ, start_response):
                     """, (int(uid),))
                     allergens = [dict(r) for r in cursor.fetchall()]
                     conn.close()
+                    sys.path.insert(0, os.path.dirname(__file__))
+                    import monolingual_catalog as mono_cat
+                    everyday_map = {}
+                    for ef in mono_cat.EVERYDAY_ALLERGY_FOODS:
+                        pair = (ef["food_name_vi"], ef["food_name_en"])
+                        everyday_map[ef["food_name_vi"].lower()] = pair
+                        everyday_map[ef["food_name_en"].lower()] = pair
+                        for kw in ef["keywords"]:
+                            everyday_map[kw.lower()] = pair
+                    for a in allergens:
+                        rn = (a.get("name") or "").strip().lower()
+                        if rn in everyday_map:
+                            a["source_food_vi"], a["source_food_en"] = everyday_map[rn]
                 start_response('200 OK', headers)
                 return [json.dumps({"success": True, "allergens": allergens}).encode('utf-8')]
 
@@ -745,6 +758,12 @@ def application(environ, start_response):
                 al_list = body.get('allergens', [])
                 now = datetime.utcnow().isoformat()
                 if uid:
+                    if not hasattr(application, '_foodon_engine'):
+                        sys.path.insert(0, os.path.dirname(__file__))
+                        from hybrid_ontology import HybridFoodOnEngine
+                        application._foodon_engine = HybridFoodOnEngine()
+                    eng = application._foodon_engine
+
                     conn = get_db()
                     cursor = conn.cursor()
                     cursor.execute("DELETE FROM user_allergens WHERE user_id = ?", (int(uid),))
@@ -762,6 +781,43 @@ def application(environ, start_response):
                             INSERT INTO user_allergens (user_id, allergen_code, allergen_name, severity, updated_at)
                             VALUES (?, ?, ?, ?, ?)
                             """, (int(uid), code, name, sev, now))
+                    # Re-evaluate existing scan_history rows so previously scanned labels immediately reflect new allergy profile
+                    cursor.execute("SELECT allergen_code as code, allergen_name as name, severity FROM user_allergens WHERE user_id = ?", (int(uid),))
+                    user_als = [dict(r) for r in cursor.fetchall()]
+                    cursor.execute("SELECT chronic_code FROM user_chronics WHERE user_id = ?", (int(uid),))
+                    user_chs = [r["chronic_code"] for r in cursor.fetchall()]
+                    cursor.execute("SELECT id, raw_text FROM scan_history WHERE user_id = ?", (int(uid),))
+                    import re as _re
+                    for srow in cursor.fetchall():
+                        sid = srow["id"]
+                        rtxt = srow["raw_text"] or ""
+                        cleaned = _re.sub(r"^(?:thành phần|ingredients)\s*[:\-]\s*", "", rtxt, flags=_re.IGNORECASE)
+                        toks = [t.strip(" .") for t in _re.split(r"[,;\n]+", cleaned) if t.strip(" .")]
+                        ev = eng.evaluate_packaging_label(toks, user_als, user_chs, lang="vi")
+                        det_add = []
+                        highest_rk = "safe"
+                        for td in ev.get("details", []):
+                            for m in td.get("matches", []):
+                                c = m["curie"]
+                                rk = eng.classify_concept_risk(c)["risk_level"]
+                                if rk == "high":
+                                    highest_rk = "high"
+                                elif rk == "low" and highest_rk == "safe":
+                                    highest_rk = "low"
+                                if m.get("ecodes") or "FOODON:03412972" in m.get("lineage", ""):
+                                    det_add.append(eng._build_concept_card(c, lang="vi"))
+                        ev["detected_additives"] = det_add
+                        w_cnt = len(ev.get("red_triggers", [])) + len(ev.get("yellow_triggers", []))
+                        if ev["verdict"] == "RED" or highest_rk == "high":
+                            rk_lvl, rk_vi = "high", "Nguy cơ cao"
+                        elif ev["verdict"] == "YELLOW" or highest_rk == "low":
+                            rk_lvl, rk_vi = "low", "Nguy cơ thấp"
+                        else:
+                            rk_lvl, rk_vi = "safe", "An toàn"
+                        cursor.execute(
+                            "UPDATE scan_history SET verdict = ?, risk_level = ?, risk_label_vi = ?, warning_count = ?, result_json = ? WHERE id = ?",
+                            (ev["verdict"], rk_lvl, rk_vi, w_cnt, json.dumps(ev, ensure_ascii=False), sid),
+                        )
                     conn.commit()
                     conn.close()
                 start_response('200 OK', headers)
@@ -977,15 +1033,19 @@ def application(environ, start_response):
             if method == 'POST':
                 uid = body.get('user_id')
                 raw_text = (body.get('raw_text') or body.get('ingredients') or '').strip()
-                label_title = (body.get('label_title') or 'Kết quả quét').strip()
+                lang = (body.get('lang') or 'vi').strip().lower()
+                is_en = lang.startswith('en')
+                default_title = 'Scan result' if is_en else 'Kết quả quét'
+                label_title = (body.get('label_title') or default_title).strip()
                 member_name = (body.get('member_name') or '').strip()
                 if not uid or not raw_text:
                     start_response('400 Bad Request', headers)
-                    return [json.dumps({"success": False, "message": "Vui lòng nhập hoặc quét thành phần trên nhãn bao bì."}).encode('utf-8')]
+                    msg = "Please enter or scan packaging ingredients." if is_en else "Vui lòng nhập hoặc quét thành phần trên nhãn bao bì."
+                    return [json.dumps({"success": False, "message": msg}).encode('utf-8')]
 
                 conn = get_db()
                 cursor = conn.cursor()
-                cursor.execute("SELECT allergen_code as code, severity FROM user_allergens WHERE user_id = ?", (int(uid),))
+                cursor.execute("SELECT allergen_code as code, allergen_name as name, severity FROM user_allergens WHERE user_id = ?", (int(uid),))
                 user_als = [dict(r) for r in cursor.fetchall()]
                 cursor.execute("SELECT chronic_code FROM user_chronics WHERE user_id = ?", (int(uid),))
                 user_chs = [r["chronic_code"] for r in cursor.fetchall()]
@@ -995,7 +1055,7 @@ def application(environ, start_response):
                 cleaned_text = _re.sub(r"^(?:thành phần|ingredients)\s*[:\-]\s*", "", raw_text, flags=_re.IGNORECASE)
                 tokens = [t.strip(" .") for t in _re.split(r"[,;\n]+", cleaned_text) if t.strip(" .")]
 
-                eval_res = eng.evaluate_packaging_label(tokens, user_als, user_chs)
+                eval_res = eng.evaluate_packaging_label(tokens, user_als, user_chs, lang=lang)
 
                 # Inspect matched concepts for E-code additives and ontological risk level
                 detected_additives = []
@@ -1009,7 +1069,7 @@ def application(environ, start_response):
                         elif rk == "low" and highest_concept_risk == "safe":
                             highest_concept_risk = "low"
                         if m.get("ecodes") or "FOODON:03412972" in m.get("lineage", ""):
-                            card = eng._build_concept_card(c)
+                            card = eng._build_concept_card(c, lang=lang)
                             detected_additives.append(card)
 
                 eval_res["detected_additives"] = detected_additives
@@ -1062,6 +1122,19 @@ def application(environ, start_response):
             start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
             return [html_content.encode('utf-8')]
 
+        if path == '/api/v1/foodon/allergy-lookup' and method == 'GET':
+            if not hasattr(application, '_foodon_engine'):
+                sys.path.insert(0, os.path.dirname(__file__))
+                from hybrid_ontology import HybridFoodOnEngine
+                application._foodon_engine = HybridFoodOnEngine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            q = query.get('q', [''])[0]
+            lang = query.get('lang', ['vi'])[0]
+            limit = int(query.get('limit', ['12'])[0])
+            res = application._foodon_engine.search_allergy_foods(query=q, lang=lang, limit=limit)
+            start_response('200 OK', headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
+
         if path == '/api/v1/foodon/additives' and method == 'GET':
             if not hasattr(application, '_foodon_engine'):
                 sys.path.insert(0, os.path.dirname(__file__))
@@ -1069,7 +1142,7 @@ def application(environ, start_response):
                 application._foodon_engine = HybridFoodOnEngine()
             query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
             q = query.get('q', [''])[0]
-            lang = query.get('lang', ['all'])[0]
+            lang = query.get('lang', ['vi'])[0]
             limit = int(query.get('limit', ['60'])[0])
             res = application._foodon_engine.list_additives(query=q, lang=lang, limit=limit)
             start_response('200 OK', headers)
@@ -1082,10 +1155,11 @@ def application(environ, start_response):
                 application._foodon_engine = HybridFoodOnEngine()
             query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
             cat = query.get('category', ['sugar'])[0]
+            lang = query.get('lang', ['vi'])[0]
             als_str = query.get('allergens', [''])[0]
             als = [x.strip() for x in als_str.split(',') if x.strip()]
             limit = int(query.get('limit', ['20'])[0])
-            res = application._foodon_engine.get_category_concepts(category=cat, user_allergens=als, limit=limit)
+            res = application._foodon_engine.get_category_concepts(category=cat, user_allergens=als, lang=lang, limit=limit)
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
