@@ -10,7 +10,8 @@ class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
-      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
   }
 }
 
@@ -18,6 +19,11 @@ void main() async {
   HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassShaders.ensureLoaded();
+  LiquidGlassConfiguration.batchMode = LiquidGlassBatchMode.singlePass;
+  LiquidGlassConfiguration.blurMethod = LiquidGlassBlurMethod.shader;
+  LiquidGlassConfiguration.batchBlurMethod = LiquidGlassBlurMethod.shader;
+  LiquidGlassConfiguration.shapeCache = true;
+  LiquidGlassConfiguration.rimLiftOnDark = true;
   await AppLocale.loadSaved();
   final session = await AuthService.getSession();
   runApp(NutriVietApp(initialUser: session));
@@ -56,30 +62,38 @@ class NutriVietApp extends StatelessWidget {
             ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              fillColor: const Color(0xD8FFFFFF),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                borderSide:
+                    const BorderSide(color: Color(0xFFE2E8F0), width: 1),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                borderSide:
+                    const BorderSide(color: Color(0xFFE2E8F0), width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.8),
+                borderSide:
+                    const BorderSide(color: Color(0xFF10B981), width: 1.8),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1),
+                borderSide:
+                    const BorderSide(color: Color(0xFFEF4444), width: 1),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.8),
+                borderSide:
+                    const BorderSide(color: Color(0xFFEF4444), width: 1.8),
               ),
-              labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+              labelStyle:
+                  const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              hintStyle:
+                  const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
             ),
           ),
           home: initialUser != null
