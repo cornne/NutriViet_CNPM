@@ -767,4 +767,149 @@ class NutriVietGlassMorphCard extends StatelessWidget {
   }
 }
 
+/// Horizontal [SingleChildScrollView] that smoothly fades overflowing left/right
+/// edges into transparency instead of hard-clipping items at viewport bounds.
+class NutriVietHorizontalFadeScroll extends StatefulWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double fadeExtent;
+  final ScrollPhysics physics;
+
+  const NutriVietHorizontalFadeScroll({
+    super.key,
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    this.fadeExtent = 46.0,
+    this.physics = const BouncingScrollPhysics(),
+  });
+
+  @override
+  State<NutriVietHorizontalFadeScroll> createState() =>
+      _NutriVietHorizontalFadeScrollState();
+}
+
+class _NutriVietHorizontalFadeScrollState
+    extends State<NutriVietHorizontalFadeScroll> {
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<(double, double)> _edgeFade =
+      ValueNotifier<(double, double)>((0.0, 0.0));
+  bool _syncQueued = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_syncFromController);
+    _scheduleSync();
+  }
+
+  @override
+  void didUpdateWidget(covariant NutriVietHorizontalFadeScroll oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleSync();
+  }
+
+  void _scheduleSync() {
+    if (_syncQueued) return;
+    _syncQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncQueued = false;
+      _syncFromController();
+    });
+  }
+
+  void _syncFromController() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final ScrollPosition pos = _scrollController.position;
+    if (!pos.hasContentDimensions) return;
+    final double max = pos.maxScrollExtent;
+    if (max <= 0.5) {
+      _edgeFade.value = (0.0, 0.0);
+      return;
+    }
+    final double left = (pos.pixels / 18.0).clamp(0.0, 1.0);
+    final double right = ((max - pos.pixels) / 18.0).clamp(0.0, 1.0);
+    _edgeFade.value = (left, right);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_syncFromController);
+    _scrollController.dispose();
+    _edgeFade.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget scrollView = NotificationListener<ScrollMetricsNotification>(
+      onNotification: (_) {
+        _scheduleSync();
+        return false;
+      },
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        physics: widget.physics,
+        padding: widget.padding,
+        child: widget.child,
+      ),
+    );
+
+    return RepaintBoundary(
+      child: ValueListenableBuilder<(double, double)>(
+        valueListenable: _edgeFade,
+        child: scrollView,
+        builder: (context, edges, child) {
+          final double left = edges.$1;
+          final double right = edges.$2;
+          if (left <= 0.001 && right <= 0.001) {
+            return child!;
+          }
+          return ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (Rect bounds) {
+              final double w = bounds.width <= 0 ? 1.0 : bounds.width;
+              final double f = (widget.fadeExtent / w).clamp(0.04, 0.28);
+              final List<Color> colors = <Color>[];
+              final List<double> stops = <double>[];
+
+              if (left > 0.001) {
+                colors.addAll([
+                  Color.fromRGBO(255, 255, 255, 1.0 - left),
+                  Color.fromRGBO(255, 255, 255, 1.0 - left * 0.52),
+                  Colors.white,
+                ]);
+                stops.addAll([0.0, f * 0.45, f]);
+              } else {
+                colors.add(Colors.white);
+                stops.add(0.0);
+              }
+
+              if (right > 0.001) {
+                colors.addAll([
+                  Colors.white,
+                  Color.fromRGBO(255, 255, 255, 1.0 - right * 0.52),
+                  Color.fromRGBO(255, 255, 255, 1.0 - right),
+                ]);
+                stops.addAll([1.0 - f, 1.0 - f * 0.45, 1.0]);
+              } else {
+                colors.add(Colors.white);
+                stops.add(1.0);
+              }
+
+              return LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: colors,
+                stops: stops,
+              ).createShader(bounds);
+            },
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+}
+
 

@@ -1,0 +1,7 @@
+# NutriViet Backend runtime dependencies.
+# All API endpoints, SQLite persistence, and FoodOn Hybrid runtime queries
+# run purely on Python standard library (zero external packages required).
+#
+# Optional: only needed if rebuilding `data/nutriviet_hybrid.db` offline from raw `data/foodon/ingredients.yaml`:
+PyYAML>=6.0
+

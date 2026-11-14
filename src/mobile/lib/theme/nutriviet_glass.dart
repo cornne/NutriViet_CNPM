@@ -303,12 +303,13 @@ class NutriVietGlass {
     shape: LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 28),
     specular: _crispSpecular,
     glow: _cardGlow,
-    refractionIndex: 1.06,
-    refractionWidth: 20,
-    dispersion: 0.6,
+    refractionIndex: 1.0,
+    refractionWidth: 14,
+    dispersion: 0.0,
     saturation: 1.06,
-    blur: 14,
-    color: Color(0xE8FFFFFF),
+    blur: 0.0,
+    color: Color(0xF0F9FCFA),
+    liteGlass: true,
   );
 
   /// Emerald frosted CTA capsule for primary glass buttons.
@@ -316,12 +317,13 @@ class NutriVietGlass {
     shape: LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 24),
     specular: _emeraldSpecular,
     glow: _emeraldGlow,
-    refractionIndex: 1.08,
+    refractionIndex: 1.0,
     refractionWidth: 14,
-    magnification: 1.02,
+    magnification: 1.0,
     saturation: 1.16,
     blur: 0.0,
-    color: Color(0xDF14803C),
+    color: Color(0xE814803C),
+    liteGlass: true,
   );
 
   /// Deep crimson frosted CTA capsule for destructive/allergy actions.
@@ -329,12 +331,13 @@ class NutriVietGlass {
     shape: LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 24),
     specular: _redSpecular,
     glow: _redGlow,
-    refractionIndex: 1.08,
+    refractionIndex: 1.0,
     refractionWidth: 14,
-    magnification: 1.02,
+    magnification: 1.0,
     saturation: 1.14,
     blur: 0.0,
-    color: Color(0xDEEF4444),
+    color: Color(0xE8EF4444),
+    liteGlass: true,
   );
 
   /// Neutral frosted capsule for secondary buttons.
@@ -342,11 +345,13 @@ class NutriVietGlass {
     shape: LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 24),
     specular: _crispSpecular,
     glow: _cardGlow,
-    refractionIndex: 1.06,
+    refractionIndex: 1.0,
     refractionWidth: 12,
+    magnification: 1.0,
     saturation: 1.06,
     blur: 0.0,
-    color: Color(0xBAFFFFFF),
+    color: Color(0xE0E8EEF0),
+    liteGlass: true,
   );
 
   /// Emerald hero liquid lens (used on the home hero banner).

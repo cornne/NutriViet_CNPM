@@ -11,26 +11,84 @@ import sqlite3
 import hashlib
 import secrets
 import smtplib
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import urllib.parse
 from datetime import datetime
 
-# Path to database on PythonAnywhere
-DB_PATH = '/home/ngobinh2006/NutriViet_CNPM/src/backend/nutriviet.db'
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
 
-# Gmail SMTP Configuration (App Password)
-GMAIL_USER = "tienbinhngo20@gmail.com"
-GMAIL_PASS = "dcackhtcjpawiwjf"
+
+def _load_local_env():
+    """Loads optional `.env` overrides without external third-party packages."""
+    env_path = os.path.join(_BACKEND_DIR, ".env")
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except OSError:
+        pass
+
+
+_load_local_env()
+
+# Path to database on PythonAnywhere (overridable via NUTRIVIET_DB_PATH)
+DB_PATH = os.environ.get(
+    'NUTRIVIET_DB_PATH',
+    '/home/ngobinh2006/NutriViet_CNPM/src/backend/nutriviet.db',
+)
+PUBLIC_BASE_URL = os.environ.get(
+    'NUTRIVIET_PUBLIC_BASE_URL',
+    'https://ngobinh2006.pythonanywhere.com',
+).rstrip('/')
+
+# Gmail SMTP Configuration (prefer environment variables on hosted environments)
+GMAIL_USER = os.environ.get("NUTRIVIET_GMAIL_USER", "tienbinhngo20@gmail.com")
+GMAIL_PASS = os.environ.get("NUTRIVIET_GMAIL_PASS", "dcackhtcjpawiwjf")
+
+_ENGINE_LOCK = threading.Lock()
+
+
+def _get_foodon_engine():
+    """Returns a thread-safe cached HybridFoodOnEngine backed by nutriviet_hybrid.db."""
+    eng = getattr(application, '_foodon_engine', None)
+    if eng is not None:
+        return eng
+    with _ENGINE_LOCK:
+        eng = getattr(application, '_foodon_engine', None)
+        if eng is None:
+            from hybrid_ontology import HybridFoodOnEngine
+            eng = HybridFoodOnEngine()
+            application._foodon_engine = eng
+    return eng
+
 
 # -------------------------------------------------------------
 # Database Management
 # -------------------------------------------------------------
 def get_db():
     # Fallback to local if running outside PythonAnywhere
-    db_file = DB_PATH if os.path.exists(os.path.dirname(DB_PATH)) else os.path.join(os.path.dirname(__file__), "nutriviet.db")
+    db_dir = os.path.dirname(DB_PATH)
+    db_file = DB_PATH if (db_dir and os.path.exists(db_dir)) else os.path.join(_BACKEND_DIR, "nutriviet.db")
     conn = sqlite3.connect(db_file, timeout=15.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA busy_timeout = 5000")
+    except sqlite3.Error:
+        pass
     return conn
 
 def init_tables():
@@ -233,7 +291,7 @@ def verify_pwd(password: str, stored_hash: str, salt: str) -> bool:
 # Email Dispatching via Gmail SMTP SSL (Port 465)
 # -------------------------------------------------------------
 def send_verification_email(to_email: str, full_name: str, token: str) -> bool:
-    verify_url = f"https://ngobinh2006.pythonanywhere.com/verify-email?token={token}"
+    verify_url = f"{PUBLIC_BASE_URL}/verify-email?token={token}"
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -405,7 +463,12 @@ def application(environ, start_response):
         # 2. Health Check
         if path in ['/', '/health']:
             start_response('200 OK', headers)
-            return [json.dumps({"status": "healthy", "service": "NutriViet", "version": "1.6.0"}).encode('utf-8')]
+            return [json.dumps({
+                "status": "healthy",
+                "service": "NutriViet",
+                "version": "2.0.0",
+                "foodon_hybrid": True,
+            }).encode('utf-8')]
 
         # 3. List Users / Get Specific User by id or email
         if path == '/api/v1/users' and method == 'GET':
@@ -758,11 +821,7 @@ def application(environ, start_response):
                 al_list = body.get('allergens', [])
                 now = datetime.utcnow().isoformat()
                 if uid:
-                    if not hasattr(application, '_foodon_engine'):
-                        sys.path.insert(0, os.path.dirname(__file__))
-                        from hybrid_ontology import HybridFoodOnEngine
-                        application._foodon_engine = HybridFoodOnEngine()
-                    eng = application._foodon_engine
+                    eng = _get_foodon_engine()
 
                     conn = get_db()
                     cursor = conn.cursor()
@@ -983,11 +1042,7 @@ def application(environ, start_response):
 
         # 12. Real Scan History & Packaging Label Evaluation ("Quét nhãn" & "Lịch sử")
         if path == '/api/v1/scans':
-            if not hasattr(application, '_foodon_engine'):
-                sys.path.insert(0, os.path.dirname(__file__))
-                from hybrid_ontology import HybridFoodOnEngine
-                application._foodon_engine = HybridFoodOnEngine()
-            eng = application._foodon_engine
+            eng = _get_foodon_engine()
 
             def _fetch_user_scan_summary(conn, uid_int: int):
                 cur = conn.cursor()
@@ -1123,71 +1178,56 @@ def application(environ, start_response):
             return [html_content.encode('utf-8')]
 
         if path == '/api/v1/foodon/allergy-lookup' and method == 'GET':
-            if not hasattr(application, '_foodon_engine'):
-                sys.path.insert(0, os.path.dirname(__file__))
-                from hybrid_ontology import HybridFoodOnEngine
-                application._foodon_engine = HybridFoodOnEngine()
+            eng = _get_foodon_engine()
             query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
             q = query.get('q', [''])[0]
             lang = query.get('lang', ['vi'])[0]
             limit = int(query.get('limit', ['12'])[0])
-            res = application._foodon_engine.search_allergy_foods(query=q, lang=lang, limit=limit)
+            res = eng.search_allergy_foods(query=q, lang=lang, limit=limit)
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
         if path == '/api/v1/foodon/additives' and method == 'GET':
-            if not hasattr(application, '_foodon_engine'):
-                sys.path.insert(0, os.path.dirname(__file__))
-                from hybrid_ontology import HybridFoodOnEngine
-                application._foodon_engine = HybridFoodOnEngine()
+            eng = _get_foodon_engine()
             query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
             q = query.get('q', [''])[0]
             lang = query.get('lang', ['vi'])[0]
             limit = int(query.get('limit', ['60'])[0])
-            res = application._foodon_engine.list_additives(query=q, lang=lang, limit=limit)
+            res = eng.list_additives(query=q, lang=lang, limit=limit)
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
         if path == '/api/v1/foodon/category' and method == 'GET':
-            if not hasattr(application, '_foodon_engine'):
-                sys.path.insert(0, os.path.dirname(__file__))
-                from hybrid_ontology import HybridFoodOnEngine
-                application._foodon_engine = HybridFoodOnEngine()
+            eng = _get_foodon_engine()
             query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
             cat = query.get('category', ['sugar'])[0]
             lang = query.get('lang', ['vi'])[0]
             als_str = query.get('allergens', [''])[0]
             als = [x.strip() for x in als_str.split(',') if x.strip()]
             limit = int(query.get('limit', ['20'])[0])
-            res = application._foodon_engine.get_category_concepts(category=cat, user_allergens=als, lang=lang, limit=limit)
+            res = eng.get_category_concepts(category=cat, user_allergens=als, lang=lang, limit=limit)
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
         if path == '/api/v1/foodon/search' and method == 'GET':
-            if not hasattr(application, '_foodon_engine'):
-                sys.path.insert(0, os.path.dirname(__file__))
-                from hybrid_ontology import HybridFoodOnEngine
-                application._foodon_engine = HybridFoodOnEngine()
+            eng = _get_foodon_engine()
             query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
             q = query.get('q', [''])[0]
             lang = query.get('lang', ['all'])[0]
             allergen = query.get('allergen', [''])[0]
             limit = int(query.get('limit', ['30'])[0])
-            res = application._foodon_engine.search_concepts(query=q, lang_scope=lang, allergen_filter=allergen, limit=limit)
+            res = eng.search_concepts(query=q, lang_scope=lang, allergen_filter=allergen, limit=limit)
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
         if path == '/api/v1/foodon/evaluate' and method == 'POST':
-            if not hasattr(application, '_foodon_engine'):
-                sys.path.insert(0, os.path.dirname(__file__))
-                from hybrid_ontology import HybridFoodOnEngine
-                application._foodon_engine = HybridFoodOnEngine()
+            eng = _get_foodon_engine()
             ingredients = body.get('ingredients') or []
             if isinstance(ingredients, str):
                 ingredients = [x.strip() for x in ingredients.split(',') if x.strip()]
             allergens = body.get('allergens') or []
             chronics = body.get('chronics') or []
-            res = application._foodon_engine.evaluate_packaging_label(ingredients, allergens, chronics)
+            res = eng.evaluate_packaging_label(ingredients, allergens, chronics)
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
