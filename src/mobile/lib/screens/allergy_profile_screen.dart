@@ -1,37 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+import '../l10n/app_locale.dart';
 import '../services/profile_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/nutriviet_ui.dart';
 import 'home_screen.dart';
 
 class AllergenChipItem {
   final String code;
   final String emoji;
-  final String displayName;
-  final String description;
+  final String displayNameVi;
+  final String displayNameEn;
+  final String descriptionVi;
+  final String descriptionEn;
+  String? sourceFoodVi;
+  String? sourceFoodEn;
   bool isSelected;
-  String severity; // 'anaphylaxis' (Sốc phản vệ), 'high' (Nghiêm trọng), 'moderate' (Trung bình), 'mild' (Nhẹ)
+  String severity; // 'anaphylaxis', 'high', 'moderate', 'mild'
 
   AllergenChipItem({
     required this.code,
     required this.emoji,
-    required this.displayName,
-    required this.description,
+    required this.displayNameVi,
+    required this.displayNameEn,
+    required this.descriptionVi,
+    required this.descriptionEn,
+    this.sourceFoodVi,
+    this.sourceFoodEn,
     this.isSelected = false,
     this.severity = 'high',
   });
 
+  String get displayName => AppLocale.t(displayNameVi, displayNameEn);
+  String get description => AppLocale.t(descriptionVi, descriptionEn);
+
+  String? get sourceFoodName {
+    final v = AppLocale.isEn
+        ? (sourceFoodEn ?? sourceFoodVi)
+        : (sourceFoodVi ?? sourceFoodEn);
+    if (v == null || v.trim().isEmpty) return null;
+    return v.trim();
+  }
+
+  String get persistedName => sourceFoodName ?? displayName;
+
   String get severityLabel {
     switch (severity) {
       case 'anaphylaxis':
-        return 'Sốc phản vệ';
+        return AppLocale.t('Sốc phản vệ', 'Anaphylaxis');
       case 'high':
-        return 'Nghiêm trọng';
+        return AppLocale.t('Nghiêm trọng', 'Severe');
       case 'moderate':
-        return 'Trung bình';
+        return AppLocale.t('Trung bình', 'Moderate');
       case 'mild':
-        return 'Nhẹ';
+        return AppLocale.t('Nhẹ', 'Mild');
       default:
-        return 'Nghiêm trọng';
+        return AppLocale.t('Nghiêm trọng', 'Severe');
     }
   }
 
@@ -52,14 +76,18 @@ class AllergenChipItem {
 
 class ChronicConditionItem {
   final String id;
-  final String title;
+  final String titleVi;
+  final String titleEn;
   bool isActive;
 
   ChronicConditionItem({
     required this.id,
-    required this.title,
+    required this.titleVi,
+    required this.titleEn,
     this.isActive = false,
   });
+
+  String get title => AppLocale.t(titleVi, titleEn);
 }
 
 class AllergyProfileScreen extends StatefulWidget {
@@ -85,11 +113,9 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   bool _isSaving = false;
   String? _errorMessage;
 
-  // Editable Name & User Email
   late TextEditingController _nameController;
   String _currentEmail = '';
 
-  // Physical & Nutrition Metrics (Standard Nutrition App)
   int _age = 22;
   String _gender = 'male';
   double _height = 170.0;
@@ -99,85 +125,133 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   late TextEditingController _ageController;
   late TextEditingController _heightController;
   late TextEditingController _weightController;
+  late TextEditingController _foodSearchController;
 
-  // Sensitivity Toggles
   bool _scanDerivatives = true;
   bool _warnTraces = true;
+  bool _isSearchingFood = false;
+  bool _allergensChanged = false;
+  List<Map<String, dynamic>> _foodSearchResults = [];
 
-  // Master Allergens Catalog (All start unselected; loaded strictly from DB)
+  static const List<Map<String, String>> _quickEverydayFoods = [
+    {'vi': 'Bơ', 'en': 'Butter', 'emoji': '🧈'},
+    {'vi': 'Phô mai', 'en': 'Cheese', 'emoji': '🧀'},
+    {'vi': 'Bánh mì', 'en': 'Bread', 'emoji': '🍞'},
+    {'vi': 'Tôm', 'en': 'Shrimp', 'emoji': '🦐'},
+    {'vi': 'Nước mắm', 'en': 'Fish sauce', 'emoji': '🐟'},
+    {'vi': 'Sốt trứng gà', 'en': 'Mayonnaise', 'emoji': '🥚'},
+    {'vi': 'Đậu phụ', 'en': 'Tofu', 'emoji': '🌱'},
+    {'vi': 'Bơ đậu phộng', 'en': 'Peanut butter', 'emoji': '🥜'},
+  ];
+
   final List<AllergenChipItem> _allergens = [
     AllergenChipItem(
       code: 'peanuts',
       emoji: '🥜',
-      displayName: 'Đậu phộng (Lạc)',
-      description: 'Bơ đậu phộng, dầu phụng, bánh kẹo hạt, sốt satay',
+      displayNameVi: 'Đậu phộng (Lạc)',
+      displayNameEn: 'Peanuts',
+      descriptionVi: 'Bơ đậu phộng, dầu lạc thô, kẹo lạc, bột đậu phộng',
+      descriptionEn: 'Peanut butter, peanut oil, nut snacks, peanut flour',
       isSelected: false,
       severity: 'anaphylaxis',
     ),
     AllergenChipItem(
       code: 'seafood',
       emoji: '🦐',
-      displayName: 'Hải sản / Giáp xác',
-      description: 'Nước mắm cá tôm, chả cá, bột nêm chiết xuất hải sản',
+      displayNameVi: 'Hải sản / Giáp xác & Cá',
+      displayNameEn: 'Seafood / Crustaceans & Fish',
+      descriptionVi: 'Tôm, cua, ghẹ, mực, cá, nước mắm cốt cá, bột nêm hải sản',
+      descriptionEn: 'Shrimp, crab, squid, fish, fish sauce, seafood seasoning',
       isSelected: false,
       severity: 'high',
     ),
     AllergenChipItem(
       code: 'milk',
       emoji: '🥛',
-      displayName: 'Sữa bò (Casein/Whey)',
-      description: 'Casein, đạm whey, bơ thực vật, phô mai, sữa chua',
+      displayNameVi: 'Sữa bò & Chế phẩm sữa',
+      displayNameEn: 'Cow\'s Milk & Dairy Products',
+      descriptionVi: 'Sữa bột, sữa tươi, đạm váng sữa, đạm sữa bò, đường sữa, phô mai, kem sữa, sữa chua, bơ sữa',
+      descriptionEn: 'Milk powder, fresh milk, dairy whey protein, casein, lactose, cheese, cream, yogurt, butter',
       isSelected: false,
-      severity: 'moderate',
+      severity: 'high',
     ),
     AllergenChipItem(
       code: 'gluten',
       emoji: '🌾',
-      displayName: 'Gluten / Lúa mì',
-      description: 'Bột mì, mì ăn liền, bánh mì, bia, mạch nha lúa mạch',
+      displayNameVi: 'Lúa mì & Ngũ cốc đạm lúa mì',
+      displayNameEn: 'Wheat & Gluten Grains',
+      descriptionVi: 'Bột mì, đạm lúa mì, mì ăn liền, bánh mì, bánh quy, mạch nha đại mạch',
+      descriptionEn: 'Wheat flour, wheat gluten, noodles, bread, cookies, barley malt',
       isSelected: false,
       severity: 'high',
     ),
     AllergenChipItem(
       code: 'eggs',
       emoji: '🥚',
-      displayName: 'Trứng gà',
-      description: 'Lòng trắng trứng, mayonnaise, albumin, bánh nướng',
+      displayNameVi: 'Trứng & Chế phẩm trứng',
+      displayNameEn: 'Eggs & Egg Products',
+      descriptionVi: 'Lòng trắng trứng, lòng đỏ trứng, bột trứng, sốt trứng gà, hoạt chất từ trứng (E1105)',
+      descriptionEn: 'Egg white, egg yolk, egg powder, mayonnaise, egg lysozyme (E1105)',
       isSelected: false,
-      severity: 'moderate',
+      severity: 'high',
     ),
     AllergenChipItem(
       code: 'soy',
       emoji: '🌱',
-      displayName: 'Đậu nành (Soy)',
-      description: 'Xì dầu, đậu phụ, lecithin đậu nành (E322), dầu đậu nành',
+      displayNameVi: 'Đậu nành (Đỗ tương)',
+      displayNameEn: 'Soybeans',
+      descriptionVi: 'Đậu phụ, nước tương, sữa đậu nành, chất nhũ hóa đậu nành (E322), đạm đậu nành',
+      descriptionEn: 'Tofu, soy sauce, soy milk, soy lecithin (E322), soy protein',
       isSelected: false,
-      severity: 'mild',
+      severity: 'high',
     ),
     AllergenChipItem(
       code: 'tree_nuts',
       emoji: '🌰',
-      displayName: 'Hạt cây (Hạnh nhân, Óc chó)',
-      description: 'Hạt dẻ cười, óc chó, sữa hạt dinh dưỡng, granola',
+      displayNameVi: 'Hạt cây (Điều, Hạnh nhân, Óc chó)',
+      displayNameEn: 'Tree Nuts (Cashew, Almond, Walnut)',
+      descriptionVi: 'Hạt điều, hạnh nhân, hạt óc chó, hạt dẻ cười, hạt mắc ca, sữa hạt',
+      descriptionEn: 'Cashews, almonds, walnuts, pistachios, macadamia nuts, nut milk',
       isSelected: false,
       severity: 'high',
     ),
     AllergenChipItem(
       code: 'sesame',
       emoji: '🌿',
-      displayName: 'Mè (Vừng)',
-      description: 'Dầu mè, hạt mè rắc bánh, sốt tahini',
+      displayNameVi: 'Mè (Vừng)',
+      displayNameEn: 'Sesame',
+      descriptionVi: 'Hạt mè, dầu mè, bơ mè, bánh kẹo rắc mè',
+      descriptionEn: 'Sesame seeds, sesame oil, tahini paste, sesame crackers',
       isSelected: false,
-      severity: 'moderate',
+      severity: 'high',
     ),
   ];
 
-  // Chronic conditions (All start inactive; loaded strictly from DB)
   final List<ChronicConditionItem> _conditions = [
-    ChronicConditionItem(id: 'gout', title: '🩸 Gút / Axit Uric cao', isActive: false),
-    ChronicConditionItem(id: 'diabetes', title: '🍬 Tiểu đường Type 2', isActive: false),
-    ChronicConditionItem(id: 'hypertension', title: '🫀 Tăng huyết áp (Giảm Natri)', isActive: false),
-    ChronicConditionItem(id: 'cholesterol', title: '🥗 Giảm chất béo (Mỡ máu)', isActive: false),
+    ChronicConditionItem(
+      id: 'gout',
+      titleVi: '🩸 Bệnh Gút / Axit Uric cao',
+      titleEn: '🩸 Gout / High Uric Acid',
+      isActive: false,
+    ),
+    ChronicConditionItem(
+      id: 'diabetes',
+      titleVi: '🍬 Tiểu đường',
+      titleEn: '🍬 Diabetes',
+      isActive: false,
+    ),
+    ChronicConditionItem(
+      id: 'hypertension',
+      titleVi: '🫀 Tăng huyết áp (Giảm muối)',
+      titleEn: '🫀 Hypertension (Low Sodium)',
+      isActive: false,
+    ),
+    ChronicConditionItem(
+      id: 'cholesterol',
+      titleVi: '🥗 Mỡ máu / Giảm chất béo',
+      titleEn: '🥗 High Cholesterol / Low Fat',
+      isActive: false,
+    ),
   ];
 
   @override
@@ -192,6 +266,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     _ageController = TextEditingController(text: '$_age');
     _heightController = TextEditingController(text: '$_height');
     _weightController = TextEditingController(text: '$_weight');
+    _foodSearchController = TextEditingController();
     _loadProfile();
   }
 
@@ -212,7 +287,117 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _foodSearchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchEverydayAllergyFood(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _foodSearchResults = [];
+          _isSearchingFood = false;
+        });
+      }
+      return;
+    }
+    setState(() => _isSearchingFood = true);
+    final res = await ProfileService.searchAllergyFoods(
+      query: q,
+      lang: AppLocale.code,
+      limit: 6,
+    );
+    if (!mounted) return;
+    final items = (res['items'] as List? ?? [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    setState(() {
+      _foodSearchResults = items;
+      _isSearchingFood = false;
+    });
+  }
+
+  Future<void> _autoSaveAllergens() async {
+    _allergensChanged = true;
+    final selectedAllergens = _allergens
+        .where((item) => item.isSelected)
+        .map((item) => {
+              'code': item.code,
+              'name': item.persistedName,
+              'severity': item.severity,
+            })
+        .toList();
+    await ProfileService.saveAllergens(
+      userId: widget.userId,
+      allergens: selectedAllergens,
+    );
+  }
+
+  Future<void> _selectEverydayAllergyFood(Map<String, dynamic> food) async {
+    final alCode = (food['allergen_code'] ?? '').toString().trim();
+    final foodVi = (food['food_name_vi'] ?? food['food_name'] ?? '').toString().trim();
+    final foodEn = (food['food_name_en'] ?? food['food_name'] ?? '').toString().trim();
+    final famVi = (food['family_name_vi'] ?? food['family_name'] ?? foodVi).toString().trim();
+    final famEn = (food['family_name_en'] ?? food['family_name'] ?? foodEn).toString().trim();
+    final relVi = (food['related_ingredients_vi'] ?? food['related_ingredients'] ?? '').toString().trim();
+    final relEn = (food['related_ingredients_en'] ?? food['related_ingredients'] ?? '').toString().trim();
+    final emoji = (food['emoji'] ?? '🍽️').toString();
+
+    if (alCode.isEmpty) return;
+
+    AllergenChipItem? target;
+    for (final item in _allergens) {
+      if (item.code == alCode) {
+        target = item;
+        break;
+      }
+    }
+
+    setState(() {
+      if (target != null) {
+        target.isSelected = true;
+        target.severity = 'high';
+        target.sourceFoodVi = foodVi;
+        target.sourceFoodEn = foodEn;
+      } else {
+        _allergens.add(
+          AllergenChipItem(
+            code: alCode,
+            emoji: emoji,
+            displayNameVi: famVi.isNotEmpty ? famVi : foodVi,
+            displayNameEn: famEn.isNotEmpty ? famEn : foodEn,
+            descriptionVi: relVi.isNotEmpty ? relVi : foodVi,
+            descriptionEn: relEn.isNotEmpty ? relEn : foodEn,
+            sourceFoodVi: foodVi,
+            sourceFoodEn: foodEn,
+            isSelected: true,
+            severity: 'high',
+          ),
+        );
+      }
+    });
+
+    await _autoSaveAllergens();
+    if (!mounted) return;
+    final chosenFood = AppLocale.t(foodVi, foodEn);
+    final famName = AppLocale.t(
+      (food['family_name_vi'] ?? food['family_name'] ?? '').toString(),
+      (food['family_name_en'] ?? food['family_name'] ?? '').toString(),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppLocale.t(
+            '🚨 Đã bật BÁO ĐỎ cho "$chosenFood" → Tự động cảnh báo toàn bộ nhóm "$famName" khi quét nhãn!',
+            '🚨 Activated RED ALERT for "$chosenFood" → Automatically flags all "$famName" ingredients on labels!',
+          ),
+        ),
+        backgroundColor: const Color(0xFFDC2626),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   double _calculateBmi() {
@@ -222,10 +407,10 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   }
 
   String _getBmiStatus(double bmi) {
-    if (bmi < 18.5) return 'Thiếu cân (Gầy)';
-    if (bmi < 23.0) return 'Cân đối (Chuẩn WHO/VN)';
-    if (bmi < 25.0) return 'Tiền béo phì (Thừa cân)';
-    return 'Béo phì';
+    if (bmi < 18.5) return AppLocale.t('Thiếu cân (Gầy)', 'Underweight');
+    if (bmi < 23.0) return AppLocale.t('Cân đối (Chuẩn khuyến nghị)', 'Healthy weight');
+    if (bmi < 25.0) return AppLocale.t('Tiền béo phì (Thừa cân)', 'Overweight');
+    return AppLocale.t('Béo phì', 'Obese');
   }
 
   Color _getBmiColor(double bmi) {
@@ -266,15 +451,71 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       final List saved = res['allergens'] ?? [];
       for (var a in _allergens) {
         a.isSelected = false;
+        a.sourceFoodVi = null;
+        a.sourceFoodEn = null;
       }
       for (var savedItem in saved) {
-        final code = savedItem['code'];
-        final severity = savedItem['severity'] ?? 'high';
+        final code = (savedItem['code'] ?? '').toString();
+        final severity = (savedItem['severity'] ?? 'high').toString();
+        final rawName = (savedItem['name'] ?? '').toString().trim();
+        final srcVi = (savedItem['source_food_vi'] ?? '').toString().trim();
+        final srcEn = (savedItem['source_food_en'] ?? '').toString().trim();
+        bool matched = false;
         for (var item in _allergens) {
           if (item.code == code) {
             item.isSelected = true;
             item.severity = severity;
+            if (srcVi.isNotEmpty || srcEn.isNotEmpty) {
+              item.sourceFoodVi = srcVi.isNotEmpty ? srcVi : rawName;
+              item.sourceFoodEn = srcEn.isNotEmpty ? srcEn : rawName;
+            } else if (rawName.isNotEmpty &&
+                rawName != item.displayNameVi &&
+                rawName != item.displayNameEn) {
+              item.sourceFoodVi = rawName;
+              item.sourceFoodEn = rawName;
+            }
+            matched = true;
           }
+        }
+        if (!matched && code.isNotEmpty) {
+          final isRedMeat = code == 'curie:FOODON:00001006' ||
+              code == 'curie:FOODON:00001134' ||
+              code == 'curie:FOODON:00001038';
+          final isPoultry = code == 'curie:FOODON:00001131' || code == 'curie:FOODON:00001040';
+          final famVi = isRedMeat
+              ? 'Thịt động vật có vú (Thịt đỏ: Bò, Heo, Cừu)'
+              : (isPoultry
+                  ? 'Thịt gia cầm (Gà, Vịt, Ngan, Ngỗng)'
+                  : (srcVi.isNotEmpty ? srcVi : (rawName.isNotEmpty ? rawName : code)));
+          final famEn = isRedMeat
+              ? 'Mammalian Meat (Red Meat: Beef, Pork, Lamb)'
+              : (isPoultry
+                  ? 'Poultry Meat (Chicken, Duck, Turkey)'
+                  : (srcEn.isNotEmpty ? srcEn : (rawName.isNotEmpty ? rawName : code)));
+          final descVi = isRedMeat
+              ? 'Thịt bò, thịt heo (thịt lợn), thịt cừu, thịt băm, xúc xích thịt, thịt hộp, giăm bông, mỡ heo'
+              : (isPoultry
+                  ? 'Thịt gà, ức gà, thịt vịt, gà tây, nước cốt gà, bột thịt gà, xúc xích gà'
+                  : 'Các thành phần và dẫn xuất cùng họ trên cây phân loại FoodOn');
+          final descEn = isRedMeat
+              ? 'Beef, pork, lamb, ground meat, meat sausages, luncheon meat, ham, bacon, lard'
+              : (isPoultry
+                  ? 'Chicken meat, chicken breast, duck meat, turkey, chicken broth, chicken extract'
+                  : 'Ingredients and derivatives in the same FoodOn ontology family');
+          _allergens.add(
+            AllergenChipItem(
+              code: code,
+              emoji: isRedMeat ? '🥩' : (isPoultry ? '🍗' : '🍽️'),
+              displayNameVi: famVi,
+              displayNameEn: famEn,
+              descriptionVi: descVi,
+              descriptionEn: descEn,
+              sourceFoodVi: srcVi.isNotEmpty ? srcVi : rawName,
+              sourceFoodEn: srcEn.isNotEmpty ? srcEn : rawName,
+              isSelected: true,
+              severity: severity,
+            ),
+          );
         }
       }
     } else {
@@ -333,7 +574,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
         .where((item) => item.isSelected)
         .map((item) => {
               'code': item.code,
-              'name': item.displayName,
+              'name': item.persistedName,
               'severity': item.severity,
             })
         .toList();
@@ -346,7 +587,6 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
             })
         .toList();
 
-    // Save allergens, chronics, and physical metrics to real backend DB
     final results = await Future.wait([
       ProfileService.saveAllergens(
         userId: widget.userId,
@@ -374,7 +614,12 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     if (res['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đã lưu hồ sơ dinh dưỡng & ${selectedAllergens.length} nhóm dị ứng thành công!'),
+          content: Text(
+            AppLocale.t(
+              'Đã lưu hồ sơ dinh dưỡng & ${selectedAllergens.length} nhóm dị ứng thành công!',
+              'Saved nutrition profile & ${selectedAllergens.length} allergy groups successfully!',
+            ),
+          ),
           backgroundColor: const Color(0xFF10B981),
         ),
       );
@@ -413,6 +658,549 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
         item.severity = 'anaphylaxis';
       }
     });
+    _autoSaveAllergens();
+  }
+
+  Widget _buildAllergyAndFoodOnSection(int selectedCount) {
+    final activeItems = _allergens.where((a) => a.isSelected).toList();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFCA5A5), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  AppLocale.t(
+                    '🚨 Dị Ứng Thực Phẩm & Suy Luận FoodOn',
+                    '🚨 Food Allergies & FoodOn Inference',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  AppLocale.t(
+                    '$selectedCount đang bật BÁO ĐỎ',
+                    '$selectedCount RED alerts active',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFDC2626),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Everyday FoodOn Allergy Search Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFDE68A), width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const PhosphorIcon(
+                      PhosphorIconsFill.sparkle,
+                      color: Color(0xFFD97706),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        AppLocale.t(
+                          'Bạn ăn món gì bị dị ứng? (Tra cứu thông minh FoodOn)',
+                          'Which food caused your allergy? (Smart FoodOn Lookup)',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocale.t(
+                    'Không cần biết mình dị ứng đạm sữa hay chất gì — Ví dụ ăn Bơ bị dị ứng, chỉ cần tìm "Bơ". Khi quét nhãn có Sữa bột, Đạm váng sữa, Phô mai... FoodOn sẽ tự động BÁO ĐỎ!',
+                    'No need to know medical allergen names — e.g. if eating Butter caused a reaction, just search "Butter". Scanning any label with Milk powder, Whey, or Cheese will automatically trigger a RED ALERT!',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF78350F),
+                    height: 1.38,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _foodSearchController,
+                  onChanged: _searchEverydayAllergyFood,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    prefixIcon: const Icon(
+                      PhosphorIconsBold.magnifyingGlass,
+                      size: 18,
+                      color: Color(0xFFDC2626),
+                    ),
+                    suffixIcon: _foodSearchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(
+                              PhosphorIconsBold.xCircle,
+                              size: 18,
+                              color: Color(0xFF64748B),
+                            ),
+                            onPressed: () {
+                              _foodSearchController.clear();
+                              _searchEverydayAllergyFood('');
+                            },
+                          )
+                        : null,
+                    hintText: AppLocale.t(
+                      'Tìm món bạn ăn bị dị ứng (VD: Bơ, Phô mai, Tôm, Bánh mì...)',
+                      'Search food that caused allergy (e.g. Butter, Cheese, Shrimp...)',
+                    ),
+                    hintStyle: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFFCA5A5)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFFCA5A5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocale.t(
+                    'Chạm nhanh món ăn phổ biến:',
+                    'Quick tap common trigger foods:',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _quickEverydayFoods.map((qf) {
+                    final label = AppLocale.t(qf['vi']!, qf['en']!);
+                    final isCurrentQuery =
+                        _foodSearchController.text.trim().toLowerCase() ==
+                        label.toLowerCase();
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        _foodSearchController.text = label;
+                        _searchEverydayAllergyFood(label);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isCurrentQuery
+                              ? const Color(0xFFFEE2E2)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isCurrentQuery
+                                ? const Color(0xFFDC2626)
+                                : const Color(0xFFFCD34D),
+                          ),
+                        ),
+                        child: Text(
+                          '${qf['emoji']} $label',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: isCurrentQuery
+                                ? const Color(0xFFB91C1C)
+                                : const Color(0xFF78350F),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                if (_isSearchingFood) ...[
+                  const SizedBox(height: 10),
+                  const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFDC2626),
+                      ),
+                    ),
+                  ),
+                ] else if (_foodSearchResults.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  ..._foodSearchResults.map((food) {
+                    final alCode = (food['allergen_code'] ?? '').toString();
+                    final curie = (food['curie'] ?? '').toString();
+                    final emoji = (food['emoji'] ?? '🍽️').toString();
+                    final foodName = AppLocale.t(
+                      (food['food_name_vi'] ?? food['food_name'] ?? '').toString(),
+                      (food['food_name_en'] ?? food['food_name'] ?? '').toString(),
+                    );
+                    final famName = AppLocale.t(
+                      (food['family_name_vi'] ?? food['family_name'] ?? '').toString(),
+                      (food['family_name_en'] ?? food['family_name'] ?? '').toString(),
+                    );
+                    final relIng = AppLocale.t(
+                      (food['related_ingredients_vi'] ?? food['related_ingredients'] ?? '').toString(),
+                      (food['related_ingredients_en'] ?? food['related_ingredients'] ?? '').toString(),
+                    );
+                    final isAlreadySelected = _allergens.any(
+                      (a) => a.code == alCode && a.isSelected,
+                    );
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _selectEverydayAllergyFood(food),
+                        child: Container(
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(
+                            color: isAlreadySelected
+                                ? const Color(0xFFFEF2F2)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isAlreadySelected
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFFCBD5E1),
+                              width: isAlreadySelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(emoji, style: const TextStyle(fontSize: 18)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          foodName,
+                                          style: const TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        Text(
+                                          curie,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isAlreadySelected
+                                          ? const Color(0xFFDC2626)
+                                          : const Color(0xFFFEE2E2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      isAlreadySelected
+                                          ? AppLocale.t('✓ Đã bật BÁO ĐỎ', '✓ RED Alert ON')
+                                          : AppLocale.t('+ Chọn dị ứng này', '+ Select allergy'),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: isAlreadySelected
+                                            ? Colors.white
+                                            : const Color(0xFFDC2626),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 7),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      PhosphorIconsFill.gitBranch,
+                                      size: 14,
+                                      color: Color(0xFFDC2626),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        AppLocale.t(
+                                          'Suy luận FoodOn → Nhóm: $famName',
+                                          'FoodOn Inference → Family: $famName',
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFFB91C1C),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                AppLocale.t(
+                                  '🚨 Tự động BÁO ĐỎ khi nhãn chứa: $relIng',
+                                  '🚨 Auto RED ALERT when label contains: $relIng',
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF475569),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          ),
+
+          if (activeItems.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        PhosphorIconsFill.shieldWarning,
+                        size: 16,
+                        color: Color(0xFFDC2626),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          AppLocale.t(
+                            'Đang bảo vệ BÁO ĐỎ theo cây phân loại FoodOn:',
+                            'Active FoodOn Ontology RED ALERT Protection:',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF991B1B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ...activeItems.map((a) {
+                    final src = a.sourceFoodName;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(
+                        src != null && src != a.displayName
+                            ? AppLocale.t(
+                                '• Dị ứng "$src" → Liên kết nhóm ${a.displayName}: Tự động BÁO ĐỎ (${a.description})',
+                                '• "$src" allergy → Linked to ${a.displayName}: Auto RED ALERT (${a.description})',
+                              )
+                            : AppLocale.t(
+                                '• Nhóm ${a.displayName}: Tự động BÁO ĐỎ (${a.description})',
+                                '• ${a.displayName}: Auto RED ALERT (${a.description})',
+                              ),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFB91C1C),
+                          height: 1.35,
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+          Text(
+            AppLocale.t(
+              'Hoặc chọn trực tiếp theo 8 nhóm dị ứng chính của FoodOn:',
+              'Or toggle directly from the 8 primary FoodOn allergen families:',
+            ),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _allergens.map((item) {
+              final bool active = item.isSelected;
+              final src = item.sourceFoodName;
+              final chipTitle = (active && src != null && src != item.displayName)
+                  ? '${item.emoji} ${item.displayName} (${AppLocale.t("Từ", "From")}: $src)'
+                  : '${item.emoji} ${item.displayName}';
+              return InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  setState(() {
+                    item.isSelected = !item.isSelected;
+                    if (!item.isSelected) {
+                      item.sourceFoodVi = null;
+                      item.sourceFoodEn = null;
+                    }
+                  });
+                  _autoSaveAllergens();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFFFEE2E2) : const Color(0xFFF1F5F9),
+                    border: Border.all(
+                      color: active ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
+                      width: active ? 1.5 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          chipTitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: active ? const Color(0xFFDC2626) : const Color(0xFF334155),
+                          ),
+                        ),
+                      ),
+                      if (active) ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => _cycleSeverity(item),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: item.severityColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              item.severityLabel,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -437,12 +1225,16 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(
-                      widget.isInitialSetup ? Icons.close_rounded : Icons.arrow_back,
+                    icon: PhosphorIcon(
+                      widget.isInitialSetup
+                          ? PhosphorIconsBold.x
+                          : PhosphorIconsBold.arrowLeft,
                       color: const Color(0xFF334155),
-                      size: 22,
+                      size: 21,
                     ),
-                    tooltip: widget.isInitialSetup ? 'Bỏ qua & Vào trang chủ' : 'Quay lại',
+                    tooltip: widget.isInitialSetup
+                        ? AppLocale.t('Bỏ qua & Vào trang chủ', 'Skip & Go to Home')
+                        : AppLocale.t('Quay lại', 'Back'),
                     onPressed: () {
                       if (widget.isInitialSetup) {
                         Navigator.pushReplacement(
@@ -450,23 +1242,30 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                           MaterialPageRoute(
                             builder: (_) => HomeScreen(user: {
                               'id': widget.userId,
-                              'full_name': _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : widget.userName,
+                              'full_name': _nameController.text.trim().isNotEmpty
+                                  ? _nameController.text.trim()
+                                  : widget.userName,
                               'email': _currentEmail,
                             }),
                           ),
                         );
                       } else {
                         Navigator.pop(context, {
-                          'updated': false,
-                          'full_name': _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : widget.userName,
+                          'updated': _allergensChanged,
+                          'full_name': _nameController.text.trim().isNotEmpty
+                              ? _nameController.text.trim()
+                              : widget.userName,
                           'email': _currentEmail,
                         });
                       }
                     },
                   ),
-                  const Text(
-                    'Hồ Sơ Sức Khỏe & Dị Ứng',
-                    style: TextStyle(
+                  Text(
+                    AppLocale.t(
+                      'Hồ Sơ Sức Khỏe & Dị Ứng',
+                      'Health & Allergy Profile',
+                    ),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF0F172A),
@@ -478,11 +1277,14 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF10B981),
+                            ),
                           )
-                        : const Text(
-                            'Lưu',
-                            style: TextStyle(
+                        : Text(
+                            AppLocale.t('Lưu', 'Save'),
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF10B981),
@@ -504,7 +1306,6 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Error Banner if any
                   if (_errorMessage != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -515,7 +1316,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                          const PhosphorIcon(
+                            PhosphorIconsDuotone.warningOctagon,
+                            color: Color(0xFFDC2626),
+                            size: 20,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -533,7 +1338,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Profile Banner Card matching prototype
+                  // Profile Banner Card
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
@@ -543,15 +1348,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE2E8F0),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text('👤', style: TextStyle(fontSize: 22)),
+                        const NutriVietGlassIconTile(
+                          icon: PhosphorIconsDuotone.userCircle,
+                          color: Color(0xFF14803C),
+                          size: 44,
+                          isCircle: true,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -562,7 +1363,10 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      '${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : widget.userName} ($_age tuổi)',
+                                      AppLocale.t(
+                                        '${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : widget.userName} ($_age tuổi)',
+                                        '${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : widget.userName} ($_age yrs)',
+                                      ),
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
@@ -570,7 +1374,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                       ),
                                     ),
                                   ),
-                                  const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF10B981)),
+                                  const PhosphorIcon(
+                                    PhosphorIconsDuotone.pencilSimple,
+                                    size: 17,
+                                    color: Color(0xFF14803C),
+                                  ),
                                 ],
                               ),
                               if (_currentEmail.isNotEmpty) ...[
@@ -614,7 +1422,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ================= SECTION: PERSONAL INFO & PHYSICAL METRICS =================
+                  // Section 1: Smart FoodOn Everyday Allergy Search & Allergen Families
+                  _buildAllergyAndFoodOnSection(selectedCount),
+                  const SizedBox(height: 16),
+
+                  // Personal Info & Physical Metrics
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -633,37 +1445,59 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: const [
-                            Icon(Icons.person_pin_rounded, color: Color(0xFF10B981), size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Thông Tin Cá Nhân & Chỉ Số Thể Trạng',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
+                          children: [
+                            const PhosphorIcon(
+                              PhosphorIconsDuotone.identificationBadge,
+                              color: Color(0xFF14803C),
+                              size: 21,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                AppLocale.t(
+                                  'Thông Tin Cá Nhân & Chỉ Số Thể Trạng',
+                                  'Personal Info & Body Metrics',
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F172A),
+                                ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Cung cấp họ tên và chỉ số thể chất để NutriViet cá nhân hóa dinh dưỡng phù hợp.',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        Text(
+                          AppLocale.t(
+                            'Cung cấp họ tên và chỉ số thể chất để NutriViet cá nhân hóa dinh dưỡng phù hợp.',
+                            'Provide your name and physical metrics so NutriViet can personalize nutrition guidance.',
+                          ),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                         const SizedBox(height: 14),
 
-                        // Editable Full Name Input
-                        const Text(
-                          'Họ và tên người dùng (Có thể chỉnh sửa)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                        Text(
+                          AppLocale.t(
+                            'Họ và tên người dùng (Có thể chỉnh sửa)',
+                            'Full name (Editable)',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF475569),
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _nameController,
                           decoration: InputDecoration(
-                            hintText: 'Nhập họ và tên...',
-                            prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF10B981), size: 20),
+                            hintText: AppLocale.t('Nhập họ và tên...', 'Enter full name...'),
+                            prefixIcon: const PhosphorIcon(
+                              PhosphorIconsDuotone.identificationBadge,
+                              color: Color(0xFF14803C),
+                              size: 20,
+                            ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             focusedBorder: OutlineInputBorder(
@@ -674,10 +1508,13 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Real User Email
-                        const Text(
-                          'Email tài khoản',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                        Text(
+                          AppLocale.t('Email tài khoản', 'Account Email'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF475569),
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Container(
@@ -689,15 +1526,29 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.mail_outline_rounded, color: Color(0xFF64748B), size: 18),
+                              const PhosphorIcon(
+                                PhosphorIconsDuotone.envelope,
+                                color: Color(0xFF64748B),
+                                size: 18,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  _currentEmail.isNotEmpty ? _currentEmail : 'Chưa có thông tin email',
-                                  style: const TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                                  _currentEmail.isNotEmpty
+                                      ? _currentEmail
+                                      : AppLocale.t('Chưa có thông tin email', 'No email linked'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF334155),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                              const Icon(Icons.lock_outline_rounded, color: Color(0xFF94A3B8), size: 16),
+                              const PhosphorIcon(
+                                PhosphorIconsDuotone.lock,
+                                color: Color(0xFF94A3B8),
+                                size: 16,
+                              ),
                             ],
                           ),
                         ),
@@ -706,15 +1557,18 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         // Row 1: Age & Gender
                         Row(
                           children: [
-                            // Age Input
                             Expanded(
                               flex: 4,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Tuổi',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                  Text(
+                                    AppLocale.t('Tuổi', 'Age'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF475569),
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                   TextField(
@@ -723,7 +1577,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                     decoration: InputDecoration(
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                       hintText: '22',
-                                      suffixText: 'tuổi',
+                                      suffixText: AppLocale.t('tuổi', 'yrs'),
                                       suffixStyle: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                     ),
@@ -738,16 +1592,18 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-
-                            // Gender Selector
                             Expanded(
                               flex: 5,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Giới tính',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                  Text(
+                                    AppLocale.t('Giới tính', 'Gender'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF475569),
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                   Row(
@@ -759,20 +1615,26 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(vertical: 10),
                                             decoration: BoxDecoration(
-                                              color: _gender == 'male' ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9),
+                                              color: _gender == 'male'
+                                                  ? const Color(0xFFD1FAE5)
+                                                  : const Color(0xFFF1F5F9),
                                               border: Border.all(
-                                                color: _gender == 'male' ? const Color(0xFF10B981) : const Color(0xFFCBD5E1),
+                                                color: _gender == 'male'
+                                                    ? const Color(0xFF10B981)
+                                                    : const Color(0xFFCBD5E1),
                                                 width: 1.2,
                                               ),
                                               borderRadius: BorderRadius.circular(10),
                                             ),
                                             alignment: Alignment.center,
                                             child: Text(
-                                              'Nam 👨',
+                                              AppLocale.t('Nam 👨', 'Male 👨'),
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: _gender == 'male' ? FontWeight.w700 : FontWeight.w500,
-                                                color: _gender == 'male' ? const Color(0xFF065F46) : const Color(0xFF64748B),
+                                                color: _gender == 'male'
+                                                    ? const Color(0xFF065F46)
+                                                    : const Color(0xFF64748B),
                                               ),
                                             ),
                                           ),
@@ -786,20 +1648,26 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(vertical: 10),
                                             decoration: BoxDecoration(
-                                              color: _gender == 'female' ? const Color(0xFFFCE7F3) : const Color(0xFFF1F5F9),
+                                              color: _gender == 'female'
+                                                  ? const Color(0xFFFCE7F3)
+                                                  : const Color(0xFFF1F5F9),
                                               border: Border.all(
-                                                color: _gender == 'female' ? const Color(0xFFEC4899) : const Color(0xFFCBD5E1),
+                                                color: _gender == 'female'
+                                                    ? const Color(0xFFEC4899)
+                                                    : const Color(0xFFCBD5E1),
                                                 width: 1.2,
                                               ),
                                               borderRadius: BorderRadius.circular(10),
                                             ),
                                             alignment: Alignment.center,
                                             child: Text(
-                                              'Nữ 👩',
+                                              AppLocale.t('Nữ 👩', 'Female 👩'),
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: _gender == 'female' ? FontWeight.w700 : FontWeight.w500,
-                                                color: _gender == 'female' ? const Color(0xFF9D174D) : const Color(0xFF64748B),
+                                                color: _gender == 'female'
+                                                    ? const Color(0xFF9D174D)
+                                                    : const Color(0xFF64748B),
                                               ),
                                             ),
                                           ),
@@ -817,14 +1685,17 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         // Row 2: Height & Weight
                         Row(
                           children: [
-                            // Height Input
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Chiều cao',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                  Text(
+                                    AppLocale.t('Chiều cao', 'Height'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF475569),
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                   TextField(
@@ -848,15 +1719,17 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-
-                            // Weight Input
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Cân nặng',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                  Text(
+                                    AppLocale.t('Cân nặng', 'Weight'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF475569),
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                   TextField(
@@ -883,13 +1756,15 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Interactive BMI & Calorie Result Badge
+                        // BMI & Calorie Result Badge
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _getBmiColor(_calculateBmi()).withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: _getBmiColor(_calculateBmi()).withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -909,7 +1784,10 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                         color: _getBmiColor(_calculateBmi()),
                                       ),
                                     ),
-                                    const Text('BMI', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                                    const Text(
+                                      'BMI',
+                                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -928,136 +1806,21 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Nhu cầu năng lượng ước tính: ~${_calculateTdee()} kcal/ngày',
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                                      AppLocale.t(
+                                        'Nhu cầu năng lượng ước tính: ~${_calculateTdee()} kcal/ngày',
+                                        'Estimated daily energy need: ~${_calculateTdee()} kcal/day',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF475569),
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Section 1: Severe Allergens
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              '🚨 Dị Ứng Thực Phẩm Cần Tránh',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEE2E2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '$selectedCount đã chọn',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFDC2626),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Hệ thống sẽ gắn cờ CẢNH BÁO ĐỎ tức thì khi phát hiện các chất này hoặc dẫn xuất FoodOn.',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Chip Grid matching prototype
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _allergens.map((item) {
-                            final bool active = item.isSelected;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () {
-                                setState(() {
-                                  item.isSelected = !item.isSelected;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: active ? const Color(0xFFFEE2E2) : const Color(0xFFF1F5F9),
-                                  border: Border.all(
-                                    color: active ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
-                                    width: active ? 1.5 : 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: active
-                                      ? [
-                                          BoxShadow(
-                                            color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                                            blurRadius: 3,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '${item.emoji} ${item.displayName}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: active ? const Color(0xFFDC2626) : const Color(0xFF334155),
-                                      ),
-                                    ),
-                                    if (active) ...[
-                                      const SizedBox(width: 6),
-                                      GestureDetector(
-                                        onTap: () => _cycleSeverity(item),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: item.severityColor,
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            item.severityLabel,
-                                            style: const TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                              letterSpacing: 0.2,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
                         ),
                       ],
                     ),
@@ -1075,9 +1838,12 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '⚖️ Mức Độ Nhạy Cảm & Dẫn Xuất',
-                          style: TextStyle(
+                        Text(
+                          AppLocale.t(
+                            '⚖️ Mức Độ Nhạy Cảm & Dẫn Xuất',
+                            '⚖️ Sensitivity & Derivatives',
+                          ),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF0F172A),
@@ -1085,26 +1851,31 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Row 1: Indirect derivatives
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
+                                children: [
                                   Text(
-                                    'Quét dẫn xuất gián tiếp (FoodOn)',
-                                    style: TextStyle(
+                                    AppLocale.t(
+                                      'Quét dẫn xuất gián tiếp',
+                                      'Scan indirect derivatives',
+                                    ),
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF0F172A),
                                     ),
                                   ),
-                                  SizedBox(height: 2),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    'Tự động nhận diện Casein, Lecithin, đạm Whey là sữa/đậu nành',
-                                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    AppLocale.t(
+                                      'Tự động nhận diện đạm sữa, chất nhũ hóa từ sữa hoặc đậu nành',
+                                      'Automatically detect casein, lecithin, and whey as milk or soy derivatives',
+                                    ),
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                   ),
                                 ],
                               ),
@@ -1118,26 +1889,31 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         ),
                         const Divider(color: Color(0xFFE2E8F0), height: 20),
 
-                        // Row 2: Warning traces
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
+                                children: [
                                   Text(
-                                    'Cảnh báo dấu vết / Dây chuyền sản xuất',
-                                    style: TextStyle(
+                                    AppLocale.t(
+                                      'Cảnh báo dấu vết / Dây chuyền sản xuất',
+                                      'Warn about traces / shared equipment',
+                                    ),
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF0F172A),
                                     ),
                                   ),
-                                  SizedBox(height: 2),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    'Nhận diện câu cảnh báo: "Có thể chứa vết đậu phộng..."',
-                                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    AppLocale.t(
+                                      'Nhận diện câu cảnh báo: "Có thể chứa vết đậu phộng..."',
+                                      'Detect precautionary statements like "May contain traces of peanuts..."',
+                                    ),
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                   ),
                                 ],
                               ),
@@ -1165,9 +1941,12 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '🩺 Bệnh Lý Mãn Tính & Tiết Chế',
-                          style: TextStyle(
+                        Text(
+                          AppLocale.t(
+                            '🩺 Bệnh Lý Mãn Tính & Tiết Chế',
+                            '🩺 Chronic Conditions & Dietary Limits',
+                          ),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF0F172A),
@@ -1214,7 +1993,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Bottom Button: "Xác Nhận & Bắt Đầu Quét Nhãn"
+                  // Bottom Save Button
                   Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -1243,11 +2022,21 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Colors.white,
+                              ),
                             )
-                          : const Text(
-                              'Xác Nhận & Bắt Đầu Quét Nhãn',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                          : Text(
+                              AppLocale.t(
+                                'Xác Nhận & Bắt Đầu Quét Nhãn',
+                                'Confirm & Start Scanning Labels',
+                              ),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ),
