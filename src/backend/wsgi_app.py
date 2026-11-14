@@ -29,7 +29,7 @@ GMAIL_PASS = "dcackhtcjpawiwjf"
 def get_db():
     # Fallback to local if running outside PythonAnywhere
     db_file = DB_PATH if os.path.exists(os.path.dirname(DB_PATH)) else os.path.join(os.path.dirname(__file__), "nutriviet.db")
-    conn = sqlite3.connect(db_file)
+    conn = sqlite3.connect(db_file, timeout=15.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -90,6 +90,62 @@ def init_tables():
             updated_at TEXT NOT NULL
         )
         """)
+        # User Chronic Conditions Table (Tình trạng sức khỏe / Bệnh lý nền)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_chronics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chronic_code TEXT NOT NULL,
+            chronic_name TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """)
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_chronic ON user_chronics(user_id, chronic_code)")
+
+        # User Settings Table (Ngôn ngữ, Thông báo, Tùy chọn quét)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            language TEXT NOT NULL DEFAULT 'system',
+            notify_badges INTEGER NOT NULL DEFAULT 1,
+            notify_reminders INTEGER NOT NULL DEFAULT 0,
+            scan_derivatives INTEGER NOT NULL DEFAULT 1,
+            warn_traces INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL
+        )
+        """)
+
+        # Family Profiles Table (Hồ sơ gia đình)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS family_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            member_name TEXT NOT NULL,
+            relationship TEXT NOT NULL DEFAULT 'Bản thân',
+            is_primary INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+        """)
+
+        # Label Scan History Table (Lịch sử quét nhãn thực tế)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scan_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            member_name TEXT NOT NULL DEFAULT '',
+            label_title TEXT NOT NULL DEFAULT 'Kết quả quét',
+            raw_text TEXT NOT NULL,
+            verdict TEXT NOT NULL,
+            risk_level TEXT NOT NULL,
+            risk_label_vi TEXT NOT NULL,
+            additive_count INTEGER NOT NULL DEFAULT 0,
+            warning_count INTEGER NOT NULL DEFAULT 0,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_user ON scan_history(user_id, id DESC)")
+
         conn.commit()
         conn.close()
     except Exception as e:
@@ -620,12 +676,10 @@ def application(environ, start_response):
                     if row:
                         info = calculate_metrics_info(row['age'], row['gender'], row['height'], row['weight'], row['activity_level'])
                         start_response('200 OK', headers)
-                        return [json.dumps({"success": True, "metrics": info}).encode('utf-8')]
+                        return [json.dumps({"success": True, "has_metrics": True, "metrics": info}).encode('utf-8')]
 
-                # Default initial fallback
-                info = calculate_metrics_info(22, 'male', 170.0, 65.0, 'moderate')
                 start_response('200 OK', headers)
-                return [json.dumps({"success": True, "metrics": info, "is_default": True}).encode('utf-8')]
+                return [json.dumps({"success": True, "has_metrics": False, "metrics": None}).encode('utf-8')]
 
             if method == 'POST':
                 uid = body.get('user_id')
@@ -712,6 +766,356 @@ def application(environ, start_response):
                     conn.close()
                 start_response('200 OK', headers)
                 return [json.dumps({"success": True, "message": "Đã lưu hồ sơ dị ứng thành công."}).encode('utf-8')]
+
+        # 11b. User Chronic Conditions Profile ("Tình trạng của tôi")
+        if path == '/api/v1/profile/chronics':
+            if method == 'GET':
+                query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+                uid = query.get('user_id', [None])[0]
+                chronics = []
+                if uid:
+                    conn = get_db()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                    SELECT chronic_code as code, chronic_name as name, updated_at
+                    FROM user_chronics
+                    WHERE user_id = ?
+                    ORDER BY id ASC
+                    """, (int(uid),))
+                    chronics = [dict(r) for r in cursor.fetchall()]
+                    conn.close()
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, "chronics": chronics}).encode('utf-8')]
+
+            if method == 'POST':
+                uid = body.get('user_id')
+                ch_list = body.get('chronics', [])
+                now = datetime.utcnow().isoformat()
+                if uid:
+                    conn = get_db()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM user_chronics WHERE user_id = ?", (int(uid),))
+                    for item in ch_list:
+                        if isinstance(item, dict):
+                            code = item.get('code') or item.get('chronic_code') or ''
+                            name = item.get('name') or item.get('chronic_name') or code
+                        else:
+                            code = str(item)
+                            name = code
+                        if code:
+                            cursor.execute("""
+                            INSERT INTO user_chronics (user_id, chronic_code, chronic_name, updated_at)
+                            VALUES (?, ?, ?, ?)
+                            """, (int(uid), code, name, now))
+                    conn.commit()
+                    conn.close()
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, "message": "Đã lưu tình trạng sức khỏe thành công."}).encode('utf-8')]
+
+        # 11c. User Settings ("Ngôn ngữ", "Chúc mừng huy hiệu", "Nhắc nhở nhẹ nhàng")
+        if path == '/api/v1/profile/settings':
+            if method == 'GET':
+                query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+                uid = query.get('user_id', [None])[0]
+                settings = {
+                    "language": "system",
+                    "notify_badges": True,
+                    "notify_reminders": False,
+                    "scan_derivatives": True,
+                    "warn_traces": True,
+                }
+                if uid:
+                    conn = get_db()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                    SELECT language, notify_badges, notify_reminders, scan_derivatives, warn_traces
+                    FROM user_settings
+                    WHERE user_id = ?
+                    """, (int(uid),))
+                    row = cursor.fetchone()
+                    conn.close()
+                    if row:
+                        settings = {
+                            "language": row["language"],
+                            "notify_badges": bool(row["notify_badges"]),
+                            "notify_reminders": bool(row["notify_reminders"]),
+                            "scan_derivatives": bool(row["scan_derivatives"]),
+                            "warn_traces": bool(row["warn_traces"]),
+                        }
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, "settings": settings}).encode('utf-8')]
+
+            if method == 'POST':
+                uid = body.get('user_id')
+                if not uid:
+                    start_response('400 Bad Request', headers)
+                    return [json.dumps({"success": False, "message": "user_id is required"}).encode('utf-8')]
+                lang = str(body.get('language', 'system'))
+                nb = 1 if body.get('notify_badges', True) else 0
+                nr = 1 if body.get('notify_reminders', False) else 0
+                sd = 1 if body.get('scan_derivatives', True) else 0
+                wt = 1 if body.get('warn_traces', True) else 0
+                now = datetime.utcnow().isoformat()
+                conn = get_db()
+                cursor = conn.cursor()
+                cursor.execute("""
+                INSERT INTO user_settings (user_id, language, notify_badges, notify_reminders, scan_derivatives, warn_traces, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    language = excluded.language,
+                    notify_badges = excluded.notify_badges,
+                    notify_reminders = excluded.notify_reminders,
+                    scan_derivatives = excluded.scan_derivatives,
+                    warn_traces = excluded.warn_traces,
+                    updated_at = excluded.updated_at
+                """, (int(uid), lang, nb, nr, sd, wt, now))
+                conn.commit()
+                conn.close()
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, "message": "Đã lưu cài đặt thành công."}).encode('utf-8')]
+
+        # 11d. Family Profiles ("Hồ sơ gia đình")
+        if path == '/api/v1/profile/family':
+            if method == 'GET':
+                query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+                uid = query.get('user_id', [None])[0]
+                members = []
+                if uid:
+                    conn = get_db()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT id, member_name, relationship, is_primary, created_at FROM family_members WHERE user_id = ? ORDER BY is_primary DESC, id ASC", (int(uid),))
+                    members = [dict(r) for r in cursor.fetchall()]
+                    if not members:
+                        cursor.execute("SELECT full_name FROM users WHERE id = ?", (int(uid),))
+                        u_row = cursor.fetchone()
+                        raw_short = (u_row["full_name"].strip().split()[-1] if u_row and u_row["full_name"] else "Tôi")
+                        short_name = raw_short[0].upper() + raw_short[1:] if raw_short else "Tôi"
+                        now = datetime.utcnow().isoformat()
+                        cursor.execute("INSERT INTO family_members (user_id, member_name, relationship, is_primary, created_at) VALUES (?, ?, 'Bản thân', 1, ?)", (int(uid), short_name, now))
+                        conn.commit()
+                        cursor.execute("SELECT id, member_name, relationship, is_primary, created_at FROM family_members WHERE user_id = ? ORDER BY is_primary DESC, id ASC", (int(uid),))
+                        members = [dict(r) for r in cursor.fetchall()]
+                    conn.close()
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, "members": members}).encode('utf-8')]
+
+            if method == 'POST':
+                uid = body.get('user_id')
+                action = body.get('action', 'add')
+                if not uid:
+                    start_response('400 Bad Request', headers)
+                    return [json.dumps({"success": False, "message": "user_id is required"}).encode('utf-8')]
+                conn = get_db()
+                cursor = conn.cursor()
+                if action == 'delete':
+                    member_id = body.get('member_id')
+                    if member_id:
+                        cursor.execute("DELETE FROM family_members WHERE id = ? AND user_id = ? AND is_primary = 0", (int(member_id), int(uid)))
+                        conn.commit()
+                else:
+                    member_name = (body.get('member_name') or '').strip()
+                    rel = (body.get('relationship') or 'Thành viên').strip()
+                    if member_name:
+                        now = datetime.utcnow().isoformat()
+                        cursor.execute("INSERT INTO family_members (user_id, member_name, relationship, is_primary, created_at) VALUES (?, ?, ?, 0, ?)", (int(uid), member_name, rel, now))
+                        conn.commit()
+                cursor.execute("SELECT id, member_name, relationship, is_primary, created_at FROM family_members WHERE user_id = ? ORDER BY is_primary DESC, id ASC", (int(uid),))
+                members = [dict(r) for r in cursor.fetchall()]
+                conn.close()
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, "members": members}).encode('utf-8')]
+
+        # 12. Real Scan History & Packaging Label Evaluation ("Quét nhãn" & "Lịch sử")
+        if path == '/api/v1/scans':
+            if not hasattr(application, '_foodon_engine'):
+                sys.path.insert(0, os.path.dirname(__file__))
+                from hybrid_ontology import HybridFoodOnEngine
+                application._foodon_engine = HybridFoodOnEngine()
+            eng = application._foodon_engine
+
+            def _fetch_user_scan_summary(conn, uid_int: int):
+                cur = conn.cursor()
+                cur.execute("SELECT id, member_name, label_title, raw_text, verdict, risk_level, risk_label_vi, additive_count, warning_count, result_json, created_at FROM scan_history WHERE user_id = ? ORDER BY id DESC LIMIT 50", (uid_int,))
+                rows = cur.fetchall()
+                scans = []
+                month_prefix = datetime.utcnow().strftime("%Y-%m")
+                monthly_scans = 0
+                monthly_warnings = 0
+                warning_scans = 0
+                for r in rows:
+                    d = dict(r)
+                    try:
+                        d["evaluation"] = json.loads(d.pop("result_json", "{}"))
+                    except Exception:
+                        d["evaluation"] = {}
+                    scans.append(d)
+                    if d["warning_count"] > 0 or d["risk_level"] == "high":
+                        warning_scans += 1
+                    if str(d["created_at"]).startswith(month_prefix):
+                        monthly_scans += 1
+                        monthly_warnings += int(d["warning_count"])
+                return {
+                    "scans": scans,
+                    "total_scans": len(scans),
+                    "warning_scans": warning_scans,
+                    "monthly_scans": monthly_scans,
+                    "monthly_warnings": monthly_warnings,
+                }
+
+            if method == 'GET':
+                query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+                uid = query.get('user_id', [None])[0]
+                if not uid:
+                    start_response('400 Bad Request', headers)
+                    return [json.dumps({"success": False, "message": "user_id is required"}).encode('utf-8')]
+                conn = get_db()
+                summary = _fetch_user_scan_summary(conn, int(uid))
+                conn.close()
+                start_response('200 OK', headers)
+                return [json.dumps({"success": True, **summary}, ensure_ascii=False).encode('utf-8')]
+
+            if method == 'POST':
+                uid = body.get('user_id')
+                raw_text = (body.get('raw_text') or body.get('ingredients') or '').strip()
+                label_title = (body.get('label_title') or 'Kết quả quét').strip()
+                member_name = (body.get('member_name') or '').strip()
+                if not uid or not raw_text:
+                    start_response('400 Bad Request', headers)
+                    return [json.dumps({"success": False, "message": "Vui lòng nhập hoặc quét thành phần trên nhãn bao bì."}).encode('utf-8')]
+
+                conn = get_db()
+                cursor = conn.cursor()
+                cursor.execute("SELECT allergen_code as code, severity FROM user_allergens WHERE user_id = ?", (int(uid),))
+                user_als = [dict(r) for r in cursor.fetchall()]
+                cursor.execute("SELECT chronic_code FROM user_chronics WHERE user_id = ?", (int(uid),))
+                user_chs = [r["chronic_code"] for r in cursor.fetchall()]
+
+                # Split ingredients by comma, semicolon, or newline
+                import re as _re
+                cleaned_text = _re.sub(r"^(?:thành phần|ingredients)\s*[:\-]\s*", "", raw_text, flags=_re.IGNORECASE)
+                tokens = [t.strip(" .") for t in _re.split(r"[,;\n]+", cleaned_text) if t.strip(" .")]
+
+                eval_res = eng.evaluate_packaging_label(tokens, user_als, user_chs)
+
+                # Inspect matched concepts for E-code additives and ontological risk level
+                detected_additives = []
+                highest_concept_risk = "safe"
+                for tok_detail in eval_res.get("details", []):
+                    for m in tok_detail.get("matches", []):
+                        c = m["curie"]
+                        rk = eng.classify_concept_risk(c)["risk_level"]
+                        if rk == "high":
+                            highest_concept_risk = "high"
+                        elif rk == "low" and highest_concept_risk == "safe":
+                            highest_concept_risk = "low"
+                        if m.get("ecodes") or "FOODON:03412972" in m.get("lineage", ""):
+                            card = eng._build_concept_card(c)
+                            detected_additives.append(card)
+
+                eval_res["detected_additives"] = detected_additives
+                warning_count = len(eval_res.get("red_triggers", [])) + len(eval_res.get("yellow_triggers", []))
+                additive_count = len(detected_additives) if detected_additives else len([d for d in eval_res.get("details", []) if d.get("matched")])
+
+                if eval_res["verdict"] == "RED" or highest_concept_risk == "high":
+                    risk_level = "high"
+                    risk_label_vi = "Nguy cơ cao"
+                elif eval_res["verdict"] == "YELLOW" or highest_concept_risk == "low":
+                    risk_level = "low"
+                    risk_label_vi = "Nguy cơ thấp"
+                else:
+                    risk_level = "safe"
+                    risk_label_vi = "An toàn"
+
+                now = datetime.utcnow().isoformat()
+                cursor.execute("""
+                INSERT INTO scan_history (user_id, member_name, label_title, raw_text, verdict, risk_level, risk_label_vi, additive_count, warning_count, result_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    int(uid),
+                    member_name,
+                    label_title,
+                    raw_text,
+                    eval_res["verdict"],
+                    risk_level,
+                    risk_label_vi,
+                    additive_count,
+                    warning_count,
+                    json.dumps(eval_res, ensure_ascii=False),
+                    now,
+                ))
+                conn.commit()
+                summary = _fetch_user_scan_summary(conn, int(uid))
+                conn.close()
+
+                start_response('200 OK', headers)
+                return [json.dumps({
+                    "success": True,
+                    "latest_scan": summary["scans"][0] if summary["scans"] else None,
+                    **summary,
+                }, ensure_ascii=False).encode('utf-8')]
+
+        # 13. FoodOn + Kala Hybrid Ontology Explorer Web UI & REST API (FG3 / UC09)
+        if path == '/foodon-test' and method == 'GET':
+            html_file = os.path.join(os.path.dirname(__file__), 'static', 'foodon_explorer.html')
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
+            return [html_content.encode('utf-8')]
+
+        if path == '/api/v1/foodon/additives' and method == 'GET':
+            if not hasattr(application, '_foodon_engine'):
+                sys.path.insert(0, os.path.dirname(__file__))
+                from hybrid_ontology import HybridFoodOnEngine
+                application._foodon_engine = HybridFoodOnEngine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            q = query.get('q', [''])[0]
+            lang = query.get('lang', ['all'])[0]
+            limit = int(query.get('limit', ['60'])[0])
+            res = application._foodon_engine.list_additives(query=q, lang=lang, limit=limit)
+            start_response('200 OK', headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
+
+        if path == '/api/v1/foodon/category' and method == 'GET':
+            if not hasattr(application, '_foodon_engine'):
+                sys.path.insert(0, os.path.dirname(__file__))
+                from hybrid_ontology import HybridFoodOnEngine
+                application._foodon_engine = HybridFoodOnEngine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            cat = query.get('category', ['sugar'])[0]
+            als_str = query.get('allergens', [''])[0]
+            als = [x.strip() for x in als_str.split(',') if x.strip()]
+            limit = int(query.get('limit', ['20'])[0])
+            res = application._foodon_engine.get_category_concepts(category=cat, user_allergens=als, limit=limit)
+            start_response('200 OK', headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
+
+        if path == '/api/v1/foodon/search' and method == 'GET':
+            if not hasattr(application, '_foodon_engine'):
+                sys.path.insert(0, os.path.dirname(__file__))
+                from hybrid_ontology import HybridFoodOnEngine
+                application._foodon_engine = HybridFoodOnEngine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            q = query.get('q', [''])[0]
+            lang = query.get('lang', ['all'])[0]
+            allergen = query.get('allergen', [''])[0]
+            limit = int(query.get('limit', ['30'])[0])
+            res = application._foodon_engine.search_concepts(query=q, lang_scope=lang, allergen_filter=allergen, limit=limit)
+            start_response('200 OK', headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
+
+        if path == '/api/v1/foodon/evaluate' and method == 'POST':
+            if not hasattr(application, '_foodon_engine'):
+                sys.path.insert(0, os.path.dirname(__file__))
+                from hybrid_ontology import HybridFoodOnEngine
+                application._foodon_engine = HybridFoodOnEngine()
+            ingredients = body.get('ingredients') or []
+            if isinstance(ingredients, str):
+                ingredients = [x.strip() for x in ingredients.split(',') if x.strip()]
+            allergens = body.get('allergens') or []
+            chronics = body.get('chronics') or []
+            res = application._foodon_engine.evaluate_packaging_label(ingredients, allergens, chronics)
+            start_response('200 OK', headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
         start_response('404 Not Found', headers)
         return [json.dumps({"error": "Endpoint Not Found", "path": path}).encode('utf-8')]
