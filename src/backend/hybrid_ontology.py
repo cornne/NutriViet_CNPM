@@ -19,10 +19,9 @@ import zlib
 import sqlite3
 import unicodedata
 from difflib import SequenceMatcher
-import yaml
 import monolingual_catalog as mono_cat
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 FOODON_DIR = os.path.join(DATA_DIR, "foodon")
 HYBRID_DB_PATH = os.path.join(DATA_DIR, "nutriviet_hybrid.db")
 
@@ -407,6 +406,8 @@ def build_hybrid_database(db_path: str = HYBRID_DB_PATH, verbose: bool = True) -
 
     if verbose:
         print("[2/5] Loading FoodOn ingredients.yaml & assumptions...")
+    import yaml
+
     with open(yaml_path, "r", encoding="utf-8") as f:
         ing_yaml = yaml.safe_load(f)
 
