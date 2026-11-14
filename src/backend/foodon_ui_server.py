@@ -6,6 +6,9 @@ Serves all REST APIs (`/api/v1/*`) and the Bilingual Test UI (`/foodon-test`).
 
 import os
 import sys
+import time
+import threading
+import subprocess
 from socketserver import ThreadingMixIn
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler, make_server
 
@@ -14,6 +17,22 @@ import wsgi_app
 
 HOST = os.environ.get("FOODON_UI_HOST", "0.0.0.0")
 PORT = int(os.environ.get("FOODON_UI_PORT", 8050))
+ADB_EXE = r"C:\platform-tools\adb.exe"
+
+
+def _setup_adb_reverse_once():
+    """Sets up `adb reverse tcp:8050 tcp:8050` once on startup for connected Android devices."""
+    if not os.path.exists(ADB_EXE):
+        return
+    try:
+        subprocess.run(
+            [ADB_EXE, "reverse", f"tcp:{PORT}", f"tcp:{PORT}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=6,
+        )
+    except Exception:
+        pass
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -35,6 +54,8 @@ def app_with_root_redirect(environ, start_response):
 
 
 def main():
+    t = threading.Thread(target=_setup_adb_reverse_once, daemon=True)
+    t.start()
     with make_server(
         HOST,
         PORT,
@@ -42,7 +63,7 @@ def main():
         server_class=ThreadingWSGIServer,
         handler_class=QuietWSGIHandler,
     ) as httpd:
-        print(f"NutriViet Full Backend + FoodOn Hybrid Server running at: http://127.0.0.1:{PORT}/foodon-test", flush=True)
+        print(f"NutriViet Full Backend + FoodOn Hybrid Server running at: http://0.0.0.0:{PORT}/foodon-test", flush=True)
         httpd.serve_forever()
 
 
