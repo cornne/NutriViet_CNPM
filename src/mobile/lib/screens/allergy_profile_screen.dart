@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/profile_service.dart';
 import '../services/auth_service.dart';
+import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'home_screen.dart';
 
@@ -663,20 +666,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
 
   Widget _buildAllergyAndFoodOnSection(int selectedCount) {
     final activeItems = _allergens.where((a) => a.isSelected).toList();
-    return Container(
+    return NutriVietGlassCard(
+      cornerRadius: 22,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFCA5A5), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      color: const Color(0xD4FFFFFF),
+      border: Border.all(color: const Color(0x99FCA5A5), width: 1.25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -875,16 +869,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
 
                 if (_isSearchingFood) ...[
                   const SizedBox(height: 10),
-                  const Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFFDC2626),
-                      ),
-                    ),
-                  ),
+                  const NutriVietFoodSearchSkeleton(itemCount: 3),
                 ] else if (_foodSearchResults.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   ..._foodSearchResults.map((food) {
@@ -1206,147 +1191,95 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedCount = _allergens.where((a) => a.isSelected).length;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final screenW = MediaQuery.sizeOf(context).width;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(56),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-            ),
+    void handleBack() {
+      if (widget.isInitialSetup) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(user: {
+              'id': widget.userId,
+              'full_name': _nameController.text.trim().isNotEmpty
+                  ? _nameController.text.trim()
+                  : widget.userName,
+              'email': _currentEmail,
+            }),
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: PhosphorIcon(
-                      widget.isInitialSetup
-                          ? PhosphorIconsBold.x
-                          : PhosphorIconsBold.arrowLeft,
-                      color: const Color(0xFF334155),
-                      size: 21,
-                    ),
-                    tooltip: widget.isInitialSetup
-                        ? AppLocale.t('Bỏ qua & Vào trang chủ', 'Skip & Go to Home')
-                        : AppLocale.t('Quay lại', 'Back'),
-                    onPressed: () {
-                      if (widget.isInitialSetup) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HomeScreen(user: {
-                              'id': widget.userId,
-                              'full_name': _nameController.text.trim().isNotEmpty
-                                  ? _nameController.text.trim()
-                                  : widget.userName,
-                              'email': _currentEmail,
-                            }),
-                          ),
-                        );
-                      } else {
-                        Navigator.pop(context, {
-                          'updated': _allergensChanged,
-                          'full_name': _nameController.text.trim().isNotEmpty
-                              ? _nameController.text.trim()
-                              : widget.userName,
-                          'email': _currentEmail,
-                        });
-                      }
-                    },
-                  ),
-                  Text(
-                    AppLocale.t(
-                      'Hồ Sơ Sức Khỏe & Dị Ứng',
-                      'Health & Allergy Profile',
-                    ),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _isSaving ? null : _handleSave,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF10B981),
-                            ),
-                          )
-                        : Text(
-                            AppLocale.t('Lưu', 'Save'),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF10B981),
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF10B981)),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFEF4444), width: 1),
-                      ),
-                      child: Row(
-                        children: [
-                          const PhosphorIcon(
-                            PhosphorIconsDuotone.warningOctagon,
-                            color: Color(0xFFDC2626),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(
-                                color: Color(0xFFDC2626),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+        );
+      } else {
+        Navigator.pop(context, {
+          'updated': _allergensChanged,
+          'full_name': _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : widget.userName,
+          'email': _currentEmail,
+        });
+      }
+    }
+
+    return NutriVietGlassBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: NutriVietGlassScrollArea(
+                child: _isLoading
+                    ? SingleChildScrollView(
+                        padding: EdgeInsets.only(top: topInset + 72),
+                        child: const NutriVietAllergyProfileSkeleton(),
+                      )
+                    : SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
+                        padding:
+                            EdgeInsets.fromLTRB(16, topInset + 82, 16, 36),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (_errorMessage != null) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xEEFDE8E8),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: const Color(0xFFEF4444), width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const PhosphorIcon(
+                                      PhosphorIconsDuotone.warningOctagon,
+                                      color: Color(0xFFDC2626),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: const TextStyle(
+                                          color: Color(0xFFDC2626),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                              const SizedBox(height: 16),
+                            ],
 
-                  // Profile Banner Card
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-                    ),
-                    child: Row(
+                            // Profile Banner Card
+                            NutriVietGlassCard(
+                              cornerRadius: 22,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              child: Row(
                       children: [
                         const NutriVietGlassIconTile(
                           icon: PhosphorIconsDuotone.userCircle,
@@ -1427,20 +1360,9 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Personal Info & Physical Metrics
-                  Container(
+                  NutriVietGlassCard(
+                    cornerRadius: 22,
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1828,13 +1750,9 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Section 2: Sensitivity Setup
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-                    ),
+                  NutriVietGlassCard(
+                    cornerRadius: 22,
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1844,8 +1762,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                             '⚖️ Sensitivity & Derivatives',
                           ),
                           style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                             color: Color(0xFF0F172A),
                           ),
                         ),
@@ -1864,7 +1782,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                       'Scan indirect derivatives',
                                     ),
                                     style: const TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF0F172A),
                                     ),
@@ -1875,19 +1793,26 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                       'Tự động nhận diện đạm sữa, chất nhũ hóa từ sữa hoặc đậu nành',
                                       'Automatically detect casein, lecithin, and whey as milk or soy derivatives',
                                     ),
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF64748B)),
                                   ),
                                 ],
                               ),
                             ),
-                            Switch(
-                              value: _scanDerivatives,
-                              activeTrackColor: const Color(0xFF10B981),
-                              onChanged: (val) => setState(() => _scanDerivatives = val),
+                            const SizedBox(width: 10),
+                            LiquidGlassBatch.exclude(
+                              child: LiquidGlassSwitch(
+                                value: _scanDerivatives,
+                                activeColor: NutriVietGlass.brandGreen,
+                                inactiveColor: const Color(0xFFD1D5DB),
+                                onChanged: (val) =>
+                                    setState(() => _scanDerivatives = val),
+                              ),
                             ),
                           ],
                         ),
-                        const Divider(color: Color(0xFFE2E8F0), height: 20),
+                        const Divider(color: Color(0x220F172A), height: 22),
 
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1902,7 +1827,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                       'Warn about traces / shared equipment',
                                     ),
                                     style: const TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF0F172A),
                                     ),
@@ -1913,15 +1838,22 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                       'Nhận diện câu cảnh báo: "Có thể chứa vết đậu phộng..."',
                                       'Detect precautionary statements like "May contain traces of peanuts..."',
                                     ),
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF64748B)),
                                   ),
                                 ],
                               ),
                             ),
-                            Switch(
-                              value: _warnTraces,
-                              activeTrackColor: const Color(0xFF10B981),
-                              onChanged: (val) => setState(() => _warnTraces = val),
+                            const SizedBox(width: 10),
+                            LiquidGlassBatch.exclude(
+                              child: LiquidGlassSwitch(
+                                value: _warnTraces,
+                                activeColor: NutriVietGlass.brandGreen,
+                                inactiveColor: const Color(0xFFD1D5DB),
+                                onChanged: (val) =>
+                                    setState(() => _warnTraces = val),
+                              ),
                             ),
                           ],
                         ),
@@ -1931,13 +1863,9 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Section 3: Chronic Conditions
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-                    ),
+                  NutriVietGlassCard(
+                    cornerRadius: 22,
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1947,8 +1875,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                             '🩺 Chronic Conditions & Dietary Limits',
                           ),
                           style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                             color: Color(0xFF0F172A),
                           ),
                         ),
@@ -1959,29 +1887,40 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                           runSpacing: 8,
                           children: _conditions.map((item) {
                             final active = item.isActive;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () {
-                                setState(() {
-                                  item.isActive = !item.isActive;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: active ? const Color(0xFFFEF3C7) : const Color(0xFFF1F5F9),
-                                  border: Border.all(
-                                    color: active ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
-                                    width: active ? 1.5 : 1,
+                            return NutriVietPressScale(
+                              pressedScale: 0.94,
+                              enableHaptic: true,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    item.isActive = !item.isActive;
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: active
+                                        ? const Color(0xEEFEF3C7)
+                                        : Colors.white.withValues(alpha: 0.72),
+                                    border: Border.all(
+                                      color: active
+                                          ? const Color(0xFFF59E0B)
+                                          : const Color(0xFFCBD5E1),
+                                      width: active ? 1.5 : 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  item.title,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: active ? const Color(0xFFD97706) : const Color(0xFF334155),
+                                  child: Text(
+                                    item.title,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: active
+                                          ? const Color(0xFFD97706)
+                                          : const Color(0xFF334155),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1993,57 +1932,123 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Bottom Save Button
-                  Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  // Bottom Liquid Glass Save CTA
+                  LiquidGlassBatch.exclude(
+                    child: NutriVietGlassActionButton(
+                      label: AppLocale.t(
+                        'Xác Nhận & Bắt Đầu Quét Nhãn',
+                        'Confirm & Start Scanning Labels',
                       ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _handleSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              AppLocale.t(
-                                'Xác Nhận & Bắt Đầu Quét Nhãn',
-                                'Confirm & Start Scanning Labels',
-                              ),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
+                      icon: PhosphorIconsBold.checkCircle,
+                      isLoading: _isSaving,
+                      width: double.infinity,
+                      height: 52,
+                      onPressed: _handleSave,
                     ),
                   ),
                   const SizedBox(height: 20),
-                ],
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+
+          // Soft feathered scroll edge under floating glass AppBar
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LiquidGlassScrollEdge(
+              edge: LiquidGlassEdge.top,
+              height: topInset + 84,
+              blur: 0,
+              style: LiquidGlassScrollEdgeStyle.soft,
+              curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
+              color: const Color(0xDDEEF6F2),
+            ),
+          ),
+
+          // Floating Liquid Glass App Bar
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LiquidGlassBatch.exclude(
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                  child: Center(
+                    child: LiquidGlassAppBar(
+                      width: screenW - 28,
+                      height: 58,
+                      style: NutriVietGlass.appBar,
+                      touch: NutriVietGlass.touchSubtle,
+                      centerTitle: true,
+                      leading: Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: LiquidGlassTabBarAction(
+                          icon: widget.isInitialSetup
+                              ? PhosphorIconsBold.x
+                              : PhosphorIconsBold.arrowLeft,
+                          foregroundColor: const Color(0xFF1F2937),
+                          size: 40,
+                          style: NutriVietGlass.circleOrb,
+                          touch: NutriVietGlass.touchPronounced,
+                          onTap: handleBack,
+                        ),
+                      ),
+                      title: Text(
+                        AppLocale.t(
+                          'Hồ Sơ Dị Ứng',
+                          'Allergy Profile',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      actions: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: LiquidGlassButton(
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            style: NutriVietGlass.emeraldButton,
+                            touch: NutriVietGlass.touchPronounced,
+                            foregroundColor: Colors.white,
+                            onPressed: _isSaving ? null : _handleSave,
+                            child: _isSaving
+                                ? NutriVietShimmerBox(
+                                    width: 34,
+                                    height: 11,
+                                    borderRadius: 6,
+                                    baseColor:
+                                        Colors.white.withValues(alpha: 0.3),
+                                    highlightColor: Colors.white,
+                                  )
+                                : Text(
+                                    AppLocale.t('Lưu', 'Save'),
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
+          ),
+        ],
+      ),
+    ),
     );
   }
 }
