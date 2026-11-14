@@ -5,6 +5,7 @@ import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'allergy_profile_screen.dart';
@@ -164,82 +165,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openChronicsSheet() async {
-    final activeCodes = _chronics.map((c) => c['code'].toString()).toSet();
+    final selectedNotifier = ValueNotifier<Set<String>>(
+      _chronics.map((c) => c['code'].toString()).toSet(),
+    );
+    final savingNotifier = ValueNotifier<bool>(false);
     final catalog = _chronicCatalog;
-    await showLiquidGlassSheet(
+    await showNutriVietGlassSheet(
       context: context,
       isScrollControlled: true,
-      anchor: LiquidGlassSheetAnchor.attached,
+      anchor: NutriVietGlassSheetAnchor.attached,
       grabber: true,
-      style: NutriVietGlass.lightSheet,
-      foregroundColor: NutriVietGlass.inkPrimary,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Text(
-                    AppLocale.t('Tình trạng của tôi', 'My Health Conditions'),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    AppLocale.t(
-                      'Chọn các tình trạng sức khỏe để hệ thống tự động cảnh báo đường, muối hoặc chất béo khi quét nhãn.',
-                      'Select your health conditions so the system automatically flags sugar, salt, or fat when scanning labels.',
-                    ),
-                    style: const TextStyle(fontSize: 13.5, color: Color(0xFF4B5563)),
-                  ),
-                  const SizedBox(height: 14),
-                  ...catalog.map((item) {
-                    final code = item['code']!;
-                    final isChecked = activeCodes.contains(code);
-                    return CheckboxListTile(
-                      value: isChecked,
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 6),
+              Text(
+                AppLocale.t('Tình trạng của tôi', 'My Health Conditions'),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                AppLocale.t(
+                  'Chọn các tình trạng sức khỏe để hệ thống tự động cảnh báo đường, muối hoặc chất béo khi quét nhãn.',
+                  'Select your health conditions so the system automatically flags sugar, salt, or fat when scanning labels.',
+                ),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  color: Color(0xFF4B5563),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ...catalog.map((item) {
+                final code = item['code']!;
+                return ValueListenableBuilder<Set<String>>(
+                  valueListenable: selectedNotifier,
+                  builder: (_, selected, __) {
+                    return NutriVietGlassCheckRow(
+                      title: item['name']!,
+                      subtitle: item['desc']!,
+                      checked: selected.contains(code),
                       activeColor: _brandGreen,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        item['name']!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15.5,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      subtitle: Text(
-                        item['desc']!,
-                        style: const TextStyle(fontSize: 12.5, color: Color(0xFF6B7280)),
-                      ),
-                      onChanged: (val) {
-                        setModalState(() {
-                          if (val == true) {
-                            activeCodes.add(code);
-                          } else {
-                            activeCodes.remove(code);
-                          }
-                        });
+                      onTap: () {
+                        final next = Set<String>.from(selectedNotifier.value);
+                        if (!next.add(code)) {
+                          next.remove(code);
+                        }
+                        selectedNotifier.value = next;
                       },
                     );
-                  }),
-                  const SizedBox(height: 16),
-                  LiquidGlassButton(
+                  },
+                );
+              }),
+              const SizedBox(height: 10),
+              ValueListenableBuilder<bool>(
+                valueListenable: savingNotifier,
+                builder: (_, saving, __) {
+                  return NutriVietGlassPillButton(
                     width: double.infinity,
                     height: 50,
-                    style: NutriVietGlass.emeraldButton,
-                    foregroundColor: Colors.white,
-                    label: AppLocale.t('Lưu tình trạng sức khỏe', 'Save health conditions'),
-                    touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
+                    isLoading: saving,
+                    label: AppLocale.t(
+                      'Lưu tình trạng sức khỏe',
+                      'Save health conditions',
+                    ),
                     onPressed: () async {
+                      if (savingNotifier.value) return;
+                      savingNotifier.value = true;
+                      final activeCodes = selectedNotifier.value;
                       final payload = catalog
                           .where((c) => activeCodes.contains(c['code']))
                           .map((c) => {'code': c['code']!, 'name': c['name']!})
@@ -268,14 +270,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       }
                     },
-                  ),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
+    selectedNotifier.dispose();
+    savingNotifier.dispose();
   }
 
   Future<void> _openLanguageSheet() async {
@@ -298,12 +302,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     ];
 
-    await showLiquidGlassSheet(
+    await showNutriVietGlassSheet(
       context: context,
-      anchor: LiquidGlassSheetAnchor.attached,
+      anchor: NutriVietGlassSheetAnchor.attached,
       grabber: true,
-      style: NutriVietGlass.lightSheet,
-      foregroundColor: NutriVietGlass.inkPrimary,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       builder: (ctx) {
         return SafeArea(
@@ -312,7 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 AppLocale.t('Ngôn ngữ giao diện', 'App Language'),
                 style: const TextStyle(
@@ -321,29 +323,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: Color(0xFF111827),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               ...options.map((opt) {
                 final selected = AppLocale.code == opt['value'];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    opt['label']!,
-                    style: TextStyle(
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                      color: selected ? _brandGreen : const Color(0xFF111827),
-                    ),
-                  ),
-                  subtitle: Text(
-                    opt['sub']!,
-                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF6B7280)),
-                  ),
-                  trailing: selected
-                      ? const PhosphorIcon(
-                          PhosphorIconsFill.checkCircle,
-                          color: _brandGreen,
-                          size: 22,
-                        )
-                      : null,
+                return NutriVietGlassOptionRow(
+                  title: opt['label']!,
+                  subtitle: opt['sub']!,
+                  selected: selected,
+                  activeColor: _brandGreen,
                   onTap: () async {
                     final newLang = opt['value']!;
                     Navigator.pop(ctx);
@@ -388,15 +375,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
 
-    await showLiquidGlassDialog(
+    await showNutriVietGlassDialog(
       context: context,
       builder: (ctx) {
         String? errorMsg;
         bool saving = false;
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            return LiquidGlassAlertDialog(
-              style: NutriVietGlass.lightSheet,
+            return NutriVietGlassDialog(
               title: Text(
                 AppLocale.t('Đổi mật khẩu tài khoản', 'Change Account Password'),
                 style: const TextStyle(
@@ -454,17 +440,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               actions: [
-                LiquidGlassButton(
-                  height: 42,
-                  style: NutriVietGlass.neutralButton,
-                  foregroundColor: const Color(0xFF1F2937),
+                NutriVietGlassPillButton(
+                  height: 44,
+                  variant: NutriVietGlassButtonVariant.neutral,
                   label: AppLocale.t('Hủy', 'Cancel'),
                   onPressed: () => Navigator.pop(ctx),
                 ),
-                LiquidGlassButton(
-                  height: 42,
-                  style: NutriVietGlass.emeraldButton,
-                  foregroundColor: Colors.white,
+                NutriVietGlassPillButton(
+                  height: 44,
+                  isLoading: saving,
                   label: saving
                       ? AppLocale.t('Đang lưu...', 'Saving...')
                       : AppLocale.t('Lưu mật khẩu', 'Save password'),
