@@ -9,6 +9,7 @@ import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'allergy_profile_screen.dart';
 import 'settings_screen.dart';
@@ -26,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color _brandGreen = Color(0xFF14803C);
   static const Color _riskHighRed = Color(0xFFDC2626);
 
-  int _currentTab = 0; // 0: Home, 1: Additives, 2: History, 3: Settings
+  final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0); // 0: Home, 1: Additives, 2: History, 3: Settings
 
   int _userId = 0;
   String _userName = '';
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _monthlyWarnings = 0;
   int _totalScans = 0;
   int _warningScans = 0;
+  bool _loadingInitialData = true;
   final Set<int> _expandedScanIds = {};
 
   // Tab 1: Additives (Live from nutriviet_hybrid.db)
@@ -84,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     AppLocale.current.removeListener(_localeListener);
     _searchDebounce?.cancel();
     _additiveSearchCtrl.dispose();
+    _tabNotifier.dispose();
     super.dispose();
   }
 
@@ -122,10 +125,18 @@ class _HomeScreenState extends State<HomeScreen> {
       _refreshUserData(),
       _loadAdditives(''),
     ]);
+    if (mounted && _loadingInitialData) {
+      setState(() => _loadingInitialData = false);
+    }
   }
 
   Future<void> _refreshUserData() async {
-    if (_userId <= 0) return;
+    if (_userId <= 0) {
+      if (mounted && _loadingInitialData) {
+        setState(() => _loadingInitialData = false);
+      }
+      return;
+    }
     final results = await Future.wait([
       ProfileService.getAllergens(_userId),
       ProfileService.getChronics(_userId),
@@ -149,6 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     setState(() {
+      _loadingInitialData = false;
       _langPref = AppLocale.code;
       if (results[0]['success'] == true) {
         _allergens = List<Map<String, dynamic>>.from(results[0]['allergens'] ?? []);
@@ -398,12 +410,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       final latest = scanRes['latest_scan'];
       if (latest is Map<String, dynamic>) {
-        setState(() {
-          _currentTab = 2;
-          if (latest['id'] is int) {
+        _tabNotifier.value = 2;
+        if (latest['id'] is int) {
+          setState(() {
             _expandedScanIds.add(latest['id'] as int);
-          }
-        });
+          });
+        }
       }
     }
   }
@@ -586,11 +598,13 @@ class _HomeScreenState extends State<HomeScreen> {
       child: RefreshIndicator(
         color: _brandGreen,
         onRefresh: _refreshUserData,
-        child: ListView(
-          scrollCacheExtent: const ScrollCacheExtent.pixels(800),
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-          children: [
+        child: NutriVietGlassScrollArea(
+          child: ListView(
+            scrollCacheExtent: const ScrollCacheExtent.pixels(800),
+            physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics()),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+            children: [
             // Top-right Liquid Glass support/info orb
             Align(
               alignment: Alignment.centerRight,
@@ -633,19 +647,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const NutriVietPressScale(
                   pressedScale: 0.92,
                   enableHaptic: true,
-                  child: SizedBox(
-                    width: 46,
-                    height: 46,
-                    child: LiquidGlassLens(
-                      style: NutriVietGlass.circleOrb,
-                      touch: LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
-                      child: Center(
-                        child: PhosphorIcon(
-                          PhosphorIconsDuotone.chatsCircle,
-                          color: _brandGreen,
-                          size: 22,
-                          duotoneSecondaryOpacity: 0.28,
-                          duotoneSecondaryColor: _brandGreen,
+                  child: LiquidGlassBatch.exclude(
+                    child: SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: LiquidGlassLens(
+                        style: NutriVietGlass.circleOrb,
+                        touch: LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
+                        child: Center(
+                          child: PhosphorIcon(
+                            PhosphorIconsDuotone.chatsCircle,
+                            color: _brandGreen,
+                            size: 22,
+                            duotoneSecondaryOpacity: 0.28,
+                            duotoneSecondaryColor: _brandGreen,
+                          ),
                         ),
                       ),
                     ),
@@ -665,280 +681,196 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Main Hero Green Card
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0E6E32),
-                    _brandGreen,
-                    Color(0xFF1A9248),
+            // Main Hero Emerald Glass Card (crisp luminous rim + isolated
+            // RepaintBoundary so 120Hz scrolling runs zero shaders/blend barriers)
+            RepaintBoundary(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(26),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xF01C944A),
+                      Color(0xEE147D3B),
+                      Color(0xF20D5E2C),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.36),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0E632E).withValues(alpha: 0.24),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  width: 1.0,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _brandGreen.withValues(alpha: 0.24),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  const NutriVietHeroSheen(),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              AppLocale.t('THÁNG NÀY', 'THIS MONTH'),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.92),
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            NutriVietPressScale(
-                              pressedScale: 0.90,
-                              child: GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        AppLocale.t(
-                                          'Thống kê số nhãn thực phẩm đã quét và số cảnh báo phát hiện trong tháng hiện tại.',
-                                          'Summary of food labels scanned and warnings detected in the current month.',
-                                        ),
-                                      ),
-                                      backgroundColor: _brandGreen,
-                                    ),
-                                  );
-                                },
-                                child: const PhosphorIcon(
-                                  PhosphorIconsDuotone.info,
-                                  color: Colors.white,
-                                  size: 22,
-                                  duotoneSecondaryOpacity: 0.28,
-                                  duotoneSecondaryColor: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0, end: _monthlyScans.toDouble()),
-                          duration: const Duration(milliseconds: 620),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, val, _) {
-                            return Text(
-                              '${val.round()}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 56,
-                                fontWeight: FontWeight.w800,
-                                height: 1.05,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          AppLocale.t(
-                            'Đã đọc $_monthlyScans nhãn · Phát hiện $_monthlyWarnings cảnh báo',
-                            'Read $_monthlyScans labels · Detected $_monthlyWarnings warnings',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          AppLocale.t(
-                            'Còn 1 lần quét miễn phí',
-                            '1 free scan remaining',
-                          ),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-
-                        // HỒ SƠ GIA ĐÌNH / FAMILY PROFILES Header Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              AppLocale.t('HỒ SƠ GIA ĐÌNH', 'FAMILY PROFILES'),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.92),
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                            NutriVietPressScale(
-                              pressedScale: 0.95,
-                              child: GestureDetector(
-                                onTap: _openAllergyProfile,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      AppLocale.t('Quản lý hồ sơ', 'Manage profiles'),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    const PhosphorIcon(
-                                      PhosphorIconsBold.caretRight,
-                                      color: Colors.white,
-                                      size: 15,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Family Member Glass Avatars Row
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(25),
+                  child: Stack(
+                  children: [
+                    const NutriVietHeroSheen(),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              ...members.map((m) {
-                                final rawName = (m['member_name'] ?? _shortName).toString();
-                                final mName = AppLocale.translateMemberName(rawName);
-                                final isSelected = rawName == _selectedMemberName ||
-                                    (_selectedMemberName.isEmpty && m == members.first);
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 22),
-                                  child: NutriVietPressScale(
-                                    pressedScale: 0.93,
-                                    enableHaptic: true,
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _selectedMemberName = rawName),
-                                      child: Column(
-                                        children: [
-                                          AnimatedScale(
-                                            scale: isSelected ? 1.06 : 0.96,
-                                            duration: const Duration(milliseconds: 220),
-                                            curve: Curves.easeOutBack,
-                                            child: AnimatedContainer(
-                                              duration: const Duration(milliseconds: 220),
-                                              curve: Curves.easeOutCubic,
-                                              width: 54,
-                                              height: 54,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                  colors: isSelected
-                                                      ? [
-                                                          Colors.white.withValues(alpha: 0.34),
-                                                          const Color(0xFF86EFAC).withValues(alpha: 0.22),
-                                                        ]
-                                                      : [
-                                                          Colors.white.withValues(alpha: 0.18),
-                                                          Colors.white.withValues(alpha: 0.08),
-                                                        ],
-                                                ),
-                                                border: Border.all(
-                                                  color: isSelected
-                                                      ? Colors.white
-                                                      : Colors.white.withValues(alpha: 0.45),
-                                                  width: isSelected ? 2.4 : 1.3,
-                                                ),
-                                                boxShadow: isSelected
-                                                    ? [
-                                                        BoxShadow(
-                                                          color: Colors.white.withValues(alpha: 0.26),
-                                                          blurRadius: 12,
-                                                          spreadRadius: 1,
-                                                        ),
-                                                      ]
-                                                    : null,
-                                              ),
-                                              child: Center(
-                                                child: PhosphorIcon(
-                                                  PhosphorIconsDuotone.user,
-                                                  color: Colors.white,
-                                                  size: 27,
-                                                  duotoneSecondaryOpacity: isSelected ? 0.38 : 0.24,
-                                                  duotoneSecondaryColor: Colors.white,
-                                                ),
-                                              ),
-                                            ),
+                              Text(
+                                AppLocale.t('THÁNG NÀY', 'THIS MONTH'),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              NutriVietPressScale(
+                                pressedScale: 0.90,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          AppLocale.t(
+                                            'Thống kê số nhãn thực phẩm đã quét và số cảnh báo phát hiện trong tháng hiện tại.',
+                                            'Summary of food labels scanned and warnings detected in the current month.',
                                           ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            mName,
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(alpha: isSelected ? 1.0 : 0.85),
-                                              fontSize: 13.5,
-                                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
+                                        ),
+                                        backgroundColor: _brandGreen,
                                       ),
-                                    ),
+                                    );
+                                  },
+                                  child: const PhosphorIcon(
+                                    PhosphorIconsDuotone.info,
+                                    color: Colors.white,
+                                    size: 22,
+                                    duotoneSecondaryOpacity: 0.28,
+                                    duotoneSecondaryColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          if (_loadingInitialData && _scans.isEmpty)
+                            NutriVietShimmerGroup(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 6),
+                                  NutriVietShimmerBox(
+                                    width: 72,
+                                    height: 46,
+                                    borderRadius: 14,
+                                    baseColor:
+                                        Colors.white.withValues(alpha: 0.24),
+                                    highlightColor: Colors.white,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  NutriVietShimmerBox(
+                                    width: 230,
+                                    height: 14,
+                                    borderRadius: 7,
+                                    baseColor:
+                                        Colors.white.withValues(alpha: 0.22),
+                                    highlightColor: Colors.white,
+                                  ),
+                                  const SizedBox(height: 7),
+                                  NutriVietShimmerBox(
+                                    width: 150,
+                                    height: 12,
+                                    borderRadius: 6,
+                                    baseColor:
+                                        Colors.white.withValues(alpha: 0.18),
+                                    highlightColor: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            )
+                          else ...[
+                            TweenAnimationBuilder<double>(
+                              tween: Tween<double>(
+                                  begin: 0, end: _monthlyScans.toDouble()),
+                              duration: const Duration(milliseconds: 620),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, val, _) {
+                                return Text(
+                                  '${val.round()}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 56,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.05,
                                   ),
                                 );
-                              }),
+                              },
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              AppLocale.t(
+                                'Đã đọc $_monthlyScans nhãn · Phát hiện $_monthlyWarnings cảnh báo',
+                                'Read $_monthlyScans labels · Detected $_monthlyWarnings warnings',
+                              ),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              AppLocale.t(
+                                'Còn 1 lần quét miễn phí',
+                                '1 free scan remaining',
+                              ),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 22),
 
-                              // Dashed "+ Thêm / Add" button
+                          // HỒ SƠ GIA ĐÌNH / FAMILY PROFILES Header Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                AppLocale.t('HỒ SƠ GIA ĐÌNH', 'FAMILY PROFILES'),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
                               NutriVietPressScale(
-                                pressedScale: 0.93,
-                                enableHaptic: true,
+                                pressedScale: 0.95,
                                 child: GestureDetector(
-                                  onTap: _openAddFamilyMemberDialog,
-                                  child: Column(
+                                  onTap: _openAllergyProfile,
+                                  child: Row(
                                     children: [
-                                      RepaintBoundary(
-                                        child: CustomPaint(
-                                          painter: _DashedCirclePainter(color: Colors.white.withValues(alpha: 0.85)),
-                                          child: const SizedBox(
-                                            width: 54,
-                                            height: 54,
-                                            child: Center(
-                                              child: PhosphorIcon(
-                                                PhosphorIconsBold.plus,
-                                                color: Colors.white,
-                                                size: 24,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
                                       Text(
-                                        AppLocale.t('Thêm', 'Add'),
+                                        AppLocale.t(
+                                            'Quản lý hồ sơ', 'Manage profiles'),
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 13.5,
+                                          fontSize: 14.5,
                                           fontWeight: FontWeight.w600,
                                         ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const PhosphorIcon(
+                                        PhosphorIconsBold.caretRight,
+                                        color: Colors.white,
+                                        size: 15,
                                       ),
                                     ],
                                   ),
@@ -946,54 +878,231 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 18),
+                          const SizedBox(height: 14),
 
-                        // Bottom White Pill Button "[ ] Quét nhãn / Scan label"
-                        NutriVietPressScale(
-                          pressedScale: 0.97,
-                          enableHaptic: true,
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _openScannerScreen,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: _brandGreen,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(26),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const PhosphorIcon(
-                                    PhosphorIconsDuotone.scan,
-                                    color: _brandGreen,
-                                    size: 22,
-                                    duotoneSecondaryOpacity: 0.25,
-                                    duotoneSecondaryColor: _brandGreen,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    AppLocale.t('Quét nhãn', 'Scan label'),
-                                    style: const TextStyle(
-                                      color: _brandGreen,
-                                      fontSize: 16.5,
-                                      fontWeight: FontWeight.w700,
+                          // Family Member Glass Avatars Row
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                ...members.map((m) {
+                                  final rawName =
+                                      (m['member_name'] ?? _shortName)
+                                          .toString();
+                                  final mName =
+                                      AppLocale.translateMemberName(rawName);
+                                  final isSelected =
+                                      rawName == _selectedMemberName ||
+                                          (_selectedMemberName.isEmpty &&
+                                              m == members.first);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 22),
+                                    child: NutriVietPressScale(
+                                      pressedScale: 0.93,
+                                      enableHaptic: true,
+                                      child: GestureDetector(
+                                        onTap: () => setState(
+                                            () => _selectedMemberName = rawName),
+                                        child: Column(
+                                          children: [
+                                            AnimatedScale(
+                                              scale: isSelected ? 1.06 : 0.96,
+                                              duration: const Duration(
+                                                  milliseconds: 220),
+                                              curve: Curves.easeOutBack,
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                    milliseconds: 220),
+                                                curve: Curves.easeOutCubic,
+                                                width: 54,
+                                                height: 54,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: isSelected
+                                                        ? [
+                                                            Colors.white
+                                                                .withValues(
+                                                                    alpha: 0.34),
+                                                            const Color(
+                                                                    0xFF86EFAC)
+                                                                .withValues(
+                                                                    alpha: 0.22),
+                                                          ]
+                                                        : [
+                                                            Colors.white
+                                                                .withValues(
+                                                                    alpha: 0.18),
+                                                            Colors.white
+                                                                .withValues(
+                                                                    alpha: 0.08),
+                                                          ],
+                                                  ),
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? Colors.white
+                                                        : Colors.white
+                                                            .withValues(
+                                                                alpha: 0.45),
+                                                    width:
+                                                        isSelected ? 2.4 : 1.3,
+                                                  ),
+                                                  boxShadow: isSelected
+                                                      ? [
+                                                          BoxShadow(
+                                                            color: Colors.white
+                                                                .withValues(
+                                                                    alpha:
+                                                                        0.26),
+                                                            blurRadius: 12,
+                                                            spreadRadius: 1,
+                                                          ),
+                                                        ]
+                                                      : null,
+                                                ),
+                                                child: Center(
+                                                  child: PhosphorIcon(
+                                                    PhosphorIconsDuotone.user,
+                                                    color: Colors.white,
+                                                    size: 27,
+                                                    duotoneSecondaryOpacity:
+                                                        isSelected
+                                                            ? 0.38
+                                                            : 0.24,
+                                                    duotoneSecondaryColor:
+                                                        Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              mName,
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(
+                                                    alpha:
+                                                        isSelected ? 1.0 : 0.85),
+                                                fontSize: 13.5,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+
+                                // Dashed "+ Thêm / Add" button
+                                NutriVietPressScale(
+                                  pressedScale: 0.93,
+                                  enableHaptic: true,
+                                  child: GestureDetector(
+                                    onTap: _openAddFamilyMemberDialog,
+                                    child: Column(
+                                      children: [
+                                        RepaintBoundary(
+                                          child: CustomPaint(
+                                            painter: _DashedCirclePainter(
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.85)),
+                                            child: const SizedBox(
+                                              width: 54,
+                                              height: 54,
+                                              child: Center(
+                                                child: PhosphorIcon(
+                                                  PhosphorIconsBold.plus,
+                                                  color: Colors.white,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          AppLocale.t('Thêm', 'Add'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+
+                          // Bottom Liquid Glass Pill Button "[ ] Quét nhãn / Scan label"
+                          NutriVietPressScale(
+                            pressedScale: 0.965,
+                            enableHaptic: true,
+                            child: GestureDetector(
+                              onTap: _openScannerScreen,
+                              child: Container(
+                                width: double.infinity,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Color(0xFCFFFFFF),
+                                      Color(0xECF4FBF6),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF064E3B)
+                                          .withValues(alpha: 0.14),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const PhosphorIcon(
+                                        PhosphorIconsDuotone.scan,
+                                        color: _brandGreen,
+                                        size: 22,
+                                        duotoneSecondaryOpacity: 0.25,
+                                        duotoneSecondaryColor: _brandGreen,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        AppLocale.t('Quét nhãn', 'Scan label'),
+                                        style: const TextStyle(
+                                          color: _brandGreen,
+                                          fontSize: 16.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
 
@@ -1012,7 +1121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _currentTab = 2),
+                  onTap: () => _tabNotifier.value = 2,
                   child: Text(
                     AppLocale.t('Xem tất cả', 'See all'),
                     style: const TextStyle(
@@ -1104,42 +1213,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 18),
 
-            // Active Category Knowledge Section
+            // Active Category Knowledge Section (items are emitted as direct
+            // ListView children so Viewport culls offscreen cards at 120Hz)
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
+              duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.03),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
+              child: Align(
+                key: ValueKey('cat_title_${_selectedCategory}_${AppLocale.code}'),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _selectedCategory == 'sugar'
+                      ? AppLocale.t('Đường', 'Sugar')
+                      : (_selectedCategory == 'salt'
+                          ? AppLocale.t('Muối', 'Salt')
+                          : (_selectedCategory == 'fat'
+                              ? AppLocale.t('Chất béo', 'Fat')
+                              : AppLocale.t('Dị ứng', 'Allergens'))),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
                   ),
-                );
-              },
-              child: Column(
-                key: ValueKey('cat_${_selectedCategory}_${_loadingCategory}_${AppLocale.code}'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _selectedCategory == 'sugar'
-                        ? AppLocale.t('Đường', 'Sugar')
-                        : (_selectedCategory == 'salt'
-                            ? AppLocale.t('Muối', 'Salt')
-                            : (_selectedCategory == 'fat'
-                                ? AppLocale.t('Chất béo', 'Fat')
-                                : AppLocale.t('Dị ứng', 'Allergens'))),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
                   if (_selectedCategory == 'allergen') ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -1198,10 +1297,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                   if (_loadingCategory)
-                    const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: CircularProgressIndicator(color: _brandGreen)),
-                    )
+                    const NutriVietConceptListSkeleton(itemCount: 3)
                   else if (_categoryItems.isEmpty)
                     NutriVietGlassCard(
                       cornerRadius: 22,
@@ -1216,15 +1312,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   else
                     ..._categoryItems.take(6).map((item) => Padding(
+                          key: ValueKey('cat_item_${item['id'] ?? item['code'] ?? item['name']}'),
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _buildAdditiveOrConceptCard(item),
                         )),
-                ],
-              ),
-            ),
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -1372,70 +1467,70 @@ class _HomeScreenState extends State<HomeScreen> {
       pressedScale: 0.94,
       enableHaptic: true,
       child: GestureDetector(
-        onTap: () => _loadCategoryConcepts(id),
-        child: AnimatedScale(
-          scale: isSelected ? 1.03 : 1.0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          _loadCategoryConcepts(id);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isSelected
+                  ? const [Color(0xF0E2F8EB), Color(0xDCD0EEDF)]
+                  : const [Color(0xF2FFFFFF), Color(0xDCF3F6F9)],
+            ),
+            border: Border.all(
               color: isSelected
-                  ? const Color(0xDDE0EFE5)
-                  : const Color(0xDCFFFFFF),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
+                  ? _brandGreen.withValues(alpha: 0.48)
+                  : Colors.white.withValues(alpha: 0.92),
+              width: 1.25,
+            ),
+            boxShadow: [
+              BoxShadow(
                 color: isSelected
-                    ? _brandGreen.withValues(alpha: 0.52)
-                    : const Color(0xF5FFFFFF),
-                width: 1.2,
+                    ? _brandGreen.withValues(alpha: 0.10)
+                    : const Color(0xFF0F172A).withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
-              boxShadow: [
-                BoxShadow(
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                   color: isSelected
-                      ? _brandGreen.withValues(alpha: 0.14)
-                      : const Color(0x0B0F2418),
-                  blurRadius: isSelected ? 12 : 8,
-                  offset: const Offset(0, 3),
+                      ? _brandGreen.withValues(alpha: 0.18)
+                      : Colors.white.withValues(alpha: 0.7),
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? _brandGreen.withValues(alpha: 0.16)
-                        : const Color(0xFFF3F4F6),
-                  ),
-                  child: Center(
-                    child: PhosphorIcon(
-                      icon,
-                      size: 16,
-                      color: isSelected ? _brandGreen : const Color(0xFF4B5563),
-                      duotoneSecondaryOpacity: 0.30,
-                      duotoneSecondaryColor: _brandGreen,
-                    ),
+                child: Center(
+                  child: PhosphorIcon(
+                    icon,
+                    size: 16,
+                    color: isSelected ? _brandGreen : const Color(0xFF4B5563),
+                    duotoneSecondaryOpacity: 0.30,
+                    duotoneSecondaryColor: _brandGreen,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected ? _brandGreen : const Color(0xFF1F2937),
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? _brandGreen : const Color(0xFF1F2937),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1452,75 +1547,88 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         Positioned.fill(
-          child: _loadingAdditives
-              ? Padding(
-                  padding: EdgeInsets.only(top: listTopPadding),
-                  child: const Center(
-                    child: CircularProgressIndicator(color: _brandGreen),
-                  ),
-                )
-              : _additiveError != null
-                  ? Center(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(24, listTopPadding, 24, 120),
-                        child: NutriVietEntranceMotion(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const NutriVietGlassIconTile(
-                                icon: PhosphorIconsDuotone.cloudSlash,
-                                color: _riskHighRed,
-                                size: 68,
-                                isCircle: true,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _additiveError!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Color(0xFF4B5563)),
-                              ),
-                              const SizedBox(height: 16),
-                              LiquidGlassButton(
-                                height: 44,
-                                style: NutriVietGlass.emeraldButton,
-                                foregroundColor: Colors.white,
-                                label: AppLocale.t('Thử lại', 'Retry'),
-                                onPressed: () => _loadAdditives(_additiveSearchCtrl.text),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  : _additiveItems.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(24, listTopPadding, 24, 120),
-                            child: Text(
-                              AppLocale.t(
-                                'Không tìm thấy mã E hoặc thành phần phù hợp.',
-                                'No matching E-codes or ingredients found.',
-                              ),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Color(0xFF6B7280)),
+          child: NutriVietGlassScrollArea(
+            child: _loadingAdditives
+                ? SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    padding: EdgeInsets.fromLTRB(20, listTopPadding, 20, 128),
+                    child: const NutriVietConceptListSkeleton(itemCount: 4),
+                  )
+                : _additiveError != null
+                    ? Center(
+                        child: Padding(
+                          padding:
+                              EdgeInsets.fromLTRB(24, listTopPadding, 24, 120),
+                          child: NutriVietEntranceMotion(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const NutriVietGlassIconTile(
+                                  icon: PhosphorIconsDuotone.cloudSlash,
+                                  color: _riskHighRed,
+                                  size: 68,
+                                  isCircle: true,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _additiveError!,
+                                  textAlign: TextAlign.center,
+                                  style:
+                                      const TextStyle(color: Color(0xFF4B5563)),
+                                ),
+                                const SizedBox(height: 16),
+                                LiquidGlassButton(
+                                  height: 44,
+                                  style: NutriVietGlass.emeraldButton,
+                                  touch: NutriVietGlass.touchHorizontalCapsule,
+                                  foregroundColor: Colors.white,
+                                  label: AppLocale.t('Thử lại', 'Retry'),
+                                  onPressed: () =>
+                                      _loadAdditives(_additiveSearchCtrl.text),
+                                ),
+                              ],
                             ),
                           ),
-                        )
-                      : ListView.separated(
-                          scrollCacheExtent: const ScrollCacheExtent.pixels(800),
-                          physics: const BouncingScrollPhysics(
-                            parent: AlwaysScrollableScrollPhysics(),
-                          ),
-                          addAutomaticKeepAlives: false,
-                          padding: EdgeInsets.fromLTRB(20, listTopPadding, 20, 128),
-                          itemCount: _additiveItems.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
-                          itemBuilder: (ctx, idx) {
-                            return RepaintBoundary(
-                              child: _buildAdditiveOrConceptCard(_additiveItems[idx]),
-                            );
-                          },
                         ),
+                      )
+                    : _additiveItems.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                  24, listTopPadding, 24, 120),
+                              child: Text(
+                                AppLocale.t(
+                                  'Không tìm thấy mã E hoặc thành phần phù hợp.',
+                                  'No matching E-codes or ingredients found.',
+                                ),
+                                textAlign: TextAlign.center,
+                                style:
+                                    const TextStyle(color: Color(0xFF6B7280)),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            scrollCacheExtent:
+                                const ScrollCacheExtent.pixels(800),
+                            physics: const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
+                            addAutomaticKeepAlives: false,
+                            padding: EdgeInsets.fromLTRB(
+                                20, listTopPadding, 20, 128),
+                            itemCount: _additiveItems.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 14),
+                            itemBuilder: (ctx, idx) {
+                              return RepaintBoundary(
+                                child: _buildAdditiveOrConceptCard(
+                                    _additiveItems[idx]),
+                              );
+                            },
+                          ),
+          ),
         ),
 
         Positioned(
@@ -1529,10 +1637,11 @@ class _HomeScreenState extends State<HomeScreen> {
           right: 0,
           child: LiquidGlassScrollEdge(
             edge: LiquidGlassEdge.top,
-            height: topInset + 164,
+            height: topInset + 168,
             blur: 0,
+            style: LiquidGlassScrollEdgeStyle.soft,
             curve: const Interval(0.42, 1.0, curve: Curves.easeOut),
-            color: const Color(0xFFF3F6F3),
+            color: const Color(0xDCEEF6F2),
           ),
         ),
 
@@ -1540,46 +1649,71 @@ class _HomeScreenState extends State<HomeScreen> {
           top: 0,
           left: 0,
           right: 0,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    AppLocale.t('Phụ gia', 'Additives'),
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                      letterSpacing: -0.5,
+          child: RepaintBoundary(
+            child: LiquidGlassBatch.exclude(
+              child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppLocale.t('Phụ gia', 'Additives'),
+                      style: const TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 50,
-                    child: LiquidGlassLens(
-                      style: NutriVietGlass.floatingChrome,
-                      touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xEEFFFFFF),
+                            Color(0xD8F4FAF6),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          width: 1.3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFF0F172A).withValues(alpha: 0.05),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
                       child: Center(
                         child: TextField(
                           controller: _additiveSearchCtrl,
                           onChanged: (val) {
                             _searchDebounce?.cancel();
-                            _searchDebounce = Timer(const Duration(milliseconds: 220), () {
+                            _searchDebounce =
+                                Timer(const Duration(milliseconds: 220), () {
                               _loadAdditives(val);
                             });
                           },
-                          style: const TextStyle(fontSize: 15.5, color: Color(0xFF111827)),
+                          style: const TextStyle(
+                              fontSize: 15.5, color: Color(0xFF111827)),
                           decoration: InputDecoration(
                             filled: false,
                             hintText: AppLocale.t(
                               'Tìm mã E hoặc thành phần',
                               'Search E-code or ingredient',
                             ),
-                            hintStyle: const TextStyle(fontSize: 15.5, color: Color(0xFF6B7280)),
+                            hintStyle: const TextStyle(
+                                fontSize: 15.5, color: Color(0xFF6B7280)),
                             prefixIcon: const Padding(
                               padding: EdgeInsets.only(left: 14, right: 8),
                               child: PhosphorIcon(
@@ -1590,7 +1724,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 duotoneSecondaryColor: _brandGreen,
                               ),
                             ),
-                            prefixIconConstraints: const BoxConstraints(minWidth: 42, minHeight: 42),
+                            prefixIconConstraints: const BoxConstraints(
+                                minWidth: 42, minHeight: 42),
                             suffixIcon: _additiveSearchCtrl.text.isNotEmpty
                                 ? IconButton(
                                     icon: const PhosphorIcon(
@@ -1607,16 +1742,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
+        ),
         ),
       ],
     );
@@ -1739,22 +1876,26 @@ class _HomeScreenState extends State<HomeScreen> {
       child: RefreshIndicator(
         color: _brandGreen,
         onRefresh: _refreshUserData,
-        child: ListView(
-          scrollCacheExtent: const ScrollCacheExtent.pixels(600),
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
-          children: [
-            Text(
-              AppLocale.t('Lịch sử', 'History'),
-              style: const TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF111827),
-                letterSpacing: -0.5,
+        child: NutriVietGlassScrollArea(
+          child: ListView(
+            scrollCacheExtent: const ScrollCacheExtent.pixels(600),
+            physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics()),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
+            children: [
+              Text(
+                AppLocale.t('Lịch sử', 'History'),
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                  letterSpacing: -0.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            if (_scans.isEmpty)
+              const SizedBox(height: 18),
+              if (_loadingInitialData && _scans.isEmpty)
+                const NutriVietHistoryListSkeleton(itemCount: 3)
+              else if (_scans.isEmpty)
               NutriVietEntranceMotion(
                 child: NutriVietGlassCard(
                   cornerRadius: 22,
@@ -2227,6 +2368,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -2250,66 +2392,74 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: 0,
         child: LiquidGlassScrollEdge(
           edge: LiquidGlassEdge.bottom,
-          height: bottomPad + 78,
+          height: bottomPad + 80,
           blur: 0,
-          color: const Color(0xDCEAF1EE),
+          style: LiquidGlassScrollEdgeStyle.soft,
+          color: const Color(0xDCEAF3EE),
         ),
       ),
-      LiquidGlassTabBar(
-        alignment: Alignment.bottomLeft,
-        margin: EdgeInsets.only(left: sideMargin, bottom: bottomPad),
-        width: barWidth,
-        height: 62,
-        itemPadding: 4,
-        selectedIndex: _currentTab,
-        onChanged: (idx) {
-          if (_currentTab != idx) {
-            HapticFeedback.selectionClick();
-            setState(() => _currentTab = idx);
-          }
-        },
-        style: NutriVietGlass.navBar,
-        pillStyle: NutriVietGlass.navPill,
-        itemStyle: const LiquidGlassTabItemStyle(
-          selectedColor: _brandGreen,
-          unselectedColor: Color(0xFF1F2937),
-          iconSize: 21,
-          labelFontSize: 10.5,
-          iconLabelGap: 2,
+      LiquidGlassBatch.exclude(
+        child: ValueListenableBuilder<int>(
+          valueListenable: _tabNotifier,
+          builder: (context, currentTab, _) => LiquidGlassTabBar(
+            alignment: Alignment.bottomLeft,
+            margin: EdgeInsets.only(left: sideMargin, bottom: bottomPad),
+            width: barWidth,
+            height: 62,
+            itemPadding: 4,
+            selectedIndex: currentTab,
+            onChanged: (idx) {
+              if (_tabNotifier.value != idx) {
+                HapticFeedback.selectionClick();
+                _tabNotifier.value = idx;
+              }
+            },
+            style: NutriVietGlass.navBar,
+            pillStyle: NutriVietGlass.navPill,
+            itemStyle: const LiquidGlassTabItemStyle(
+              selectedColor: _brandGreen,
+              unselectedColor: Color(0xFF1F2937),
+              iconSize: 21,
+              labelFontSize: 10.5,
+              iconLabelGap: 2,
+            ),
+            items: [
+              LiquidGlassTabBarItem(
+                icon: PhosphorIconsRegular.house,
+                selectedIcon: PhosphorIconsFill.house,
+                label: AppLocale.t('Trang chủ', 'Home'),
+              ),
+              LiquidGlassTabBarItem(
+                icon: PhosphorIconsRegular.flask,
+                selectedIcon: PhosphorIconsFill.flask,
+                label: AppLocale.t('Phụ gia', 'Additives'),
+              ),
+              LiquidGlassTabBarItem(
+                icon: PhosphorIconsRegular.clockCounterClockwise,
+                selectedIcon: PhosphorIconsFill.clockCounterClockwise,
+                label: AppLocale.t('Lịch sử', 'History'),
+              ),
+              LiquidGlassTabBarItem(
+                icon: PhosphorIconsRegular.slidersHorizontal,
+                selectedIcon: PhosphorIconsFill.slidersHorizontal,
+                label: AppLocale.t('Cài đặt', 'Settings'),
+              ),
+            ],
+          ),
         ),
-        items: [
-          LiquidGlassTabBarItem(
-            icon: PhosphorIconsRegular.house,
-            selectedIcon: PhosphorIconsFill.house,
-            label: AppLocale.t('Trang chủ', 'Home'),
-          ),
-          LiquidGlassTabBarItem(
-            icon: PhosphorIconsRegular.flask,
-            selectedIcon: PhosphorIconsFill.flask,
-            label: AppLocale.t('Phụ gia', 'Additives'),
-          ),
-          LiquidGlassTabBarItem(
-            icon: PhosphorIconsRegular.clockCounterClockwise,
-            selectedIcon: PhosphorIconsFill.clockCounterClockwise,
-            label: AppLocale.t('Lịch sử', 'History'),
-          ),
-          LiquidGlassTabBarItem(
-            icon: PhosphorIconsRegular.slidersHorizontal,
-            selectedIcon: PhosphorIconsFill.slidersHorizontal,
-            label: AppLocale.t('Cài đặt', 'Settings'),
-          ),
-        ],
       ),
       Positioned(
         right: sideMargin,
         bottom: bottomPad + 1,
-        child: LiquidGlassTabBarAction(
-          icon: PhosphorIconsBold.scan,
-          foregroundColor: Colors.white,
-          size: actionSize,
-          style: NutriVietGlass.emeraldActionOrb,
-          touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
-          onTap: _openScannerScreen,
+        child: LiquidGlassBatch.exclude(
+          child: LiquidGlassTabBarAction(
+            icon: PhosphorIconsBold.scan,
+            foregroundColor: Colors.white,
+            size: actionSize,
+            style: NutriVietGlass.emeraldActionOrb,
+            touch: NutriVietGlass.touchPronounced,
+            onTap: _openScannerScreen,
+          ),
         ),
       ),
     ];
@@ -2317,27 +2467,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tabChildren = <Widget>[
+      _buildHomeTab(),
+      _buildAdditivesTab(),
+      _buildHistoryTab(),
+      SettingsScreen(
+        userId: _userId,
+        userName: _userName,
+        userEmail: _userEmail,
+        onProfileUpdated: _refreshUserData,
+      ),
+    ];
     return NutriVietGlassBackdrop(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
             Positioned.fill(
-              child: NutriVietTabView(
-                index: _currentTab,
-                children: [
-                  RepaintBoundary(child: _buildHomeTab()),
-                  RepaintBoundary(child: _buildAdditivesTab()),
-                  RepaintBoundary(child: _buildHistoryTab()),
-                  RepaintBoundary(
-                    child: SettingsScreen(
-                      userId: _userId,
-                      userName: _userName,
-                      userEmail: _userEmail,
-                      onProfileUpdated: _refreshUserData,
-                    ),
-                  ),
-                ],
+              child: ValueListenableBuilder<int>(
+                valueListenable: _tabNotifier,
+                builder: (context, currentTab, _) => NutriVietTabView(
+                  index: currentTab,
+                  children: tabChildren,
+                ),
               ),
             ),
             ..._buildLiquidGlassBottomChrome(context),
@@ -2522,267 +2674,276 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFD8D0C5),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFDDD6CA),
-                    Color(0xFFD2C9BC),
-                    Color(0xFFC4B9AA),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Top Header Bar
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              color: const Color(0xB8F1F4F1),
+    final screenW = MediaQuery.sizeOf(context).width;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: NutriVietGlassBackdrop(
+        dark: true,
+        child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // Top Floating Liquid Glass App Bar
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 21,
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                  child: Center(
+                    child: LiquidGlassAppBar(
+                      width: screenW - 28,
+                      height: 58,
+                      style: NutriVietGlass.appBar,
+                      touch: NutriVietGlass.touchSubtle,
+                      centerTitle: true,
+                      leading: Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: LiquidGlassTabBarAction(
+                          icon: PhosphorIconsBold.notePencil,
+                          foregroundColor: _brandGreen,
+                          size: 40,
+                          style: NutriVietGlass.circleOrb,
+                          touch: NutriVietGlass.touchPronounced,
+                          onTap: _openTextEditorSheet,
+                        ),
+                      ),
+                      title: RichText(
+                        text: const TextSpan(
+                          style: TextStyle(
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.3,
                           ),
                           children: [
-                            const TextSpan(text: 'Nutri', style: TextStyle(color: _brandPurple)),
                             TextSpan(
-                              text: AppLocale.t('Thực phẩm', 'Food'),
-                              style: const TextStyle(color: _brandGreen),
+                                text: 'Nutri',
+                                style: TextStyle(color: _brandPurple)),
+                            TextSpan(
+                              text: 'Viet',
+                              style: TextStyle(color: _brandGreen),
                             ),
                           ],
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: LiquidGlassTabBarAction(
-                          icon: PhosphorIconsBold.x,
-                          foregroundColor: const Color(0xFF1F2937),
-                          size: 42,
-                          style: NutriVietGlass.circleOrb,
-                          touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
-                          onTap: () => Navigator.pop(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Top Instruction Floating Glass Banner
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 76,
-            left: 28,
-            right: 28,
-            child: NutriVietEntranceMotion(
-              offsetY: -10,
-              child: LiquidGlassLens(
-                style: NutriVietGlass.smokedCameraGlass,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  child: Text(
-                    AppLocale.t(
-                      'Hướng camera vào mã vạch hoặc danh sách thành phần',
-                      'Point the camera at a barcode or ingredient list',
-                    ),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Center Interactive Packaging Preview Card with Animated 120Hz Reticle & Laser Sweep
-          Center(
-            child: NutriVietPressScale(
-              pressedScale: 0.97,
-              child: GestureDetector(
-                onTap: _openTextEditorSheet,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Stack(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: LiquidGlassLite(
-                          shape: const LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 22),
-                          blur: 0,
-                          color: const Color(0xE8FFFFFF),
-                          specular: const LiquidGlassLight.specular(
-                            thickness: 2.2,
-                            sharpness: 0.68,
-                            angle: 40,
-                            spread: 0.85,
-                            intensity: 0.85,
-                            color: Color(0xF5FFFFFF),
+                      actions: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: LiquidGlassTabBarAction(
+                            icon: PhosphorIconsBold.x,
+                            foregroundColor: const Color(0xFF1F2937),
+                            size: 40,
+                            style: NutriVietGlass.circleOrb,
+                            touch: NutriVietGlass.touchPronounced,
+                            onTap: () => Navigator.pop(context),
                           ),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(color: _brandGreen.withValues(alpha: 0.45), width: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Top Instruction Floating Glass Banner
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 84,
+              left: 24,
+              right: 24,
+              child: NutriVietEntranceMotion(
+                offsetY: -10,
+                child: LiquidGlassLens(
+                  style: NutriVietGlass.smokedCameraGlass,
+                  touch: NutriVietGlass.touchHorizontalCapsule,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    child: Text(
+                      AppLocale.t(
+                        'Hướng camera vào mã vạch hoặc danh sách thành phần',
+                        'Point the camera at a barcode or ingredient list',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Center Interactive Packaging Preview Card with Animated 120Hz Reticle
+            Center(
+              child: NutriVietPressScale(
+                pressedScale: 0.97,
+                child: GestureDetector(
+                  onTap: _openTextEditorSheet,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Stack(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: LiquidGlassLens(
+                            style: NutriVietGlass.cardGlass(
+                              cornerRadius: 22,
+                              tint: const Color(0xDCFFFFFF),
+                            ).copyWith(
+                              blur: 7.5,
+                              refractionIndex: 1.07,
+                              refractionWidth: 18,
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      AppLocale.t(
-                                        'NHÃN THÀNH PHẦN ĐANG QUÉT',
-                                        'PACKAGING LABEL IN VIEW',
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: _brandGreen,
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        const PhosphorIcon(
-                                          PhosphorIconsDuotone.notePencil,
-                                          size: 16,
-                                          color: _brandGreen,
-                                          duotoneSecondaryOpacity: 0.28,
-                                          duotoneSecondaryColor: _brandGreen,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          AppLocale.t('Chỉnh sửa', 'Edit'),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: _brandGreen.withValues(alpha: 0.9),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: _brandGreen.withValues(alpha: 0.55),
+                                  width: 1.4,
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _ingredientsCtrl.text,
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    color: Color(0xFF1F2937),
-                                    height: 1.4,
-                                    fontWeight: FontWeight.w500,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        AppLocale.t(
+                                          'NHÃN THÀNH PHẦN ĐANG QUÉT',
+                                          'PACKAGING LABEL IN VIEW',
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: _brandGreen,
+                                          letterSpacing: 0.4,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          const PhosphorIcon(
+                                            PhosphorIconsDuotone.notePencil,
+                                            size: 16,
+                                            color: _brandGreen,
+                                            duotoneSecondaryOpacity: 0.28,
+                                            duotoneSecondaryColor: _brandGreen,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            AppLocale.t('Chỉnh sửa', 'Edit'),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: _brandGreen
+                                                  .withValues(alpha: 0.9),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _ingredientsCtrl.text,
+                                    maxLines: 4,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      color: Color(0xFF1F2937),
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child:
+                              NutriVietScannerReticle(isScanning: _isScanning),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom Liquid Glass Blender Dock + Morphing Status Pill
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 28,
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LiquidGlassBlender(
+                      smoothness: 22,
+                      style: NutriVietGlass.darkBlenderCluster,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: _openTextEditorSheet,
+                            child: const SizedBox(
+                              width: 56,
+                              height: 56,
+                              child: LiquidGlassLens(
+                                style: NutriVietGlass.darkBlenderCluster,
+                                touch: NutriVietGlass.touchPronounced,
+                                child: Center(
+                                  child: PhosphorIcon(
+                                    PhosphorIconsBold.images,
+                                    color: Colors.white,
+                                    size: 22,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: NutriVietScannerReticle(isScanning: _isScanning),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Bottom Scanner Controls
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 32,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: LiquidGlassTabBarAction(
-                            icon: PhosphorIconsBold.images,
-                            foregroundColor: Colors.white,
-                            size: 54,
-                            style: NutriVietGlass.smokedCameraGlass.copyWith(
-                              shape: const LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 99),
-                            ),
-                            touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.subtle()),
-                            onTap: _openTextEditorSheet,
-                          ),
-                        ),
-                        NutriVietPressScale(
-                          pressedScale: 0.92,
-                          enableHaptic: true,
-                          child: GestureDetector(
+                          const SizedBox(width: 18),
+                          GestureDetector(
                             onTap: _isScanning ? null : _executeRealScan,
-                            child: AnimatedScale(
-                              scale: _isScanning ? 1.07 : 1.0,
-                              duration: const Duration(milliseconds: 240),
-                              curve: Curves.easeOutBack,
-                              child: SizedBox(
-                                width: 82,
-                                height: 82,
+                            child: SizedBox(
+                              width: 84,
+                              height: 84,
+                              child: LiquidGlassLens(
+                                touch: NutriVietGlass.touchPronounced,
+                                style: NutriVietGlass.emeraldActionOrb,
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
-                                    const LiquidGlassLite(
-                                      shape: LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 99),
-                                      blur: 0,
-                                      color: Color(0xB89E9D99),
-                                      specular: LiquidGlassLight.specular(
-                                        thickness: 2.5,
-                                        angle: 39,
-                                        spread: 0.9,
-                                        intensity: 0.9,
-                                        color: Color(0xCCFFFFFF),
+                                    if (_isScanning)
+                                      NutriVietPulseHalo(
+                                        glowColor: Colors.white,
+                                        size: 74,
+                                        active: true,
+                                        child: Container(
+                                          width: 66,
+                                          height: 66,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.72),
+                                              width: 2.2,
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                      child: SizedBox(width: 82, height: 82),
-                                    ),
-                                    SizedBox(
-                                      width: 72,
-                                      height: 72,
-                                      child: CircularProgressIndicator(
-                                        value: _isScanning ? null : 0.35,
-                                        strokeWidth: 4.5,
-                                        backgroundColor: Colors.white.withValues(alpha: 0.35),
-                                        valueColor: const AlwaysStoppedAnimation<Color>(_brandGreen),
-                                      ),
-                                    ),
                                     const PhosphorIcon(
                                       PhosphorIconsBold.scan,
                                       color: Colors.white,
@@ -2793,46 +2954,78 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  LiquidGlassLite(
-                    shape: const LiquidGlassShape.continuousRoundedRectangle(cornerRadius: 20),
-                    blur: 0,
-                    color: const Color(0xC08B8986),
-                    specular: const LiquidGlassLight.specular(
-                      thickness: 1.8,
-                      angle: 39,
-                      spread: 0.85,
-                      intensity: 0.7,
-                      color: Color(0xAAFFFFFF),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Text(
-                          _isScanning
-                              ? AppLocale.t('Đang đọc nhãn...', 'Reading label...')
-                              : AppLocale.t('Nhấn để đọc nhãn...', 'Tap to scan label...'),
-                          key: ValueKey('scan_status_${_isScanning}_${AppLocale.code}'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                          const SizedBox(width: 18),
+                          GestureDetector(
+                            onTap: _isScanning ? null : _openTextEditorSheet,
+                            child: const SizedBox(
+                              width: 56,
+                              height: 56,
+                              child: LiquidGlassLens(
+                                style: NutriVietGlass.darkBlenderCluster,
+                                touch: NutriVietGlass.touchPronounced,
+                                child: Center(
+                                  child: PhosphorIcon(
+                                    PhosphorIconsBold.notePencil,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    LiquidGlassMorph(
+                      motion: LiquidGlassMorphMotion.fluid,
+                      smoothness: 24,
+                      touch: NutriVietGlass.touchHorizontalCapsule,
+                      style: NutriVietGlass.smokedCameraGlass,
+                      child: Padding(
+                        key: ValueKey(
+                            'scan_pill_${_isScanning}_${AppLocale.code}'),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 9),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isScanning) ...[
+                              const NutriVietShimmerBox.circle(
+                                size: 12,
+                                baseColor: Color(0x8834D399),
+                                highlightColor: Colors.white,
+                              ),
+                              const SizedBox(width: 9),
+                            ],
+                            Text(
+                              _isScanning
+                                  ? AppLocale.t(
+                                      'Đang phân tích thành phần...',
+                                      'Analyzing label ingredients...',
+                                    )
+                                  : AppLocale.t(
+                                      'Nhấn để đọc nhãn...',
+                                      'Tap to scan label...',
+                                    ),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    ),
     );
   }
 }

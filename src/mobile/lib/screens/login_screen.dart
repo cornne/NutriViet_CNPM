@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'register_screen.dart';
 import 'verify_email_screen.dart';
@@ -37,13 +39,23 @@ class _LoginScreenState extends State<LoginScreen> {
     String? dialogMessage;
     bool dialogSuccess = false;
 
-    showDialog(
+    showLiquidGlassDialog(
       context: context,
+      barrierColor: const Color(0x520F172A),
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          return LiquidGlassAlertDialog(
+            style: NutriVietGlass.lightSheet,
+            titleTextStyle: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+            contentTextStyle: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF475569),
+              height: 1.4,
+            ),
             title: Row(
               children: [
                 const PhosphorIcon(
@@ -52,12 +64,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   size: 22,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  AppLocale.t('Khôi Phục Mật Khẩu', 'Password Recovery'),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                Expanded(
+                  child: Text(
+                    AppLocale.t('Khôi Phục Mật Khẩu', 'Password Recovery'),
                   ),
                 ),
               ],
@@ -73,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   style: const TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF64748B),
+                    color: Color(0xFF475569),
                     height: 1.4,
                   ),
                 ),
@@ -81,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: forgotEmailController,
                   keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
                   decoration: InputDecoration(
                     labelText: AppLocale.t('Địa chỉ Email', 'Email Address'),
                     hintText: 'email@example.com',
@@ -99,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: dialogSuccess
                           ? const Color(0xFFD1FAE5)
                           : const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       dialogMessage!,
@@ -116,48 +126,44 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
             actions: [
-              TextButton(
-                onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
-                child: Text(
-                  AppLocale.t('Hủy', 'Cancel'),
-                  style: const TextStyle(color: Color(0xFF64748B)),
+              LiquidGlassBatch.exclude(
+                child: NutriVietGlassActionButton(
+                  label: AppLocale.t('Hủy', 'Cancel'),
+                  isPrimary: false,
+                  height: 42,
+                  width: 96,
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
                 ),
               ),
-              ElevatedButton(
-                onPressed: isSubmitting
-                    ? null
-                    : () async {
-                        final email = forgotEmailController.text.trim();
-                        if (email.isEmpty) {
+              LiquidGlassBatch.exclude(
+                child: NutriVietGlassActionButton(
+                  label: AppLocale.t('Gửi Yêu Cầu', 'Send Request'),
+                  isLoading: isSubmitting,
+                  height: 42,
+                  width: 148,
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final email = forgotEmailController.text.trim();
+                          if (email.isEmpty) {
+                            setDialogState(() {
+                              dialogMessage = AppLocale.t(
+                                'Vui lòng nhập địa chỉ email',
+                                'Please enter your email address',
+                              );
+                              dialogSuccess = false;
+                            });
+                            return;
+                          }
+                          setDialogState(() => isSubmitting = true);
+                          final res = await AuthService.forgotPassword(email: email);
                           setDialogState(() {
-                            dialogMessage = AppLocale.t(
-                              'Vui lòng nhập địa chỉ email',
-                              'Please enter your email address',
-                            );
-                            dialogSuccess = false;
+                            isSubmitting = false;
+                            dialogMessage = res['message'];
+                            dialogSuccess = res['success'] == true;
                           });
-                          return;
-                        }
-                        setDialogState(() => isSubmitting = true);
-                        final res = await AuthService.forgotPassword(email: email);
-                        setDialogState(() {
-                          isSubmitting = false;
-                          dialogMessage = res['message'];
-                          dialogSuccess = res['success'] == true;
-                        });
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        },
                 ),
-                child: isSubmitting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : Text(AppLocale.t('Gửi Yêu Cầu', 'Send Request')),
               ),
             ],
           );
@@ -167,11 +173,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showUnverifiedEmailDialog(String email) {
-    showDialog(
+    showLiquidGlassDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      barrierColor: const Color(0x520F172A),
+      builder: (ctx) => LiquidGlassAlertDialog(
+        style: NutriVietGlass.lightSheet,
+        titleTextStyle: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF0F172A),
+        ),
+        contentTextStyle: const TextStyle(
+          fontSize: 13,
+          color: Color(0xFF475569),
+          height: 1.4,
+        ),
         title: Row(
           children: [
             const PhosphorIcon(
@@ -180,12 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
               size: 22,
             ),
             const SizedBox(width: 8),
-            Text(
-              AppLocale.t('Chưa Xác Thực Email', 'Email Not Verified'),
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+            Expanded(
+              child: Text(
+                AppLocale.t('Chưa Xác Thực Email', 'Email Not Verified'),
               ),
             ),
           ],
@@ -198,29 +211,30 @@ class _LoginScreenState extends State<LoginScreen> {
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              AppLocale.t('Đóng', 'Close'),
-              style: const TextStyle(color: Color(0xFF64748B)),
+          LiquidGlassBatch.exclude(
+            child: NutriVietGlassActionButton(
+              label: AppLocale.t('Đóng', 'Close'),
+              isPrimary: false,
+              height: 42,
+              width: 96,
+              onPressed: () => Navigator.pop(ctx),
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => VerifyEmailScreen(email: email),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          LiquidGlassBatch.exclude(
+            child: NutriVietGlassActionButton(
+              label: AppLocale.t('Kích Hoạt Ngay', 'Verify Now'),
+              height: 42,
+              width: 148,
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VerifyEmailScreen(email: email),
+                  ),
+                );
+              },
             ),
-            child: Text(AppLocale.t('Kích Hoạt Ngay', 'Verify Now')),
           ),
         ],
       ),
@@ -291,31 +305,363 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
+      backgroundColor: Colors.transparent,
+      body: NutriVietGlassBackdrop(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: NutriVietGlassScrollArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(22.0, 62.0, 22.0, 28.0),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Center(
+                                child: NutriVietEntranceMotion(
+                                  child: NutriVietPulseHalo(
+                                    glowColor: Color(0xFF14803C),
+                                    size: 78,
+                                    child: NutriVietGlassIconTile(
+                                      icon: PhosphorIconsDuotone.shieldCheck,
+                                      color: Color(0xFF14803C),
+                                      size: 78,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              Text(
+                                AppLocale.t('Chào mừng trở lại', 'Welcome back'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+
+                              RichText(
+                                textAlign: TextAlign.center,
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    color: Color(0xFF475569),
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: AppLocale.t(
+                                        'Quét nhãn thực phẩm an toàn cùng ',
+                                        'Scan food labels safely with ',
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'NutriViet',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+
+                              NutriVietGlassCard(
+                                cornerRadius: 26,
+                                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (_errorMessage != null) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFEE2E2).withValues(alpha: 0.9),
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: const Color(0xFFEF4444),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const PhosphorIcon(
+                                              PhosphorIconsDuotone.warningOctagon,
+                                              color: Color(0xFFDC2626),
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                _errorMessage!,
+                                                style: const TextStyle(
+                                                  color: Color(0xFFDC2626),
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                    ],
+
+                                    Text(
+                                      AppLocale.t(
+                                        'Email hoặc Số điện thoại',
+                                        'Email or Phone number',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: AppLocale.t(
+                                          'nhap.email@example.com',
+                                          'your.email@example.com',
+                                        ),
+                                        prefixIcon: const PhosphorIcon(
+                                          PhosphorIconsDuotone.envelope,
+                                          size: 20,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.trim().isEmpty) {
+                                          return AppLocale.t(
+                                            'Vui lòng nhập địa chỉ email',
+                                            'Please enter your email address',
+                                          );
+                                        }
+                                        if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                            .hasMatch(value.trim())) {
+                                          return AppLocale.t(
+                                            'Định dạng email không hợp lệ',
+                                            'Invalid email format',
+                                          );
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 14),
+
+                                    Text(
+                                      AppLocale.t('Mật khẩu', 'Password'),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _passwordController,
+                                      obscureText: _obscurePassword,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: AppLocale.t(
+                                          'Nhập mật khẩu',
+                                          'Enter password',
+                                        ),
+                                        prefixIcon: const PhosphorIcon(
+                                          PhosphorIconsDuotone.lock,
+                                          size: 20,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                        suffixIcon: IconButton(
+                                          icon: PhosphorIcon(
+                                            _obscurePassword
+                                                ? PhosphorIconsDuotone.eyeSlash
+                                                : PhosphorIconsDuotone.eye,
+                                            size: 20,
+                                            color: const Color(0xFF64748B),
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _obscurePassword = !_obscurePassword;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return AppLocale.t(
+                                            'Vui lòng nhập mật khẩu',
+                                            'Please enter your password',
+                                          );
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: Checkbox(
+                                                  value: _rememberMe,
+                                                  activeColor: const Color(0xFF14803C),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(5),
+                                                  ),
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      _rememberMe = val ?? true;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Text(
+                                                  AppLocale.t(
+                                                    'Ghi nhớ đăng nhập',
+                                                    'Remember me',
+                                                  ),
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFF334155),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: _showForgotPasswordDialog,
+                                          child: Text(
+                                            AppLocale.t(
+                                              'Quên mật khẩu?',
+                                              'Forgot password?',
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF14803C),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              NutriVietGlassActionButton(
+                                label: AppLocale.t(
+                                  'Đăng Nhập An Toàn',
+                                  'Sign In Safely',
+                                ),
+                                icon: PhosphorIconsDuotone.signIn,
+                                isLoading: _isLoading,
+                                onPressed: _handleLogin,
+                              ),
+                              const SizedBox(height: 18),
+
+                              NutriVietGlassCard(
+                                cornerRadius: 18,
+                                elevated: false,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const RegisterScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 4,
+                                  runSpacing: 2,
+                                  children: [
+                                    Text(
+                                      AppLocale.t(
+                                        'Chưa có tài khoản? ',
+                                        'Don\'t have an account? ',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF475569),
+                                      ),
+                                    ),
+                                    Text(
+                                      AppLocale.t('Đăng ký ngay', 'Sign up now'),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF14803C),
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              Positioned(
+                top: 10,
+                right: 20,
+                child: LiquidGlassBatch.exclude(
+                  child: LiquidGlassLens(
+                    style: NutriVietGlass.floatingChrome,
+                    touch: NutriVietGlass.touchHorizontalCapsule,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(20),
                       onTap: () async {
                         await AppLocale.setLanguage(AppLocale.isEn ? 'vi' : 'en');
                         if (mounted) setState(() {});
                       },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -331,7 +677,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
+                                color: Color(0xFF0F172A),
                               ),
                             ),
                           ],
@@ -339,303 +685,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-
-                  const Center(
-                    child: NutriVietEntranceMotion(
-                      child: NutriVietPulseHalo(
-                        glowColor: Color(0xFF14803C),
-                        size: 74,
-                        child: NutriVietGlassIconTile(
-                          icon: PhosphorIconsDuotone.shieldCheck,
-                          color: Color(0xFF14803C),
-                          size: 74,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  Text(
-                    AppLocale.t('Chào mừng trở lại', 'Welcome back'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                      children: [
-                        TextSpan(
-                          text: AppLocale.t(
-                            'Quét nhãn thực phẩm an toàn cùng ',
-                            'Scan food labels safely with ',
-                          ),
-                        ),
-                        const TextSpan(
-                          text: 'NutriViet',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFEF4444), width: 1),
-                      ),
-                      child: Row(
-                        children: [
-                          const PhosphorIcon(
-                            PhosphorIconsDuotone.warningOctagon,
-                            color: Color(0xFFDC2626),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(
-                                color: Color(0xFFDC2626),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  Text(
-                    AppLocale.t('Email hoặc Số điện thoại', 'Email or Phone number'),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
-                    decoration: InputDecoration(
-                      hintText: AppLocale.t(
-                        'nhap.email@example.com',
-                        'your.email@example.com',
-                      ),
-                      prefixIcon: const PhosphorIcon(
-                        PhosphorIconsDuotone.envelope,
-                        size: 20,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return AppLocale.t(
-                          'Vui lòng nhập địa chỉ email',
-                          'Please enter your email address',
-                        );
-                      }
-                      if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(value.trim())) {
-                        return AppLocale.t(
-                          'Định dạng email không hợp lệ',
-                          'Invalid email format',
-                        );
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  Text(
-                    AppLocale.t('Mật khẩu', 'Password'),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
-                    decoration: InputDecoration(
-                      hintText: AppLocale.t('Nhập mật khẩu', 'Enter password'),
-                      prefixIcon: const PhosphorIcon(
-                        PhosphorIconsDuotone.lock,
-                        size: 20,
-                        color: Color(0xFF64748B),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: PhosphorIcon(
-                          _obscurePassword
-                              ? PhosphorIconsDuotone.eyeSlash
-                              : PhosphorIconsDuotone.eye,
-                          size: 20,
-                          color: const Color(0xFF64748B),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return AppLocale.t(
-                          'Vui lòng nhập mật khẩu',
-                          'Please enter your password',
-                        );
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _rememberMe,
-                              activeColor: const Color(0xFF10B981),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              onChanged: (val) {
-                                setState(() {
-                                  _rememberMe = val ?? true;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            AppLocale.t('Ghi nhớ đăng nhập', 'Remember me'),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF475569),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: _showForgotPasswordDialog,
-                        child: Text(
-                          AppLocale.t('Quên mật khẩu?', 'Forgot password?'),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF10B981),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-
-                  Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              AppLocale.t('Đăng Nhập An Toàn', 'Sign In Safely'),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        AppLocale.t('Chưa có tài khoản? ', 'Don\'t have an account? '),
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegisterScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          AppLocale.t('Đăng ký ngay', 'Sign up now'),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF10B981),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
