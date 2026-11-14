@@ -4,6 +4,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'register_screen.dart';
 import 'verify_email_screen.dart';
@@ -39,13 +40,12 @@ class _LoginScreenState extends State<LoginScreen> {
     String? dialogMessage;
     bool dialogSuccess = false;
 
-    showLiquidGlassDialog(
+    showNutriVietGlassDialog(
       context: context,
       barrierColor: const Color(0x520F172A),
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return LiquidGlassAlertDialog(
-            style: NutriVietGlass.lightSheet,
+          return NutriVietGlassDialog(
             titleTextStyle: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -126,22 +126,19 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
             actions: [
-              LiquidGlassBatch.exclude(
-                child: NutriVietGlassActionButton(
-                  label: AppLocale.t('Hủy', 'Cancel'),
-                  isPrimary: false,
-                  height: 42,
-                  width: 96,
-                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
-                ),
+              NutriVietGlassPillButton(
+                label: AppLocale.t('Hủy', 'Cancel'),
+                variant: NutriVietGlassButtonVariant.neutral,
+                height: 42,
+                width: 96,
+                onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
               ),
-              LiquidGlassBatch.exclude(
-                child: NutriVietGlassActionButton(
-                  label: AppLocale.t('Gửi Yêu Cầu', 'Send Request'),
-                  isLoading: isSubmitting,
-                  height: 42,
-                  width: 148,
-                  onPressed: isSubmitting
+              NutriVietGlassPillButton(
+                label: AppLocale.t('Gửi Yêu Cầu', 'Send Request'),
+                isLoading: isSubmitting,
+                height: 42,
+                width: 148,
+                onPressed: isSubmitting
                       ? null
                       : () async {
                           final email = forgotEmailController.text.trim();
@@ -163,7 +160,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             dialogSuccess = res['success'] == true;
                           });
                         },
-                ),
               ),
             ],
           );
@@ -173,11 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showUnverifiedEmailDialog(String email) {
-    showLiquidGlassDialog(
+    showNutriVietGlassDialog(
       context: context,
       barrierColor: const Color(0x520F172A),
-      builder: (ctx) => LiquidGlassAlertDialog(
-        style: NutriVietGlass.lightSheet,
+      builder: (ctx) => NutriVietGlassDialog(
         titleTextStyle: const TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -211,21 +206,18 @@ class _LoginScreenState extends State<LoginScreen> {
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
         ),
         actions: [
-          LiquidGlassBatch.exclude(
-            child: NutriVietGlassActionButton(
-              label: AppLocale.t('Đóng', 'Close'),
-              isPrimary: false,
-              height: 42,
-              width: 96,
-              onPressed: () => Navigator.pop(ctx),
-            ),
+          NutriVietGlassPillButton(
+            label: AppLocale.t('Đóng', 'Close'),
+            variant: NutriVietGlassButtonVariant.neutral,
+            height: 42,
+            width: 96,
+            onPressed: () => Navigator.pop(ctx),
           ),
-          LiquidGlassBatch.exclude(
-            child: NutriVietGlassActionButton(
-              label: AppLocale.t('Kích Hoạt Ngay', 'Verify Now'),
-              height: 42,
-              width: 148,
-              onPressed: () {
+          NutriVietGlassPillButton(
+            label: AppLocale.t('Kích Hoạt Ngay', 'Verify Now'),
+            height: 42,
+            width: 148,
+            onPressed: () {
                 Navigator.pop(ctx);
                 Navigator.push(
                   context,
@@ -233,8 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     builder: (context) => VerifyEmailScreen(email: email),
                   ),
                 );
-              },
-            ),
+            },
           ),
         ],
       ),
