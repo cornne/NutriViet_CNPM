@@ -21,6 +21,8 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 
+import community_service
+
 
 def _load_local_env():
     """Loads optional `.env` overrides without external third-party packages."""
@@ -204,13 +206,12 @@ def init_tables():
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_user ON scan_history(user_id, id DESC)")
 
+        community_service.init_community_and_rbac_tables(conn, hash_pwd)
+
         conn.commit()
         conn.close()
     except Exception as e:
         sys.stderr.write(f"[DB INIT ERROR] {e}\n")
-
-# Run DB migration on startup
-init_tables()
 
 # -------------------------------------------------------------
 # Physical & Nutrition Metrics Calculation (Standard WHO / Vietnam)
@@ -286,6 +287,10 @@ def hash_pwd(password: str, salt: str = None) -> tuple:
 def verify_pwd(password: str, stored_hash: str, salt: str) -> bool:
     new_hash, _ = hash_pwd(password, salt)
     return new_hash == stored_hash
+
+
+# Run DB & Community/RBAC migration on startup (after hash_pwd is defined)
+init_tables()
 
 # -------------------------------------------------------------
 # Email Dispatching via Gmail SMTP SSL (Port 465)
@@ -460,6 +465,21 @@ def application(environ, start_response):
             body = {}
 
     try:
+        # 1b. Community Social Network & Admin RBAC Routes
+        community_resp = community_service.handle_community_and_admin_route(
+            method=method,
+            path=path,
+            query_string=environ.get('QUERY_STRING', ''),
+            body=body,
+            environ=environ,
+            headers=headers,
+            start_response=start_response,
+            get_db_fn=get_db,
+            public_base_url=PUBLIC_BASE_URL,
+        )
+        if community_resp is not None:
+            return community_resp
+
         # 2. Health Check
         if path in ['/', '/health']:
             start_response('200 OK', headers)
@@ -568,27 +588,39 @@ def application(environ, start_response):
                     "id": user_id,
                     "full_name": full_name,
                     "email": email,
-                    "is_verified": 0
+                    "is_verified": 0,
+                    "role": "user",
+                    "is_banned": 0
                 }
             }).encode('utf-8')]
 
-        # 5. User Login (Strict Email Verification Gate)
+        # 5. User Login (Strict Email Verification & Ban Gate + Cryptographic Session Token)
         if path == '/api/v1/auth/login' and method == 'POST':
             email = body.get('email', '').strip().lower()
             password = body.get('password', '')
 
             conn = get_db()
             cursor = conn.cursor()
-            cursor.execute("SELECT id, full_name, email, password_hash, salt, is_verified FROM users WHERE email = ?", (email,))
+            cursor.execute("SELECT id, full_name, email, password_hash, salt, is_verified, role, is_banned FROM users WHERE email = ?", (email,))
             user = cursor.fetchone()
-            conn.close()
 
             if not user or not verify_pwd(password, user['password_hash'], user['salt']):
+                conn.close()
                 start_response('401 Unauthorized', headers)
                 return [json.dumps({"success": False, "code": "INVALID_CREDENTIALS", "message": "Email hoặc mật khẩu không chính xác."}).encode('utf-8')]
 
+            if int(user['is_banned'] or 0) == 1:
+                conn.close()
+                start_response('403 Forbidden', headers)
+                return [json.dumps({
+                    "success": False,
+                    "code": "ACCOUNT_BANNED",
+                    "message": "Tài khoản này đã bị quản trị viên tạm khóa."
+                }).encode('utf-8')]
+
             # Email Verification Gate Check
             if user['is_verified'] != 1:
+                conn.close()
                 start_response('403 Forbidden', headers)
                 return [json.dumps({
                     "success": False,
@@ -596,15 +628,20 @@ def application(environ, start_response):
                     "message": "Tài khoản chưa được kích hoạt qua email. Vui lòng kiểm tra hộp thư Gmail để kích hoạt tài khoản trước khi đăng nhập."
                 }).encode('utf-8')]
 
+            session_token = community_service.issue_session_token(conn, user['id'])
+            conn.close()
+
             start_response('200 OK', headers)
             return [json.dumps({
                 "success": True,
-                "token": f"nv_token_{user['id']}_verified",
+                "token": session_token,
                 "user": {
                     "id": user['id'],
                     "full_name": user['full_name'],
                     "email": user['email'],
-                    "is_verified": 1
+                    "is_verified": 1,
+                    "role": user['role'] or 'user',
+                    "is_banned": 0
                 }
             }).encode('utf-8')]
 
@@ -800,19 +837,6 @@ def application(environ, start_response):
                     """, (int(uid),))
                     allergens = [dict(r) for r in cursor.fetchall()]
                     conn.close()
-                    sys.path.insert(0, os.path.dirname(__file__))
-                    import monolingual_catalog as mono_cat
-                    everyday_map = {}
-                    for ef in mono_cat.EVERYDAY_ALLERGY_FOODS:
-                        pair = (ef["food_name_vi"], ef["food_name_en"])
-                        everyday_map[ef["food_name_vi"].lower()] = pair
-                        everyday_map[ef["food_name_en"].lower()] = pair
-                        for kw in ef["keywords"]:
-                            everyday_map[kw.lower()] = pair
-                    for a in allergens:
-                        rn = (a.get("name") or "").strip().lower()
-                        if rn in everyday_map:
-                            a["source_food_vi"], a["source_food_en"] = everyday_map[rn]
                 start_response('200 OK', headers)
                 return [json.dumps({"success": True, "allergens": allergens}).encode('utf-8')]
 
@@ -1222,12 +1246,41 @@ def application(environ, start_response):
 
         if path == '/api/v1/foodon/evaluate' and method == 'POST':
             eng = _get_foodon_engine()
+            import re as _re
+            raw_text = (body.get('raw_text') or '').strip()
             ingredients = body.get('ingredients') or []
-            if isinstance(ingredients, str):
-                ingredients = [x.strip() for x in ingredients.split(',') if x.strip()]
+            if not ingredients and raw_text:
+                cleaned_text = _re.sub(r"^(?:thành phần|ingredients)\s*[:\-]\s*", "", raw_text, flags=_re.IGNORECASE)
+                ingredients = [t.strip(" .") for t in _re.split(r"[,;\n]+", cleaned_text) if t.strip(" .")]
+            elif isinstance(ingredients, str):
+                ingredients = [x.strip() for x in _re.split(r"[,;\n]+", ingredients) if x.strip()]
             allergens = body.get('allergens') or []
             chronics = body.get('chronics') or []
-            res = eng.evaluate_packaging_label(ingredients, allergens, chronics)
+            lang = (body.get('lang') or 'en').strip().lower()
+            res = eng.evaluate_packaging_label(ingredients, allergens, chronics, lang=lang)
+            detected_additives = []
+            highest_concept_risk = "safe"
+            for tok_detail in res.get("details", []):
+                for m in tok_detail.get("matches", []):
+                    c = m["curie"]
+                    rk = eng.classify_concept_risk(c)["risk_level"]
+                    if rk == "high":
+                        highest_concept_risk = "high"
+                    elif rk == "low" and highest_concept_risk == "safe":
+                        highest_concept_risk = "low"
+                    if m.get("ecodes") or "FOODON:03412972" in m.get("lineage", ""):
+                        detected_additives.append(eng._build_concept_card(c, lang=lang))
+            res["detected_additives"] = detected_additives
+            res["warning_count"] = len(res.get("red_triggers", [])) + len(res.get("yellow_triggers", []))
+            res["additive_count"] = len(detected_additives) if detected_additives else len(
+                [d for d in res.get("details", []) if d.get("matched")]
+            )
+            if res["verdict"] == "RED" or highest_concept_risk == "high":
+                res["risk_level"] = "high"
+            elif res["verdict"] == "YELLOW" or highest_concept_risk == "low":
+                res["risk_level"] = "low"
+            else:
+                res["risk_level"] = "safe"
             start_response('200 OK', headers)
             return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
