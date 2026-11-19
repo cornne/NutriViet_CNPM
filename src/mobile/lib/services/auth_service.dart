@@ -117,8 +117,23 @@ class AuthService {
       }
 
       if (response.statusCode == 200) {
-        await _saveSession(data['token'], data['user']);
-        return {'success': true, 'user': data['user']};
+        final rawUser = Map<String, dynamic>.from(data['user'] as Map);
+        final token = (data['token'] ?? '').toString();
+        rawUser['token'] = token;
+        rawUser['role'] = (rawUser['role'] ?? 'user').toString();
+        rawUser['is_guest'] = false;
+        await _saveSession(token, rawUser);
+        return {'success': true, 'token': token, 'user': rawUser};
+      } else if (data['code'] == 'ACCOUNT_BANNED') {
+        return {
+          'success': false,
+          'code': 'ACCOUNT_BANNED',
+          'message': data['message'] ??
+              AppLocale.t(
+                'Tài khoản này đã bị quản trị viên tạm khóa.',
+                'This account has been suspended by an administrator.',
+              ),
+        };
       } else if (response.statusCode == 403 || data['code'] == 'EMAIL_NOT_VERIFIED') {
         return {
           'success': false,
@@ -313,32 +328,81 @@ class AuthService {
     }
   }
 
+  static bool isGuest(Map<String, dynamic>? user) {
+    if (user == null) return false;
+    return user['is_guest'] == true ||
+        (user['role']?.toString().toLowerCase() == 'guest') ||
+        ((user['token'] ?? '').toString().isEmpty && (user['id'] == 0 || user['id'] == null));
+  }
+
+  static bool isAdmin(Map<String, dynamic>? user) {
+    if (user == null || isGuest(user)) return false;
+    return (user['role'] ?? '').toString().toLowerCase() == 'admin';
+  }
+
+  static Future<Map<String, dynamic>> enterGuestMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.setBool('is_guest', true);
+    await prefs.setString('user_role', 'guest');
+    await prefs.setString('user_name', AppLocale.t('Khách', 'Guest'));
+    await prefs.setString('user_email', '');
+    await prefs.setInt('user_id', 0);
+    return {
+      'id': 0,
+      'token': '',
+      'full_name': AppLocale.t('Khách', 'Guest'),
+      'email': '',
+      'role': 'guest',
+      'is_guest': true,
+    };
+  }
+
   static Future<void> _saveSession(String token, Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
+    await prefs.setBool('is_guest', false);
+    await prefs.setString('user_role', (user['role'] ?? 'user').toString());
     await prefs.setString('user_name', user['full_name'] ?? '');
     await prefs.setString('user_email', user['email'] ?? '');
-    await prefs.setInt('user_id', user['id'] is int ? user['id'] : int.tryParse(user['id'].toString()) ?? 0);
+    await prefs.setInt(
+      'user_id',
+      user['id'] is int ? user['id'] : int.tryParse(user['id'].toString()) ?? 0,
+    );
   }
 
   static Future<Map<String, dynamic>?> getSession() async {
     final prefs = await SharedPreferences.getInstance();
+    final isGuestFlag = prefs.getBool('is_guest') ?? false;
+    if (isGuestFlag) {
+      return {
+        'id': 0,
+        'token': '',
+        'full_name': prefs.getString('user_name') ?? AppLocale.t('Khách', 'Guest'),
+        'email': '',
+        'role': 'guest',
+        'is_guest': true,
+      };
+    }
     final token = prefs.getString('auth_token');
-    if (token == null) return null;
+    if (token == null || token.isEmpty) return null;
     return {
       'token': token,
       'full_name': prefs.getString('user_name') ?? '',
       'email': prefs.getString('user_email') ?? '',
       'id': prefs.getInt('user_id') ?? 0,
+      'role': prefs.getString('user_role') ?? 'user',
+      'is_guest': false,
     };
   }
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedLang = prefs.getString('nutriviet_ui_lang');
-    await prefs.clear();
-    if (savedLang != null) {
-      await prefs.setString('nutriviet_ui_lang', savedLang);
-    }
+    await prefs.remove('auth_token');
+    await prefs.remove('user_name');
+    await prefs.remove('user_email');
+    await prefs.remove('user_id');
+    await prefs.remove('user_role');
+    await prefs.remove('is_guest');
   }
 }
