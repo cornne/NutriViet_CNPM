@@ -52,6 +52,8 @@ class ProfileService {
         cachedWorkingRoot: _cachedWorkingRoot,
       );
 
+  static List<String> get apiRoots => _apiRoots;
+
   static Duration _timeoutForRoot(String root) {
     if (root.contains('127.0.0.1')) {
       return const Duration(milliseconds: 1500);
@@ -514,7 +516,7 @@ class ProfileService {
       'raw_text': rawText,
       'label_title': labelTitle ?? AppLocale.t('Kết quả quét', 'Scan result'),
       'member_name': memberName,
-      'lang': AppLocale.code,
+      'lang': 'en',
     });
     if (res['_ok'] == true) {
       return {
@@ -537,17 +539,45 @@ class ProfileService {
     };
   }
 
+  /// Stateless FoodOn packaging label evaluation for Guest mode (zero cloud writes).
+  static Future<Map<String, dynamic>> evaluateLabelStateless({
+    required String rawText,
+    List<Map<String, dynamic>> allergens = const [],
+    List<String> chronics = const [],
+  }) async {
+    final res = await _postJson('/foodon/evaluate', {
+      'raw_text': rawText,
+      'allergens': allergens,
+      'chronics': chronics,
+      'lang': 'en',
+    });
+    if (res['_ok'] == true) {
+      final evaluation = Map<String, dynamic>.from(res)..remove('_ok');
+      return {
+        'success': true,
+        'evaluation': evaluation,
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể phân tích nhãn bao bì.',
+            'Unable to analyze packaging label.',
+          ),
+    };
+  }
+
   // ---------------------------------------------------------------------------
-  // 7. Live FoodOn + Kala Ontology Endpoints ("Phụ gia" & Category Filters)
+  // 7. Live Official Pure-English FoodOn Ontology Endpoints (Zero Fallback)
   // ---------------------------------------------------------------------------
   static Future<Map<String, dynamic>> getAdditives({
     String query = '',
     String? lang,
     int limit = 60,
   }) async {
-    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final qEnc = Uri.encodeQueryComponent(query);
-    final res = await _getJson('/foodon/additives?q=$qEnc&lang=$activeLang&limit=$limit');
+    final res = await _getJson('/foodon/additives?q=$qEnc&lang=en&limit=$limit');
     if (res['_ok'] == true) {
       return {
         'success': true,
@@ -573,10 +603,9 @@ class ProfileService {
     String? lang,
     int limit = 20,
   }) async {
-    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final alParam = Uri.encodeQueryComponent(allergens.join(','));
     final res = await _getJson(
-      '/foodon/category?category=$category&allergens=$alParam&lang=$activeLang&limit=$limit',
+      '/foodon/category?category=$category&allergens=$alParam&lang=en&limit=$limit',
     );
     if (res['_ok'] == true) {
       return {
@@ -601,10 +630,9 @@ class ProfileService {
     String? lang,
     int limit = 12,
   }) async {
-    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final qEnc = Uri.encodeQueryComponent(query);
     final res = await _getJson(
-      '/foodon/allergy-lookup?q=$qEnc&lang=$activeLang&limit=$limit',
+      '/foodon/allergy-lookup?q=$qEnc&lang=en&limit=$limit',
     );
     if (res['_ok'] == true) {
       return {
