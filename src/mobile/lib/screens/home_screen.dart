@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
@@ -7,12 +6,15 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'allergy_profile_screen.dart';
+import 'community_feed_screen.dart';
+import 'login_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,14 +30,18 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color _brandGreen = Color(0xFF14803C);
   static const Color _riskHighRed = Color(0xFFDC2626);
 
-  final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0); // 0: Home, 1: Additives, 2: History, 3: Settings
+  final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0); // 0: Home, 1: Community, 2: History, 3: Settings
 
   int _userId = 0;
   String _userName = '';
   String _userEmail = '';
+  String _userRole = 'user';
+  String _authToken = '';
+  bool _isGuest = false;
+  int _communityRefreshTick = 0;
   String _langPref = AppLocale.code;
 
-  // Real data from Backend SQLite DB & FoodOn Hybrid Engine
+  // Real data from Backend SQLite DB & FoodOn Hybrid Engine (or LocalGuestStore for Guest)
   List<Map<String, dynamic>> _allergens = [];
   List<Map<String, dynamic>> _familyMembers = [];
   String _selectedMemberName = '';
@@ -48,13 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loadingInitialData = true;
   final Set<int> _expandedScanIds = {};
 
-  // Tab 1: Additives (Live from nutriviet_hybrid.db)
-  final TextEditingController _additiveSearchCtrl = TextEditingController();
-  Timer? _searchDebounce;
-  List<Map<String, dynamic>> _additiveItems = [];
-  bool _loadingAdditives = false;
-  String? _additiveError;
-
   // Home category filter ('sugar', 'salt', 'fat', 'allergen')
   String _selectedCategory = 'sugar';
   List<Map<String, dynamic>> _categoryItems = [];
@@ -62,9 +61,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late final VoidCallback _localeListener;
 
+  Map<String, dynamic> get _activeUserMap => {
+        'id': _userId,
+        'full_name': _userName,
+        'email': _userEmail,
+        'role': _isGuest ? 'guest' : _userRole,
+        'token': _isGuest ? '' : _authToken,
+        'is_guest': _isGuest,
+      };
+
+  void _openLoginFromGuest() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    final initial = widget.user;
+    if (initial != null) {
+      final uid = initial['id'] ?? 0;
+      _userId = uid is int ? uid : (int.tryParse(uid.toString()) ?? 0);
+      _userName = (initial['full_name'] ?? '').toString();
+      _userEmail = (initial['email'] ?? '').toString();
+      _userRole = (initial['role'] ?? 'user').toString();
+      _authToken = (initial['token'] ?? '').toString();
+      _isGuest = AuthService.isGuest(initial);
+    }
     _localeListener = () {
       if (!mounted) return;
       final newLang = AppLocale.code;
@@ -72,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _langPref = newLang;
         });
-        _loadAdditives(_additiveSearchCtrl.text);
         _loadCategoryConcepts(_selectedCategory);
       } else {
         setState(() {});
@@ -85,8 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppLocale.current.removeListener(_localeListener);
-    _searchDebounce?.cancel();
-    _additiveSearchCtrl.dispose();
     _tabNotifier.dispose();
     super.dispose();
   }
@@ -94,6 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _shortName {
     if (_selectedMemberName.isNotEmpty) {
       return AppLocale.translateMemberName(_selectedMemberName);
+    }
+    if (_isGuest) {
+      return AppLocale.t('Khách', 'Guest');
     }
     final trimmed = _userName.trim();
     if (trimmed.isEmpty) return 'Bình';
@@ -109,42 +134,63 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initSessionAndData() async {
     final session = await AuthService.getSession();
-    final uid = widget.user?['id'] ?? session?['id'] ?? 0;
+    final merged = <String, dynamic>{
+      if (session != null) ...session,
+      if (widget.user != null) ...widget.user!,
+    };
+    if ((merged['token'] ?? '').toString().isEmpty &&
+        session != null &&
+        (session['token'] ?? '').toString().isNotEmpty &&
+        merged['is_guest'] != true) {
+      merged['token'] = session['token'];
+    }
+    final uid = merged['id'] ?? 0;
     final parsedUid = uid is int ? uid : (int.tryParse(uid.toString()) ?? 0);
-    final name = (widget.user?['full_name'] ?? session?['full_name'] ?? '').toString();
-    final email = (widget.user?['email'] ?? session?['email'] ?? '').toString();
+    final isGuestMode = AuthService.isGuest(merged);
+    final name = (merged['full_name'] ?? '').toString();
+    final email = (merged['email'] ?? '').toString();
+    final role = (merged['role'] ?? (isGuestMode ? 'guest' : 'user')).toString();
+    final token = isGuestMode ? '' : (merged['token'] ?? '').toString();
 
     if (!mounted) return;
     setState(() {
       _userId = parsedUid;
       _userName = name;
       _userEmail = email;
+      _userRole = role;
+      _authToken = token;
+      _isGuest = isGuestMode;
       _langPref = AppLocale.code;
     });
 
-    await Future.wait([
-      _refreshUserData(),
-      _loadAdditives(''),
-    ]);
+    await _refreshUserData();
     if (mounted && _loadingInitialData) {
       setState(() => _loadingInitialData = false);
     }
   }
 
   Future<void> _refreshUserData() async {
-    if (_userId <= 0) {
+    if (!_isGuest && _userId <= 0) {
       if (mounted && _loadingInitialData) {
         setState(() => _loadingInitialData = false);
       }
       return;
     }
-    final results = await Future.wait([
-      ProfileService.getAllergens(_userId),
-      ProfileService.getChronics(_userId),
-      ProfileService.getFamilyMembers(_userId),
-      ProfileService.getScans(_userId),
-      ProfileService.getSettings(_userId),
-    ]);
+    final results = _isGuest
+        ? await Future.wait([
+            LocalGuestStore.getAllergens(),
+            LocalGuestStore.getChronics(),
+            LocalGuestStore.getFamilyMembers(),
+            LocalGuestStore.getScans(),
+            LocalGuestStore.getSettings(),
+          ])
+        : await Future.wait([
+            ProfileService.getAllergens(_userId),
+            ProfileService.getChronics(_userId),
+            ProfileService.getFamilyMembers(_userId),
+            ProfileService.getScans(_userId),
+            ProfileService.getSettings(_userId),
+          ]);
     if (!mounted) return;
 
     String? backendLang;
@@ -199,34 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
-    await Future.wait([
-      _loadCategoryConcepts(_selectedCategory),
-      _loadAdditives(_additiveSearchCtrl.text),
-    ]);
-  }
-
-  Future<void> _loadAdditives(String query) async {
-    if (!mounted) return;
-    setState(() {
-      _loadingAdditives = true;
-      _additiveError = null;
-    });
-
-    final res = await ProfileService.getAdditives(
-      query: query,
-      lang: AppLocale.code,
-      limit: 60,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _loadingAdditives = false;
-      if (res['success'] == true) {
-        _additiveItems = List<Map<String, dynamic>>.from(res['items'] ?? []);
-      } else {
-        _additiveError = res['message']?.toString();
-      }
-    });
+    await _loadCategoryConcepts(_selectedCategory);
   }
 
   Future<void> _loadCategoryConcepts(String category) async {
@@ -264,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
           userId: _userId,
           userName: _userName,
           userEmail: _userEmail,
+          isGuest: _isGuest,
         ),
       ),
     );
@@ -333,11 +353,16 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 final name = nameCtrl.text.trim();
                 if (name.isEmpty) return;
-                final res = await ProfileService.addFamilyMember(
-                  userId: _userId,
-                  memberName: name,
-                  relationship: relCtrl.text.trim(),
-                );
+                final res = _isGuest
+                    ? await LocalGuestStore.addFamilyMember(
+                        memberName: name,
+                        relationship: relCtrl.text.trim(),
+                      )
+                    : await ProfileService.addFamilyMember(
+                        userId: _userId,
+                        memberName: name,
+                        relationship: relCtrl.text.trim(),
+                      );
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
                 if (res['success'] == true) {
@@ -381,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
         pageBuilder: (_, __, ___) => _PackagingScannerScreen(
           userId: _userId,
           memberName: _shortName,
+          isGuest: _isGuest,
         ),
         transitionsBuilder: (_, animation, __, child) {
           final curved = CurvedAnimation(
@@ -422,20 +448,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Concept Detail Bottom Sheet (Strictly Monolingual: 100% VI or 100% EN)
+  // Concept Detail Bottom Sheet (Pure Official English FoodOn — Zero Fallback)
   // ---------------------------------------------------------------------------
   void _showConceptDetailSheet(Map<String, dynamic> item) {
     final code = (item['code'] ?? item['curie'] ?? '').toString();
     final curie = (item['curie'] ?? '').toString();
-    final title = AppLocale.isEn
-        ? (item['title_en'] ?? item['title'] ?? item['label_en'] ?? '').toString()
-        : (item['title_vi'] ?? item['title'] ?? item['label_vi'] ?? '').toString();
-    final desc = AppLocale.isEn
-        ? (item['description_en'] ?? item['description'] ?? '').toString()
-        : (item['description_vi'] ?? item['description'] ?? '').toString();
+    final title = (item['title_en'] ?? item['label_en'] ?? item['title'] ?? curie).toString();
+    final desc = (item['description_en'] ?? item['definition_en'] ?? item['description'] ?? '').toString();
     final riskLevel = (item['risk_level'] ?? 'low').toString();
     final lineageNodes = List<Map<String, dynamic>>.from(item['lineage_nodes'] ?? []);
-    final viTerms = List<String>.from(item['terms_vi'] ?? []);
     final enTerms = List<String>.from(item['terms_en'] ?? []);
     final ecodes = List<String>.from(item['ecodes'] ?? []);
 
@@ -506,17 +527,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
-              if (AppLocale.isVi && viTerms.isNotEmpty) ...[
+              if (enTerms.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Tên gọi tương đương: ${viTerms.join(", ")}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-                ),
-              ],
-              if (AppLocale.isEn && enTerms.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Synonyms: ${enTerms.join(", ")}',
+                  AppLocale.t(
+                    'Tên gọi gốc FoodOn: ${enTerms.join(", ")}',
+                    'FoodOn synonyms: ${enTerms.join(", ")}',
+                  ),
                   style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
                 ),
               ],
@@ -538,9 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   spacing: 6,
                   runSpacing: 6,
                   children: lineageNodes.map((n) {
-                    final lbl = AppLocale.isEn
-                        ? (n['display_label_en'] ?? n['label_en'] ?? '').toString()
-                        : (n['display_label_vi'] ?? n['label_vi'] ?? '').toString();
+                    final lbl = (n['display_label_en'] ?? n['label_en'] ?? '').toString();
                     if (lbl.isEmpty) return const SizedBox.shrink();
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1554,236 +1569,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Tab 1: Phụ gia / Additives
-  // ---------------------------------------------------------------------------
-  Widget _buildAdditivesTab() {
-    final double topInset = MediaQuery.paddingOf(context).top;
-    final double listTopPadding = topInset + 136;
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: NutriVietGlassScrollArea(
-            child: _loadingAdditives
-                ? SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    padding: EdgeInsets.fromLTRB(20, listTopPadding, 20, 128),
-                    child: const NutriVietConceptListSkeleton(itemCount: 4),
-                  )
-                : _additiveError != null
-                    ? Center(
-                        child: Padding(
-                          padding:
-                              EdgeInsets.fromLTRB(24, listTopPadding, 24, 120),
-                          child: NutriVietEntranceMotion(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const NutriVietGlassIconTile(
-                                  icon: PhosphorIconsDuotone.cloudSlash,
-                                  color: _riskHighRed,
-                                  size: 68,
-                                  isCircle: true,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _additiveError!,
-                                  textAlign: TextAlign.center,
-                                  style:
-                                      const TextStyle(color: Color(0xFF4B5563)),
-                                ),
-                                const SizedBox(height: 16),
-                                LiquidGlassButton(
-                                  height: 44,
-                                  style: NutriVietGlass.emeraldButton,
-                                  touch: NutriVietGlass.touchHorizontalCapsule,
-                                  foregroundColor: Colors.white,
-                                  label: AppLocale.t('Thử lại', 'Retry'),
-                                  onPressed: () =>
-                                      _loadAdditives(_additiveSearchCtrl.text),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    : _additiveItems.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                  24, listTopPadding, 24, 120),
-                              child: Text(
-                                AppLocale.t(
-                                  'Không tìm thấy mã E hoặc thành phần phù hợp.',
-                                  'No matching E-codes or ingredients found.',
-                                ),
-                                textAlign: TextAlign.center,
-                                style:
-                                    const TextStyle(color: Color(0xFF6B7280)),
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            scrollCacheExtent:
-                                const ScrollCacheExtent.pixels(800),
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            addAutomaticKeepAlives: false,
-                            padding: EdgeInsets.fromLTRB(
-                                20, listTopPadding, 20, 128),
-                            itemCount: _additiveItems.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 14),
-                            itemBuilder: (ctx, idx) {
-                              return RepaintBoundary(
-                                child: _buildAdditiveOrConceptCard(
-                                    _additiveItems[idx]),
-                              );
-                            },
-                          ),
-          ),
-        ),
-
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: LiquidGlassScrollEdge(
-            edge: LiquidGlassEdge.top,
-            height: topInset + 168,
-            blur: 0,
-            style: LiquidGlassScrollEdgeStyle.soft,
-            curve: const Interval(0.42, 1.0, curve: Curves.easeOut),
-            color: const Color(0xDCEEF6F2),
-          ),
-        ),
-
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: RepaintBoundary(
-            child: LiquidGlassBatch.exclude(
-              child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      AppLocale.t('Phụ gia', 'Additives'),
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xEEFFFFFF),
-                            Color(0xD8F4FAF6),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.94),
-                          width: 1.3,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                const Color(0xFF0F172A).withValues(alpha: 0.05),
-                            blurRadius: 14,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: TextField(
-                          controller: _additiveSearchCtrl,
-                          onChanged: (val) {
-                            _searchDebounce?.cancel();
-                            _searchDebounce =
-                                Timer(const Duration(milliseconds: 220), () {
-                              _loadAdditives(val);
-                            });
-                          },
-                          style: const TextStyle(
-                              fontSize: 15.5, color: Color(0xFF111827)),
-                          decoration: InputDecoration(
-                            filled: false,
-                            hintText: AppLocale.t(
-                              'Tìm mã E hoặc thành phần',
-                              'Search E-code or ingredient',
-                            ),
-                            hintStyle: const TextStyle(
-                                fontSize: 15.5, color: Color(0xFF6B7280)),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 14, right: 8),
-                              child: PhosphorIcon(
-                                PhosphorIconsDuotone.magnifyingGlass,
-                                color: _brandGreen,
-                                size: 21,
-                                duotoneSecondaryOpacity: 0.25,
-                                duotoneSecondaryColor: _brandGreen,
-                              ),
-                            ),
-                            prefixIconConstraints: const BoxConstraints(
-                                minWidth: 42, minHeight: 42),
-                            suffixIcon: _additiveSearchCtrl.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const PhosphorIcon(
-                                      PhosphorIconsFill.xCircle,
-                                      size: 19,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                    onPressed: () {
-                                      _additiveSearchCtrl.clear();
-                                      _loadAdditives('');
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildAdditiveOrConceptCard(Map<String, dynamic> item) {
     final code = (item['code'] ?? item['curie'] ?? '').toString();
-    final title = AppLocale.isEn
-        ? (item['title_en'] ?? item['title'] ?? item['label_en'] ?? '').toString()
-        : (item['title_vi'] ?? item['title'] ?? item['label_vi'] ?? '').toString();
-    final desc = AppLocale.isEn
-        ? (item['description_en'] ?? item['description'] ?? '').toString()
-        : (item['description_vi'] ?? item['description'] ?? '').toString();
+    final title = (item['title_en'] ?? item['label_en'] ?? item['title'] ?? code).toString();
+    final desc = (item['description_en'] ?? item['definition_en'] ?? item['description'] ?? '').toString();
     final riskLevel = (item['risk_level'] ?? 'low').toString();
 
     return NutriVietGlassCard(
@@ -1858,26 +1647,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Resolve a localized display name for a scanned ingredient detail entry
+  /// Resolve official English FoodOn display name for a scanned ingredient detail entry
   String _localizedDetailName(Map<String, dynamic> detail) {
     final matches = List<Map<String, dynamic>>.from(detail['matches'] ?? []);
     if (matches.isNotEmpty) {
       final first = matches.first;
-      if (AppLocale.isEn) {
-        final enTitle = (first['title_en'] ?? '').toString().trim();
-        if (enTitle.isNotEmpty) return enTitle;
-        final labelEn = (first['label_en'] ?? '').toString().trim();
-        if (labelEn.isNotEmpty) {
-          return labelEn[0].toUpperCase() + (labelEn.length > 1 ? labelEn.substring(1) : '');
-        }
-      } else {
-        final viTitle = (first['title_vi'] ?? '').toString().trim();
-        if (viTitle.isNotEmpty) return viTitle;
-        final termsVi = List<String>.from(first['terms_vi'] ?? []);
-        if (termsVi.isNotEmpty && termsVi.first.trim().isNotEmpty) {
-          final v = termsVi.first.trim();
-          return v[0].toUpperCase() + (v.length > 1 ? v.substring(1) : '');
-        }
+      final enTitle = (first['title_en'] ?? '').toString().trim();
+      if (enTitle.isNotEmpty) return enTitle;
+      final labelEn = (first['label_en'] ?? '').toString().trim();
+      if (labelEn.isNotEmpty) {
+        return labelEn[0].toUpperCase() + (labelEn.length > 1 ? labelEn.substring(1) : '');
       }
     }
     final rawInput = (detail['input'] ?? '').toString().trim();
@@ -1909,6 +1688,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
+              if (_isGuest) ...[
+                const SizedBox(height: 12),
+                NutriVietGlassCard(
+                  cornerRadius: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  onTap: _openLoginFromGuest,
+                  child: Row(
+                    children: [
+                      const PhosphorIcon(
+                        PhosphorIconsDuotone.deviceMobile,
+                        color: _brandGreen,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          AppLocale.t(
+                            'Chế độ Khách: Lịch sử quét lưu cục bộ trên máy. Nhấn để đăng nhập & đồng bộ đám mây.',
+                            'Guest Mode: Scans are saved locally on this device. Tap to sign in & sync to cloud.',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF334155),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 18),
               if (_loadingInitialData && _scans.isEmpty)
                 const NutriVietHistoryListSkeleton(itemCount: 3)
@@ -2160,20 +1970,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: redTriggers.map((t) {
-                                                  final alLabel = AppLocale.translateAllergenCode(
-                                                    t['allergen_code']?.toString(),
-                                                    fallback: AppLocale.isEn
-                                                        ? (t['allergen_name_en'] ?? t['allergen_code']).toString()
-                                                        : (t['allergen_name_vi'] ?? t['allergen_code']).toString(),
-                                                  );
-                                                  final matchedName = AppLocale.isEn
-                                                      ? (t['matched_en'] ?? t['matched'] ?? t['token']).toString()
-                                                      : (t['matched_vi'] ?? t['token'] ?? t['matched']).toString();
-                                                  final srcFood = (AppLocale.isEn
-                                                          ? (t['source_food_en'] ?? t['source_food'] ?? '')
-                                                          : (t['source_food_vi'] ?? t['source_food'] ?? ''))
-                                                      .toString()
-                                                      .trim();
+                                                  final alLabel =
+                                                      (t['allergen_name_en'] ?? t['allergen_name'] ?? t['allergen_code'])
+                                                          .toString();
+                                                  final matchedName =
+                                                      (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
+                                                          .toString();
+                                                  final srcFood =
+                                                      (t['source_food_en'] ?? t['source_food'] ?? '')
+                                                          .toString()
+                                                          .trim();
                                                   final hasSrcFood =
                                                       srcFood.isNotEmpty && srcFood.toLowerCase() != alLabel.toLowerCase();
 
@@ -2222,13 +2028,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ...yellowTriggers.map((t) {
                                               final chLabel = AppLocale.translateChronicCode(
                                                 t['chronic_code']?.toString(),
-                                                fallback: AppLocale.isEn
-                                                    ? (t['chronic_name_en'] ?? t['chronic_code']).toString()
-                                                    : (t['chronic_name_vi'] ?? t['chronic_code']).toString(),
+                                                fallback: (t['chronic_name_en'] ?? t['chronic_code']).toString(),
                                               );
-                                              final matchedName = AppLocale.isEn
-                                                  ? (t['matched_en'] ?? t['matched'] ?? t['token']).toString()
-                                                  : (t['matched_vi'] ?? t['token'] ?? t['matched']).toString();
+                                              final matchedName =
+                                                  (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
+                                                      .toString();
                                               return Padding(
                                                 padding: const EdgeInsets.only(bottom: 6),
                                                 child: Row(
@@ -2370,6 +2174,40 @@ class _HomeScreenState extends State<HomeScreen> {
                                               },
                                             ),
                                           ],
+                                          const SizedBox(height: 14),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: NutriVietGlassPillButton(
+                                              height: 38,
+                                              label: AppLocale.t(
+                                                'Chia sẻ lên Cộng đồng',
+                                                'Share to Community',
+                                              ),
+                                              onPressed: () async {
+                                                final evalVerdict =
+                                                    (evaluation['verdict'] ??
+                                                            scan['verdict'] ??
+                                                            (riskLevel == 'high'
+                                                                ? 'RED'
+                                                                : (riskLevel == 'low'
+                                                                    ? 'YELLOW'
+                                                                    : 'GREEN')))
+                                                        .toString();
+                                                final published =
+                                                    await CommunityFeedScreen.openComposeSheet(
+                                                  context: context,
+                                                  user: _activeUserMap,
+                                                  initialProductName: title,
+                                                  initialVerdict: evalVerdict,
+                                                  initialIngredients: rawText,
+                                                );
+                                                if (published && mounted) {
+                                                  setState(() => _communityRefreshTick++);
+                                                  _tabNotifier.value = 1;
+                                                }
+                                              },
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     )
@@ -2447,9 +2285,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: AppLocale.t('Trang chủ', 'Home'),
               ),
               LiquidGlassTabBarItem(
-                icon: PhosphorIconsRegular.flask,
-                selectedIcon: PhosphorIconsFill.flask,
-                label: AppLocale.t('Phụ gia', 'Additives'),
+                icon: PhosphorIconsRegular.usersThree,
+                selectedIcon: PhosphorIconsFill.usersThree,
+                label: AppLocale.t('Cộng đồng', 'Community'),
               ),
               LiquidGlassTabBarItem(
                 icon: PhosphorIconsRegular.clockCounterClockwise,
@@ -2486,12 +2324,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final tabChildren = <Widget>[
       _buildHomeTab(),
-      _buildAdditivesTab(),
+      CommunityFeedScreen(
+        user: _activeUserMap,
+        embedded: true,
+        refreshTick: _communityRefreshTick,
+        onRequireAuth: _openLoginFromGuest,
+      ),
       _buildHistoryTab(),
       SettingsScreen(
         userId: _userId,
         userName: _userName,
         userEmail: _userEmail,
+        isGuest: _isGuest,
+        userRole: _userRole,
+        authToken: _authToken,
         onProfileUpdated: _refreshUserData,
       ),
     ];
@@ -2523,10 +2369,12 @@ class _HomeScreenState extends State<HomeScreen> {
 class _PackagingScannerScreen extends StatefulWidget {
   final int userId;
   final String memberName;
+  final bool isGuest;
 
   const _PackagingScannerScreen({
     required this.userId,
     required this.memberName,
+    this.isGuest = false,
   });
 
   @override
@@ -2548,10 +2396,8 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
       text: AppLocale.t('Kết quả quét', 'Scan result'),
     );
     _ingredientsCtrl = TextEditingController(
-      text: AppLocale.t(
-        'Bột mì, đường kính, dầu cọ, sữa bột (8%), đạm whey, chất nhũ hóa (E322), chất tạo màu (E102, E110), chất điều vị (E621)',
-        'Wheat flour, refined sugar, palm oil, milk powder (8%), whey protein, emulsifier (E322), food colors (E102, E110), flavor enhancer (E621)',
-      ),
+      text:
+          'Wheat flour, refined sugar, palm oil, milk powder (8%), whey protein, emulsifier (E322), food colors (E102, E110), flavor enhancer (E621)',
     );
   }
 
@@ -2579,14 +2425,21 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
     }
 
     setState(() => _isScanning = true);
-    final res = await ProfileService.createScan(
-      userId: widget.userId,
-      rawText: text,
-      labelTitle: _labelTitleCtrl.text.trim().isEmpty
-          ? AppLocale.t('Kết quả quét', 'Scan result')
-          : _labelTitleCtrl.text.trim(),
-      memberName: widget.memberName,
-    );
+    final resolvedTitle = _labelTitleCtrl.text.trim().isEmpty
+        ? AppLocale.t('Kết quả quét', 'Scan result')
+        : _labelTitleCtrl.text.trim();
+    final res = widget.isGuest
+        ? await LocalGuestStore.createLocalScan(
+            rawText: text,
+            labelTitle: resolvedTitle,
+            memberName: widget.memberName,
+          )
+        : await ProfileService.createScan(
+            userId: widget.userId,
+            rawText: text,
+            labelTitle: resolvedTitle,
+            memberName: widget.memberName,
+          );
     if (!mounted) return;
     setState(() => _isScanning = false);
 
@@ -2653,7 +2506,7 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                     'Ingredient list & E-codes on packaging',
                   ),
                   hintText: AppLocale.t(
-                    'VD: Bột mì, đường, sữa bột, E102, E621...',
+                    'VD: Wheat flour, sugar, milk powder, E102, E621...',
                     'e.g., Wheat flour, sugar, milk powder, E102, E621...',
                   ),
                 ),
