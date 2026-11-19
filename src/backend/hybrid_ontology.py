@@ -897,6 +897,22 @@ class HybridFoodOnEngine:
         if "FOODON:03317197" in self.concepts and "seafood" not in self.concepts["FOODON:03317197"]["allergens"]:
             self.concepts["FOODON:03317197"]["allergens"].append("seafood")
 
+        # Build fast O(1) parent -> children ontology adjacency map for graph visualization
+        self.children_map: dict[str, list[str]] = {}
+        for c_id, info in self.concepts.items():
+            p_id = info["parent_curie"]
+            if p_id and p_id != c_id and p_id in self.concepts:
+                self.children_map.setdefault(p_id, []).append(c_id)
+        for p_id, ch_list in self.children_map.items():
+            ch_list.sort(
+                key=lambda cid: (
+                    -len(self.children_map.get(cid, [])),
+                    0 if (self.concepts[cid]["allergens"] or self.concepts[cid]["chronics"] or self.concepts[cid]["ecodes"]) else 1,
+                    len(self.concepts[cid]["label_en"]),
+                    self.concepts[cid]["label_en"].lower(),
+                )
+            )
+
     def get_lineage(self, curie: str, max_hops: int = 4) -> list[dict]:
         chain = []
         curr = curie
@@ -1835,6 +1851,320 @@ class HybridFoodOnEngine:
             "lang": "en",
             "count": len(items),
             "items": items,
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
+        }
+
+    # -----------------------------------------------------------------------
+    # Interactive FoodOn Ontology Graph Visualization API
+    # -----------------------------------------------------------------------
+    def _serialize_graph_node(
+        self,
+        curie: str,
+        role: str = "node",
+        depth: int = 0,
+    ) -> dict:
+        info = self.concepts[curie]
+        return {
+            "id": curie,
+            "label": info["label_en"] or curie,
+            "parent_id": info["parent_curie"] if info["parent_curie"] in self.concepts else "",
+            "parent_label": info["parent_label_en"],
+            "definition": info["definition_en"],
+            "food_type": info["food_type"],
+            "allergens": info["allergens"],
+            "chronics": info["chronics"],
+            "ecodes": [e.upper() for e in info["ecodes"]],
+            "synonyms": self.curie_en_terms.get(curie, [])[:12],
+            "child_count": len(self.children_map.get(curie, [])),
+            "role": role,
+            "depth": depth,
+        }
+
+    def _resolve_node_curie(self, ref: str) -> str:
+        raw = (ref or "").strip()
+        if not raw:
+            return ""
+        up = raw.upper()
+        if up in self.concepts:
+            return up
+        if raw in self.concepts:
+            return raw
+        rec = self.recognize_ingredient(raw)
+        if rec.get("matched") and rec.get("matches"):
+            return rec["matches"][0]["curie"]
+        srch = self.search_concepts(query=raw, lang_scope="all", limit=1)
+        if srch.get("results"):
+            return srch["results"][0]["curie"]
+        return ""
+
+    def get_graph_neighborhood(
+        self,
+        curie: str = "",
+        ancestor_hops: int = 10,
+        child_depth: int = 2,
+        max_children: int = 24,
+        include_siblings: bool = True,
+        allergen: str = "",
+    ) -> dict:
+        t0 = time.perf_counter()
+        ancestor_hops = max(1, min(int(ancestor_hops or 10), 20))
+        child_depth = max(0, min(int(child_depth if child_depth is not None else 2), 3))
+        max_children = max(1, min(int(max_children or 24), 80))
+        allergen = (allergen or "").strip().lower()
+
+        nodes_by_id: dict[str, dict] = {}
+        edges_set: set[tuple[str, str]] = set()
+
+        def add_node(cid: str, role: str, depth: int):
+            if cid not in self.concepts:
+                return
+            if cid not in nodes_by_id:
+                nodes_by_id[cid] = self._serialize_graph_node(cid, role=role, depth=depth)
+            else:
+                # Promote role priority: focus > ancestor > child > sibling > grandchild
+                prio = {"focus": 5, "ancestor": 4, "child": 3, "sibling": 2, "grandchild": 1, "node": 0}
+                if prio.get(role, 0) > prio.get(nodes_by_id[cid]["role"], 0):
+                    nodes_by_id[cid]["role"] = role
+                    nodes_by_id[cid]["depth"] = depth
+
+        def add_edge(child_id: str, parent_id: str):
+            if child_id in nodes_by_id and parent_id in nodes_by_id and child_id != parent_id:
+                edges_set.add((child_id, parent_id))
+
+        # Allergen / chronic domain showcase mode when allergen param given without explicit curie
+        if allergen and not curie:
+            roots = []
+            if allergen in FOODON_ALLERGEN_ROOTS:
+                roots = [c for c in FOODON_ALLERGEN_ROOTS[allergen]["include_roots"] if c in self.concepts]
+            elif allergen in FOODON_CHRONIC_ROOTS:
+                roots = [c for c in FOODON_CHRONIC_ROOTS[allergen] if c in self.concepts]
+            focus_id = ALLERGEN_REPRESENTATIVE_CURIES.get(allergen) or (roots[0] if roots else "FOODON:00001002")
+            if focus_id not in self.concepts:
+                focus_id = "FOODON:00001002"
+            add_node(focus_id, "focus", 0)
+            for root_c in roots[:12]:
+                add_node(root_c, "focus" if root_c == focus_id else "child", 0 if root_c == focus_id else 1)
+                curr = root_c
+                seen_up = {curr}
+                for hop in range(1, 5):
+                    p = self.concepts[curr]["parent_curie"]
+                    if not p or p not in self.concepts or p in seen_up:
+                        break
+                    seen_up.add(p)
+                    add_node(p, "ancestor", -hop)
+                    add_edge(curr, p)
+                    curr = p
+                for ch in self.children_map.get(root_c, [])[: max(3, max_children // max(1, min(len(roots), 6)))]:
+                    add_node(ch, "grandchild", 2)
+                    add_edge(ch, root_c)
+        else:
+            focus_id = self._resolve_node_curie(curie) if curie else "FOODON:00001002"
+            if focus_id not in self.concepts:
+                return {
+                    "success": False,
+                    "message": f"FoodOn concept not found: {curie}",
+                    "nodes": [],
+                    "edges": [],
+                }
+
+            add_node(focus_id, "focus", 0)
+
+            # 1. Walk ancestors up to root
+            curr = focus_id
+            seen_up = {curr}
+            for hop in range(1, ancestor_hops + 1):
+                p = self.concepts[curr]["parent_curie"]
+                if not p or p not in self.concepts or p in seen_up:
+                    break
+                seen_up.add(p)
+                add_node(p, "ancestor", -hop)
+                add_edge(curr, p)
+                curr = p
+
+            # 2. Optional direct siblings (up to 6) for peer context
+            direct_parent = self.concepts[focus_id]["parent_curie"]
+            if include_siblings and direct_parent and direct_parent in self.concepts:
+                sib_added = 0
+                for sib in self.children_map.get(direct_parent, []):
+                    if sib == focus_id or sib in nodes_by_id:
+                        continue
+                    add_node(sib, "sibling", 0)
+                    add_edge(sib, direct_parent)
+                    sib_added += 1
+                    if sib_added >= 6:
+                        break
+
+            # 3. Walk descendants (BFS up to child_depth)
+            if child_depth >= 1:
+                lvl1 = self.children_map.get(focus_id, [])[:max_children]
+                for ch in lvl1:
+                    add_node(ch, "child", 1)
+                    add_edge(ch, focus_id)
+
+                if child_depth >= 2 and lvl1:
+                    per_branch = max(2, min(6, max_children // max(1, min(len(lvl1), 8))))
+                    gc_budget = max(20, max_children * 2)
+                    gc_count = 0
+                    for ch in lvl1:
+                        if gc_count >= gc_budget:
+                            break
+                        for gc in self.children_map.get(ch, [])[:per_branch]:
+                            add_node(gc, "grandchild", 2)
+                            add_edge(gc, ch)
+                            gc_count += 1
+                            if gc_count >= gc_budget:
+                                break
+
+        # Ensure every internal parent edge between included nodes is also drawn
+        for nid in list(nodes_by_id.keys()):
+            pid = self.concepts[nid]["parent_curie"]
+            if pid and pid in nodes_by_id and pid != nid:
+                edges_set.add((nid, pid))
+
+        lineage_chain = [
+            {"id": n["curie"], "label": n["label_en"]}
+            for n in reversed(self.get_lineage(focus_id, max_hops=12))
+        ]
+        all_children_preview = [
+            {
+                "id": ch,
+                "label": self.concepts[ch]["label_en"],
+                "child_count": len(self.children_map.get(ch, [])),
+                "allergens": self.concepts[ch]["allergens"],
+                "ecodes": [e.upper() for e in self.concepts[ch]["ecodes"]],
+            }
+            for ch in self.children_map.get(focus_id, [])[:40]
+        ]
+
+        edges = [
+            {"source": src, "target": tgt, "relation": "subClassOf"}
+            for src, tgt in sorted(edges_set)
+        ]
+
+        return {
+            "success": True,
+            "focus": nodes_by_id[focus_id],
+            "lineage": lineage_chain,
+            "children_preview": all_children_preview,
+            "nodes": list(nodes_by_id.values()),
+            "edges": edges,
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
+            "db_stats": {
+                "total_concepts": len(self.concepts),
+                "total_edges": sum(len(v) for v in self.children_map.values()),
+                "total_en_terms": len(self.en_exact),
+                "total_ecodes": len(self.ecode_map),
+            },
+        }
+
+    def expand_graph_node(self, curie: str, limit: int = 24, offset: int = 0) -> dict:
+        cid = self._resolve_node_curie(curie)
+        if not cid or cid not in self.concepts:
+            return {"success": False, "message": f"Concept not found: {curie}"}
+
+        limit = max(1, min(int(limit or 24), 80))
+        offset = max(0, int(offset or 0))
+        all_ch = self.children_map.get(cid, [])
+        slice_ch = all_ch[offset : offset + limit]
+
+        nodes = [self._serialize_graph_node(cid, role="focus", depth=0)]
+        edges = []
+
+        parent_id = self.concepts[cid]["parent_curie"]
+        if parent_id and parent_id in self.concepts and parent_id != cid:
+            nodes.append(self._serialize_graph_node(parent_id, role="ancestor", depth=-1))
+            edges.append({"source": cid, "target": parent_id, "relation": "subClassOf"})
+
+        children_nodes = []
+        for ch in slice_ch:
+            n = self._serialize_graph_node(ch, role="child", depth=1)
+            children_nodes.append(n)
+            nodes.append(n)
+            edges.append({"source": ch, "target": cid, "relation": "subClassOf"})
+
+        return {
+            "success": True,
+            "node": nodes[0],
+            "children": children_nodes,
+            "nodes": nodes,
+            "edges": edges,
+            "total_children": len(all_ch),
+            "offset": offset,
+            "limit": limit,
+            "has_more": (offset + len(slice_ch)) < len(all_ch),
+        }
+
+    def find_ontology_path(self, source_ref: str, target_ref: str) -> dict:
+        t0 = time.perf_counter()
+        a = self._resolve_node_curie(source_ref)
+        b = self._resolve_node_curie(target_ref)
+        if not a or a not in self.concepts:
+            return {"success": False, "connected": False, "message": f"Start node not found: {source_ref}"}
+        if not b or b not in self.concepts:
+            return {"success": False, "connected": False, "message": f"Target node not found: {target_ref}"}
+
+        def _ancestors_list(start: str) -> list[str]:
+            chain = []
+            curr = start
+            seen = set()
+            while curr and curr in self.concepts and curr not in seen:
+                seen.add(curr)
+                chain.append(curr)
+                curr = self.concepts[curr]["parent_curie"]
+            return chain
+
+        chain_a = _ancestors_list(a)
+        chain_b = _ancestors_list(b)
+        idx_b = {cid: i for i, cid in enumerate(chain_b)}
+
+        lca = ""
+        path_a: list[str] = []
+        path_b: list[str] = []
+        for i, cid in enumerate(chain_a):
+            if cid in idx_b:
+                lca = cid
+                path_a = chain_a[: i + 1]
+                path_b = chain_b[: idx_b[cid]]
+                break
+
+        if not lca:
+            return {
+                "success": True,
+                "connected": False,
+                "from": self._serialize_graph_node(a, role="focus", depth=0),
+                "to": self._serialize_graph_node(b, role="focus", depth=0),
+                "lca_id": "",
+                "path_nodes": [],
+                "edges": [],
+                "message": "No shared ancestor found in the FoodOn hierarchy between these two nodes.",
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
+            }
+
+        ordered_ids = path_a + list(reversed(path_b))
+        path_nodes = []
+        for idx, cid in enumerate(ordered_ids):
+            role = "focus" if cid in (a, b) else ("ancestor" if cid == lca else "child")
+            path_nodes.append(self._serialize_graph_node(cid, role=role, depth=idx))
+
+        edges = []
+        # Upward edges from A -> LCA
+        for i in range(len(path_a) - 1):
+            edges.append({"source": path_a[i], "target": path_a[i + 1], "relation": "subClassOf"})
+        # Upward edges from B -> LCA (all directed child -> parent!)
+        b_to_lca = path_b + [lca]
+        for i in range(len(b_to_lca) - 1):
+            edges.append({"source": b_to_lca[i], "target": b_to_lca[i + 1], "relation": "subClassOf"})
+
+        return {
+            "success": True,
+            "connected": True,
+            "from": path_nodes[0],
+            "to": path_nodes[-1],
+            "lca_id": lca,
+            "lca_label": self.concepts[lca]["label_en"],
+            "hops": len(edges),
+            "path_nodes": path_nodes,
+            "edges": edges,
             "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
         }
 
