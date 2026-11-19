@@ -4,6 +4,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/profile_service.dart';
 import '../services/auth_service.dart';
+import '../services/local_guest_store.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
@@ -98,6 +99,7 @@ class AllergyProfileScreen extends StatefulWidget {
   final String userName;
   final String? userEmail;
   final bool isInitialSetup;
+  final bool isGuest;
 
   const AllergyProfileScreen({
     super.key,
@@ -105,6 +107,7 @@ class AllergyProfileScreen extends StatefulWidget {
     required this.userName,
     this.userEmail,
     this.isInitialSetup = false,
+    this.isGuest = false,
   });
 
   @override
@@ -137,14 +140,14 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   List<Map<String, dynamic>> _foodSearchResults = [];
 
   static const List<Map<String, String>> _quickEverydayFoods = [
-    {'vi': 'Bơ', 'en': 'Butter', 'emoji': '🧈'},
-    {'vi': 'Phô mai', 'en': 'Cheese', 'emoji': '🧀'},
-    {'vi': 'Bánh mì', 'en': 'Bread', 'emoji': '🍞'},
-    {'vi': 'Tôm', 'en': 'Shrimp', 'emoji': '🦐'},
-    {'vi': 'Nước mắm', 'en': 'Fish sauce', 'emoji': '🐟'},
-    {'vi': 'Sốt trứng gà', 'en': 'Mayonnaise', 'emoji': '🥚'},
-    {'vi': 'Đậu phụ', 'en': 'Tofu', 'emoji': '🌱'},
-    {'vi': 'Bơ đậu phộng', 'en': 'Peanut butter', 'emoji': '🥜'},
+    {'label': 'Butter', 'emoji': '🧈'},
+    {'label': 'Cheese', 'emoji': '🧀'},
+    {'label': 'Bread', 'emoji': '🍞'},
+    {'label': 'Shrimp', 'emoji': '🦐'},
+    {'label': 'Fish sauce', 'emoji': '🐟'},
+    {'label': 'Mayonnaise', 'emoji': '🥚'},
+    {'label': 'Tofu', 'emoji': '🌱'},
+    {'label': 'Peanut butter', 'emoji': '🥜'},
   ];
 
   final List<AllergenChipItem> _allergens = [
@@ -332,6 +335,10 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
               'severity': item.severity,
             })
         .toList();
+    if (widget.isGuest) {
+      await LocalGuestStore.saveAllergens(selectedAllergens);
+      return;
+    }
     await ProfileService.saveAllergens(
       userId: widget.userId,
       allergens: selectedAllergens,
@@ -340,11 +347,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
 
   Future<void> _selectEverydayAllergyFood(Map<String, dynamic> food) async {
     final alCode = (food['allergen_code'] ?? '').toString().trim();
-    final foodVi = (food['food_name_vi'] ?? food['food_name'] ?? '').toString().trim();
     final foodEn = (food['food_name_en'] ?? food['food_name'] ?? '').toString().trim();
-    final famVi = (food['family_name_vi'] ?? food['family_name'] ?? foodVi).toString().trim();
     final famEn = (food['family_name_en'] ?? food['family_name'] ?? foodEn).toString().trim();
-    final relVi = (food['related_ingredients_vi'] ?? food['related_ingredients'] ?? '').toString().trim();
     final relEn = (food['related_ingredients_en'] ?? food['related_ingredients'] ?? '').toString().trim();
     final emoji = (food['emoji'] ?? '🍽️').toString();
 
@@ -362,18 +366,18 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       if (target != null) {
         target.isSelected = true;
         target.severity = 'high';
-        target.sourceFoodVi = foodVi;
+        target.sourceFoodVi = foodEn;
         target.sourceFoodEn = foodEn;
       } else {
         _allergens.add(
           AllergenChipItem(
             code: alCode,
             emoji: emoji,
-            displayNameVi: famVi.isNotEmpty ? famVi : foodVi,
+            displayNameVi: famEn.isNotEmpty ? famEn : foodEn,
             displayNameEn: famEn.isNotEmpty ? famEn : foodEn,
-            descriptionVi: relVi.isNotEmpty ? relVi : foodVi,
+            descriptionVi: relEn.isNotEmpty ? relEn : foodEn,
             descriptionEn: relEn.isNotEmpty ? relEn : foodEn,
-            sourceFoodVi: foodVi,
+            sourceFoodVi: foodEn,
             sourceFoodEn: foodEn,
             isSelected: true,
             severity: 'high',
@@ -384,11 +388,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
 
     await _autoSaveAllergens();
     if (!mounted) return;
-    final chosenFood = AppLocale.t(foodVi, foodEn);
-    final famName = AppLocale.t(
-      (food['family_name_vi'] ?? food['family_name'] ?? '').toString(),
-      (food['family_name_en'] ?? food['family_name'] ?? '').toString(),
-    );
+    final chosenFood = foodEn;
+    final famName = famEn;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -436,12 +437,19 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       _errorMessage = null;
     });
 
-    final results = await Future.wait([
-      ProfileService.getAllergens(widget.userId),
-      ProfileService.getMetrics(widget.userId),
-      ProfileService.getChronics(widget.userId),
-      ProfileService.getSettings(widget.userId),
-    ]);
+    final results = widget.isGuest
+        ? await Future.wait([
+            LocalGuestStore.getAllergens(),
+            LocalGuestStore.getMetrics(),
+            LocalGuestStore.getChronics(),
+            LocalGuestStore.getSettings(),
+          ])
+        : await Future.wait([
+            ProfileService.getAllergens(widget.userId),
+            ProfileService.getMetrics(widget.userId),
+            ProfileService.getChronics(widget.userId),
+            ProfileService.getSettings(widget.userId),
+          ]);
 
     if (!mounted) return;
 
@@ -461,16 +469,15 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
         final code = (savedItem['code'] ?? '').toString();
         final severity = (savedItem['severity'] ?? 'high').toString();
         final rawName = (savedItem['name'] ?? '').toString().trim();
-        final srcVi = (savedItem['source_food_vi'] ?? '').toString().trim();
-        final srcEn = (savedItem['source_food_en'] ?? '').toString().trim();
+        final srcEn = (savedItem['source_food_en'] ?? savedItem['source_food'] ?? '').toString().trim();
         bool matched = false;
         for (var item in _allergens) {
           if (item.code == code) {
             item.isSelected = true;
             item.severity = severity;
-            if (srcVi.isNotEmpty || srcEn.isNotEmpty) {
-              item.sourceFoodVi = srcVi.isNotEmpty ? srcVi : rawName;
-              item.sourceFoodEn = srcEn.isNotEmpty ? srcEn : rawName;
+            if (srcEn.isNotEmpty) {
+              item.sourceFoodVi = srcEn;
+              item.sourceFoodEn = srcEn;
             } else if (rawName.isNotEmpty &&
                 rawName != item.displayNameVi &&
                 rawName != item.displayNameEn) {
@@ -481,40 +488,19 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
           }
         }
         if (!matched && code.isNotEmpty) {
-          final isRedMeat = code == 'curie:FOODON:00001006' ||
-              code == 'curie:FOODON:00001134' ||
-              code == 'curie:FOODON:00001038';
-          final isPoultry = code == 'curie:FOODON:00001131' || code == 'curie:FOODON:00001040';
-          final famVi = isRedMeat
-              ? 'Thịt động vật có vú (Thịt đỏ: Bò, Heo, Cừu)'
-              : (isPoultry
-                  ? 'Thịt gia cầm (Gà, Vịt, Ngan, Ngỗng)'
-                  : (srcVi.isNotEmpty ? srcVi : (rawName.isNotEmpty ? rawName : code)));
-          final famEn = isRedMeat
-              ? 'Mammalian Meat (Red Meat: Beef, Pork, Lamb)'
-              : (isPoultry
-                  ? 'Poultry Meat (Chicken, Duck, Turkey)'
-                  : (srcEn.isNotEmpty ? srcEn : (rawName.isNotEmpty ? rawName : code)));
-          final descVi = isRedMeat
-              ? 'Thịt bò, thịt heo (thịt lợn), thịt cừu, thịt băm, xúc xích thịt, thịt hộp, giăm bông, mỡ heo'
-              : (isPoultry
-                  ? 'Thịt gà, ức gà, thịt vịt, gà tây, nước cốt gà, bột thịt gà, xúc xích gà'
-                  : 'Các thành phần và dẫn xuất cùng họ trên cây phân loại FoodOn');
-          final descEn = isRedMeat
-              ? 'Beef, pork, lamb, ground meat, meat sausages, luncheon meat, ham, bacon, lard'
-              : (isPoultry
-                  ? 'Chicken meat, chicken breast, duck meat, turkey, chicken broth, chicken extract'
-                  : 'Ingredients and derivatives in the same FoodOn ontology family');
+          final cleanLabel = srcEn.isNotEmpty
+              ? srcEn
+              : (rawName.isNotEmpty ? rawName : code);
           _allergens.add(
             AllergenChipItem(
               code: code,
-              emoji: isRedMeat ? '🥩' : (isPoultry ? '🍗' : '🍽️'),
-              displayNameVi: famVi,
-              displayNameEn: famEn,
-              descriptionVi: descVi,
-              descriptionEn: descEn,
-              sourceFoodVi: srcVi.isNotEmpty ? srcVi : rawName,
-              sourceFoodEn: srcEn.isNotEmpty ? srcEn : rawName,
+              emoji: '🍽️',
+              displayNameVi: cleanLabel,
+              displayNameEn: cleanLabel,
+              descriptionVi: code,
+              descriptionEn: code,
+              sourceFoodVi: cleanLabel,
+              sourceFoodEn: cleanLabel,
               isSelected: true,
               severity: severity,
             ),
@@ -569,7 +555,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     });
 
     final newName = _nameController.text.trim();
-    if (newName.isNotEmpty && newName != widget.userName) {
+    if (!widget.isGuest && newName.isNotEmpty && newName != widget.userName) {
       await AuthService.updateProfile(userId: widget.userId, fullName: newName);
     }
 
@@ -590,24 +576,36 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
             })
         .toList();
 
-    final results = await Future.wait([
-      ProfileService.saveAllergens(
-        userId: widget.userId,
-        allergens: selectedAllergens,
-      ),
-      ProfileService.saveChronics(
-        userId: widget.userId,
-        chronics: selectedChronics,
-      ),
-      ProfileService.saveMetrics(
-        userId: widget.userId,
-        age: _age,
-        gender: _gender,
-        height: _height,
-        weight: _weight,
-        activityLevel: _activityLevel,
-      ),
-    ]);
+    final results = widget.isGuest
+        ? await Future.wait([
+            LocalGuestStore.saveAllergens(selectedAllergens),
+            LocalGuestStore.saveChronics(selectedChronics),
+            LocalGuestStore.saveMetrics(
+              age: _age,
+              gender: _gender,
+              height: _height,
+              weight: _weight,
+              activityLevel: _activityLevel,
+            ),
+          ])
+        : await Future.wait([
+            ProfileService.saveAllergens(
+              userId: widget.userId,
+              allergens: selectedAllergens,
+            ),
+            ProfileService.saveChronics(
+              userId: widget.userId,
+              chronics: selectedChronics,
+            ),
+            ProfileService.saveMetrics(
+              userId: widget.userId,
+              age: _age,
+              gender: _gender,
+              height: _height,
+              weight: _weight,
+              activityLevel: _activityLevel,
+            ),
+          ]);
 
     final res = results[0];
 
@@ -790,8 +788,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                           )
                         : null,
                     hintText: AppLocale.t(
-                      'Tìm món bạn ăn bị dị ứng (VD: Bơ, Phô mai, Tôm, Bánh mì...)',
-                      'Search food that caused allergy (e.g. Butter, Cheese, Shrimp...)',
+                      'Tìm thực phẩm gốc FoodOn (VD: Butter, Cheese, Shrimp, Peanut...)',
+                      'Search official FoodOn foods (e.g. Butter, Cheese, Shrimp, Peanut...)',
                     ),
                     hintStyle: const TextStyle(
                       fontSize: 12.5,
@@ -829,7 +827,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   spacing: 6,
                   runSpacing: 6,
                   children: _quickEverydayFoods.map((qf) {
-                    final label = AppLocale.t(qf['vi']!, qf['en']!);
+                    final label = qf['label']!;
                     final isCurrentQuery =
                         _foodSearchController.text.trim().toLowerCase() ==
                         label.toLowerCase();
@@ -876,18 +874,13 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                     final alCode = (food['allergen_code'] ?? '').toString();
                     final curie = (food['curie'] ?? '').toString();
                     final emoji = (food['emoji'] ?? '🍽️').toString();
-                    final foodName = AppLocale.t(
-                      (food['food_name_vi'] ?? food['food_name'] ?? '').toString(),
-                      (food['food_name_en'] ?? food['food_name'] ?? '').toString(),
-                    );
-                    final famName = AppLocale.t(
-                      (food['family_name_vi'] ?? food['family_name'] ?? '').toString(),
-                      (food['family_name_en'] ?? food['family_name'] ?? '').toString(),
-                    );
-                    final relIng = AppLocale.t(
-                      (food['related_ingredients_vi'] ?? food['related_ingredients'] ?? '').toString(),
-                      (food['related_ingredients_en'] ?? food['related_ingredients'] ?? '').toString(),
-                    );
+                    final foodName =
+                        (food['food_name_en'] ?? food['food_name'] ?? curie).toString();
+                    final famName =
+                        (food['family_name_en'] ?? food['family_name'] ?? '').toString();
+                    final relIng =
+                        (food['related_ingredients_en'] ?? food['related_ingredients'] ?? '')
+                            .toString();
                     final isAlreadySelected = _allergens.any(
                       (a) => a.code == alCode && a.isSelected,
                     );
