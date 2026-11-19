@@ -3,6 +3,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../services/local_guest_store.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_ui.dart';
@@ -252,7 +253,49 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (result['success'] == true) {
-      final user = result['user'];
+      final user = Map<String, dynamic>.from(result['user'] as Map);
+      user['token'] = result['token'] ?? '';
+      user['is_guest'] = false;
+      final uid = user['id'] is int ? user['id'] as int : int.tryParse('${user['id']}') ?? 0;
+
+      // Offer to sync any local Guest data into the newly signed-in cloud account
+      if (uid > 0 && await LocalGuestStore.hasLocalData() && mounted) {
+        final shouldSync = await showNutriVietGlassDialog<bool>(
+          context: context,
+          builder: (ctx) => NutriVietGlassDialog(
+            title: Text(
+              AppLocale.t(
+                'Đồng bộ dữ liệu Chế độ Khách?',
+                'Sync Guest Mode Data?',
+              ),
+            ),
+            content: Text(
+              AppLocale.t(
+                'Phát hiện lịch sử quét và hồ sơ dị ứng đã lưu trên thiết bị ở Chế độ Khách. Bạn có muốn đồng bộ lên tài khoản này không?',
+                'Local scans and allergy profiles from Guest Mode were found on this device. Would you like to sync them to your account?',
+              ),
+            ),
+            actions: [
+              NutriVietGlassPillButton(
+                height: 42,
+                variant: NutriVietGlassButtonVariant.neutral,
+                label: AppLocale.t('Bỏ qua', 'Skip'),
+                onPressed: () => Navigator.pop(ctx, false),
+              ),
+              NutriVietGlassPillButton(
+                height: 42,
+                label: AppLocale.t('Đồng bộ ngay', 'Sync Now'),
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+        );
+        if (shouldSync == true) {
+          await LocalGuestStore.syncToCloudAccount(userId: uid);
+        }
+      }
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -265,20 +308,19 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => HomeScreen(user: user),
         ),
+        (route) => false,
       );
     } else {
       final code = result['code'] ?? '';
       final msg = result['message'] ??
           AppLocale.t('Đăng nhập thất bại', 'Sign in failed');
 
-      if (code == 'EMAIL_NOT_VERIFIED' ||
-          msg.contains('kích hoạt') ||
-          msg.contains('xác thực')) {
+      if (code == 'EMAIL_NOT_VERIFIED') {
         _showUnverifiedEmailDialog(_emailController.text.trim());
       } else {
         setState(() {
@@ -291,6 +333,18 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  Future<void> _handleGuestLogin() async {
+    final guestUser = await AuthService.enterGuestMode();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(user: guestUser),
+      ),
+      (route) => false,
+    );
   }
 
   @override
@@ -622,6 +676,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                         fontSize: 13,
                                         color: Color(0xFF14803C),
                                         fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              NutriVietGlassCard(
+                                cornerRadius: 18,
+                                elevated: false,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                onTap: _handleGuestLogin,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const PhosphorIcon(
+                                      PhosphorIconsDuotone.userCircle,
+                                      color: Color(0xFF475569),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        AppLocale.t(
+                                          'Dùng thử với chế độ Khách (Lưu trên máy)',
+                                          'Continue as Guest (Local storage)',
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF334155),
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ],
