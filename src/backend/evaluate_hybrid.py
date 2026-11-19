@@ -1,167 +1,144 @@
 """
 Comprehensive Accuracy, Compaction & Latency Evaluation Benchmark
-for NutriViet Hybrid FoodOn + Kala Engine (`nutriviet_hybrid.db`)
+for NutriViet Pure-English Official FoodOn Engine (`nutriviet_hybrid.db`)
 """
 
 import os
 import sys
 import time
-import json
 
 sys.path.insert(0, os.path.dirname(__file__))
-from hybrid_ontology import HybridFoodOnEngine, HYBRID_DB_PATH, DATA_DIR
+from hybrid_ontology import HybridFoodOnEngine, HYBRID_DB_PATH
 
 # ---------------------------------------------------------------------------
 # Benchmark 1: Single Ingredient Recognition & Allergen/Chronic Classification
 # Format: (input_token, expected_allergens_set, expected_chronics_set, category)
 # ---------------------------------------------------------------------------
 BENCHMARK_INGREDIENTS = [
-    # 1. Peanuts (Vietnamese dialects + products + English)
-    ("đậu phộng", {"peanuts"}, set(), "1_peanuts"),
-    ("lạc", {"peanuts"}, set(), "1_peanuts"),
-    ("đậu phụng", {"peanuts"}, set(), "1_peanuts"),
-    ("bơ đậu phộng", {"peanuts"}, set(), "1_peanuts"),
-    ("bơ lạc", {"peanuts"}, set(), "1_peanuts"),
-    ("dầu đậu phộng", {"peanuts"}, set(), "1_peanuts"),
-    ("Đậu phộng (28%)", {"peanuts"}, set(), "1_peanuts"),
+    # 1. Peanuts
     ("peanut", {"peanuts"}, set(), "1_peanuts"),
+    ("peanuts", {"peanuts"}, set(), "1_peanuts"),
     ("peanut butter", {"peanuts"}, set(), "1_peanuts"),
+    ("peanut oil", {"peanuts"}, set(), "1_peanuts"),
+    ("Peanuts (28%)", {"peanuts"}, set(), "1_peanuts"),
+    ("groundnut", {"peanuts"}, set(), "1_peanuts"),
 
-    # 2. Milk & Hidden Dairy Derivatives (Vietnamese + English)
-    ("sữa bò", {"milk"}, set(), "2_milk"),
-    ("sữa tươi", {"milk"}, set(), "2_milk"),
-    ("sữa đặc", {"milk"}, set(), "2_milk"),
-    ("sữa bột", {"milk"}, set(), "2_milk"),
-    ("bơ", {"milk"}, set(), "2_milk"),
-    ("phô mai", {"milk"}, set(), "2_milk"),
-    ("phó mát", {"milk"}, set(), "2_milk"),
-    ("kem sữa", {"milk"}, set(), "2_milk"),
-    ("sữa chua", {"milk"}, set(), "2_milk"),
+    # 2. Milk & Dairy Derivatives
+    ("milk", {"milk"}, set(), "2_milk"),
+    ("cow milk", {"milk"}, set(), "2_milk"),
+    ("powdered milk", {"milk"}, set(), "2_milk"),
+    ("condensed milk", {"milk"}, set(), "2_milk"),
+    ("butter", {"milk"}, set(), "2_milk"),
+    ("cheese", {"milk"}, set(), "2_milk"),
+    ("cream", {"milk"}, set(), "2_milk"),
+    ("yogurt", {"milk"}, set(), "2_milk"),
     ("casein", {"milk"}, set(), "2_milk"),
-    ("ca-zê-in", {"milk"}, set(), "2_milk"),
     ("sodium caseinate", {"milk"}, set(), "2_milk"),
     ("whey", {"milk"}, set(), "2_milk"),
-    ("nước sữa", {"milk"}, set(), "2_milk"),
-    ("đạm whey", {"milk"}, set(), "2_milk"),
+    ("whey protein", {"milk"}, set(), "2_milk"),
     ("lactose", {"milk"}, set(), "2_milk"),
-    ("đường sữa", {"milk"}, set(), "2_milk"),
-    ("lactoza", {"milk"}, set(), "2_milk"),
 
-    # 3. Seafood (Crustaceans, Molluscs, Fish in Vietnamese)
-    ("tôm", {"seafood"}, None, "3_seafood"),
-    ("cua", {"seafood"}, None, "3_seafood"),
-    ("ghẹ", {"seafood"}, None, "3_seafood"),
-    ("tôm hùm", {"seafood"}, None, "3_seafood"),
-    ("cá", {"seafood"}, None, "3_seafood"),
-    ("cá hồi", {"seafood"}, None, "3_seafood"),
-    ("cá ngừ", {"seafood"}, None, "3_seafood"),
-    ("cá thu", {"seafood"}, None, "3_seafood"),
-    ("mực", {"seafood"}, None, "3_seafood"),
-    ("bạch tuộc", {"seafood"}, None, "3_seafood"),
-    ("hàu", {"seafood"}, None, "3_seafood"),
-    ("sò", {"seafood"}, None, "3_seafood"),
-    ("ngao", {"seafood"}, None, "3_seafood"),
-    ("hến", {"seafood"}, None, "3_seafood"),
-    ("vẹm", {"seafood"}, None, "3_seafood"),
-    ("bột tôm", {"seafood"}, None, "3_seafood"),
-    ("chiết xuất cua", {"seafood"}, None, "3_seafood"),
+    # 3. Seafood (Crustaceans, Molluscs, Fish)
+    ("shrimp", {"seafood"}, None, "3_seafood"),
+    ("crab", {"seafood"}, None, "3_seafood"),
+    ("lobster", {"seafood"}, None, "3_seafood"),
+    ("fish", {"seafood"}, None, "3_seafood"),
+    ("salmon", {"seafood"}, None, "3_seafood"),
+    ("tuna", {"seafood"}, None, "3_seafood"),
+    ("mackerel", {"seafood"}, None, "3_seafood"),
+    ("squid", {"seafood"}, None, "3_seafood"),
+    ("octopus", {"seafood"}, None, "3_seafood"),
+    ("oyster", {"seafood"}, None, "3_seafood"),
+    ("clam", {"seafood"}, None, "3_seafood"),
+    ("mussel", {"seafood"}, None, "3_seafood"),
+    ("shrimp powder (2.5%)", {"seafood"}, None, "3_seafood"),
+    ("fish sauce", {"seafood"}, None, "3_seafood"),
 
     # 4. Eggs & Egg Derivatives
-    ("trứng", {"eggs"}, set(), "4_eggs"),
-    ("trứng gà", {"eggs"}, set(), "4_eggs"),
-    ("trứng vịt", {"eggs"}, set(), "4_eggs"),
-    ("lòng đỏ trứng", {"eggs"}, set(), "4_eggs"),
-    ("lòng trắng trứng", {"eggs"}, set(), "4_eggs"),
+    ("egg", {"eggs"}, set(), "4_eggs"),
+    ("chicken egg", {"eggs"}, set(), "4_eggs"),
+    ("egg yolk", {"eggs"}, set(), "4_eggs"),
+    ("egg white", {"eggs"}, set(), "4_eggs"),
     ("albumin", {"eggs"}, set(), "4_eggs"),
     ("mayonnaise", {"eggs"}, set(), "4_eggs"),
-    ("bột trứng", {"eggs"}, set(), "4_eggs"),
+    ("egg powder", {"eggs"}, set(), "4_eggs"),
 
-    # 5. Soybeans & Soy Derivatives (including plant milk override!)
-    ("đậu nành", {"soy"}, set(), "5_soy"),
-    ("đỗ tương", {"soy"}, set(), "5_soy"),
-    ("đậu phụ", {"soy"}, set(), "5_soy"),
-    ("tàu hũ", {"soy"}, set(), "5_soy"),
-    ("sữa đậu nành", {"soy"}, set(), "5_soy"),  # Must NOT trigger milk!
-    ("dầu đậu nành", {"soy"}, set(), "5_soy"),
-    ("Chất nhũ hóa (Lecithin đậu nành)", {"soy"}, set(), "5_soy"),
+    # 5. Soybeans & Soy Derivatives (including plant milk guard!)
+    ("soybean", {"soy"}, set(), "5_soy"),
+    ("soy", {"soy"}, set(), "5_soy"),
+    ("tofu", {"soy"}, set(), "5_soy"),
+    ("soy milk", {"soy"}, set(), "5_soy"),  # Must NOT trigger milk!
+    ("soybean oil", {"soy"}, set(), "5_soy"),
+    ("Emulsifier (soy lecithin)", {"soy"}, set(), "5_soy"),
     ("soy lecithin", {"soy"}, set(), "5_soy"),
 
     # 6. Gluten & Cereal Grains
-    ("lúa mì", {"gluten"}, set(), "6_gluten"),
-    ("bột mì", {"gluten"}, set(), "6_gluten"),
-    ("lúa mạch", {"gluten"}, set(), "6_gluten"),
-    ("đại mạch", {"gluten"}, set(), "6_gluten"),
-    ("lúa mạch đen", {"gluten"}, set(), "6_gluten"),
-    ("yến mạch", {"gluten"}, set(), "6_gluten"),
-    ("mạch nha", {"gluten"}, set(), "6_gluten"),
-    ("gluten", {"gluten"}, set(), "6_gluten"),
+    ("wheat", {"gluten"}, set(), "6_gluten"),
     ("wheat flour", {"gluten"}, set(), "6_gluten"),
+    ("barley", {"gluten"}, set(), "6_gluten"),
+    ("rye", {"gluten"}, set(), "6_gluten"),
+    ("oat", {"gluten"}, set(), "6_gluten"),
+    ("malt", {"gluten"}, set(), "6_gluten"),
+    ("gluten", {"gluten"}, set(), "6_gluten"),
 
     # 7. Tree Nuts
-    ("hạt điều", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("đào lộn hột", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("hạnh nhân", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("óc chó", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("quả óc chó", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("hạt dẻ", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("quả phỉ", {"tree_nuts"}, set(), "7_tree_nuts"),
-    ("hạt dẻ cười", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("cashew", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("almond", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("walnut", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("chestnut", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("hazelnut", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("pistachio", {"tree_nuts"}, set(), "7_tree_nuts"),
     ("macadamia", {"tree_nuts"}, set(), "7_tree_nuts"),
+    ("pecan", {"tree_nuts"}, set(), "7_tree_nuts"),
 
     # 8. Sesame
-    ("mè", {"sesame"}, set(), "8_sesame"),
-    ("vừng", {"sesame"}, set(), "8_sesame"),
-    ("dầu mè", {"sesame"}, set(), "8_sesame"),
-    ("hạt mè", {"sesame"}, set(), "8_sesame"),
+    ("sesame", {"sesame"}, set(), "8_sesame"),
+    ("sesame seed", {"sesame"}, set(), "8_sesame"),
     ("sesame oil", {"sesame"}, set(), "8_sesame"),
 
     # 9. E-Numbers / INS Codes & Chronic Condition Triggers
-    ("Chất điều vị (E621)", set(), {"hypertension", "gout"}, "9_ecodes_chronic"),
+    ("Flavor enhancer (E621)", set(), {"hypertension", "gout"}, "9_ecodes_chronic"),
     ("INS 621", set(), {"hypertension", "gout"}, "9_ecodes_chronic"),
-    ("bột ngọt", set(), {"hypertension", "gout"}, "9_ecodes_chronic"),
-    ("mì chính", set(), {"hypertension", "gout"}, "9_ecodes_chronic"),
+    ("monosodium glutamate", set(), {"hypertension", "gout"}, "9_ecodes_chronic"),
     ("E322", set(), set(), "9_ecodes_chronic"),
     ("INS 322(i)", set(), set(), "9_ecodes_chronic"),
-    ("Chất làm dày (E407)", set(), set(), "9_ecodes_chronic"),
+    ("Thickener (E407)", set(), set(), "9_ecodes_chronic"),
     ("E440", set(), set(), "9_ecodes_chronic"),
-    ("Chất tạo ngọt (E954)", set(), set(), "9_ecodes_chronic"),
+    ("Sweetener (E954)", set(), set(), "9_ecodes_chronic"),
     ("E100", set(), set(), "9_ecodes_chronic"),
-    ("đường", set(), {"diabetes"}, "9_ecodes_chronic"),
-    ("đường mía", set(), {"diabetes"}, "9_ecodes_chronic"),
-    ("mật ong", set(), {"diabetes"}, "9_ecodes_chronic"),
-    ("si-rô", set(), {"diabetes"}, "9_ecodes_chronic"),
-    ("muối", set(), {"hypertension"}, "9_ecodes_chronic"),
-    ("muối ăn", set(), {"hypertension"}, "9_ecodes_chronic"),
-    ("mỡ lợn", set(), {"cholesterol"}, "9_ecodes_chronic"),
-    ("dầu cọ", set(), {"cholesterol"}, "9_ecodes_chronic"),
+    ("sugar", set(), {"diabetes"}, "9_ecodes_chronic"),
+    ("cane sugar", set(), {"diabetes"}, "9_ecodes_chronic"),
+    ("honey", set(), {"diabetes"}, "9_ecodes_chronic"),
+    ("syrup", set(), {"diabetes"}, "9_ecodes_chronic"),
+    ("salt", set(), {"hypertension"}, "9_ecodes_chronic"),
+    ("table salt", set(), {"hypertension"}, "9_ecodes_chronic"),
+    ("lard", set(), {"cholesterol"}, "9_ecodes_chronic"),
+    ("palm oil", set(), {"cholesterol"}, "9_ecodes_chronic"),
 
-    # 10. Safe Non-Allergen Ingredients & Negative/Free Claims (False Positive Guard)
-    ("nước", set(), set(), "10_safe_negatives"),
-    ("gạo", set(), set(), "10_safe_negatives"),
-    ("bột gạo", set(), set(), "10_safe_negatives"),
-    ("thịt lợn", set(), set(), "10_safe_negatives"),
-    ("thịt bò", set(), set(), "10_safe_negatives"),
-    ("thịt gà", set(), set(), "10_safe_negatives"),
-    ("cà rốt", set(), set(), "10_safe_negatives"),
-    ("khoai tây", set(), set(), "10_safe_negatives"),
-    ("hành tây", set(), set(), "10_safe_negatives"),
-    ("tỏi", set(), set(), "10_safe_negatives"),
-    ("hạt tiêu", set(), set(), "10_safe_negatives"),
-    ("ớt", set(), set(), "10_safe_negatives"),
-    ("dừa", set(), set(), "10_safe_negatives"),
-    ("dầu dừa", set(), set(), "10_safe_negatives"),
-    ("cà tím", set(), set(), "10_safe_negatives"),
-    ("kiều mạch", set(), set(), "10_safe_negatives"),
-    ("Bột mì không chứa gluten", set(), set(), "10_safe_negatives"),
-    ("Sữa bò không chứa lactose", {"milk"}, set(), "10_safe_negatives"),  # Still cow milk protein (casein/whey), unless lactose-only check
+    # 10. Safe Non-Allergen Ingredients & Negative/Free Claims
+    ("water", set(), set(), "10_safe_negatives"),
+    ("rice", set(), set(), "10_safe_negatives"),
+    ("rice flour", set(), set(), "10_safe_negatives"),
+    ("pork", set(), set(), "10_safe_negatives"),
+    ("beef", set(), set(), "10_safe_negatives"),
+    ("chicken", set(), set(), "10_safe_negatives"),
+    ("carrot", set(), set(), "10_safe_negatives"),
+    ("potato", set(), set(), "10_safe_negatives"),
+    ("onion", set(), set(), "10_safe_negatives"),
+    ("garlic", set(), set(), "10_safe_negatives"),
+    ("black pepper", set(), set(), "10_safe_negatives"),
+    ("coconut", set(), set(), "10_safe_negatives"),
+    ("coconut oil", set(), set(), "10_safe_negatives"),
+    ("eggplant", set(), set(), "10_safe_negatives"),
+    ("buckwheat", set(), set(), "10_safe_negatives"),
+    ("gluten-free wheat starch", set(), set(), "10_safe_negatives"),
+    ("lactose-free milk", {"milk"}, set(), "10_safe_negatives"),
 
-    # 11. Simulated OCR Noise & Unaccented Vietnamese Strings
-    ("đâu phông", {"peanuts"}, set(), "11_ocr_fuzzy"),
-    ("sua bo", {"milk"}, set(), "11_ocr_fuzzy"),
-    ("bột mi", {"gluten"}, set(), "11_ocr_fuzzy"),
-    ("hanh nhan", {"tree_nuts"}, set(), "11_ocr_fuzzy"),
-    ("dau nanh", {"soy"}, set(), "11_ocr_fuzzy"),
-    ("hat dieu", {"tree_nuts"}, set(), "11_ocr_fuzzy"),
+    # 11. Simulated English OCR Typos
+    ("peanutt", {"peanuts"}, set(), "11_ocr_fuzzy"),
+    ("almmond", {"tree_nuts"}, set(), "11_ocr_fuzzy"),
+    ("soybeann", {"soy"}, set(), "11_ocr_fuzzy"),
+    ("hazelnutt", {"tree_nuts"}, set(), "11_ocr_fuzzy"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -169,43 +146,43 @@ BENCHMARK_INGREDIENTS = [
 # ---------------------------------------------------------------------------
 BENCHMARK_PACKAGING_SCENARIOS = [
     {
-        "name": "Scenario 1: Bánh quy bơ sữa (User dị ứng Sữa nghiêm trọng -> RED)",
-        "tokens": ["Bột mì", "Đường", "Dầu cọ", "Sữa bột (8%)", "Whey protein", "Chất nhũ hóa (E322)", "Muối"],
+        "name": "Scenario 1: Butter Milk Biscuits (Milk allergy -> RED)",
+        "tokens": ["Wheat flour", "Sugar", "Palm oil", "Powdered milk (8%)", "Whey protein", "Emulsifier (E322)", "Salt"],
         "user_allergens": [{"code": "milk", "severity": "anaphylaxis"}],
         "user_chronics": [],
         "expected_verdict": "RED",
     },
     {
-        "name": "Scenario 2: Mì ăn liền tôm chua cay (User dị ứng Hải sản & bệnh Tăng huyết áp -> RED)",
-        "tokens": ["Bột mì", "Dầu cọ", "Muối", "Đường", "Bột tôm (2.5%)", "Chất điều vị (E621)", "Hành", "Tỏi", "Ớt"],
+        "name": "Scenario 2: Shrimp Instant Noodles (Seafood allergy + Hypertension -> RED)",
+        "tokens": ["Wheat flour", "Palm oil", "Salt", "Sugar", "Shrimp powder (2.5%)", "Flavor enhancer (E621)", "Onion", "Garlic"],
         "user_allergens": [{"code": "seafood", "severity": "high"}],
         "user_chronics": ["hypertension"],
         "expected_verdict": "RED",
     },
     {
-        "name": "Scenario 3: Sữa đậu nành nguyên chất (User dị ứng Sữa bò, KHÔNG dị ứng Đậu nành -> GREEN)",
-        "tokens": ["Nước", "Sữa đậu nành (92%)", "Muối"],
+        "name": "Scenario 3: Pure Soy Milk (Milk allergy only, NOT soy -> GREEN)",
+        "tokens": ["Water", "Soy milk (92%)", "Salt"],
         "user_allergens": [{"code": "milk", "severity": "anaphylaxis"}],
         "user_chronics": [],
         "expected_verdict": "GREEN",
     },
     {
-        "name": "Scenario 4: Nước giải khát có đường (User không dị ứng nhưng bị Tiểu đường -> YELLOW)",
-        "tokens": ["Nước", "Đường mía (11%)", "Hương tự nhiên"],
+        "name": "Scenario 4: Sweetened Soft Drink (No allergen match + Diabetes -> YELLOW)",
+        "tokens": ["Water", "Cane sugar (11%)", "Natural flavor"],
         "user_allergens": [{"code": "peanuts", "severity": "high"}],
         "user_chronics": ["diabetes"],
         "expected_verdict": "YELLOW",
     },
     {
-        "name": "Scenario 5: Kẹo hạt tổng hợp bị lỗi OCR mất dấu (User dị ứng Đậu phộng & Hạt cây -> RED)",
-        "tokens": ["Đường", "Mạch nha", "đâu phông (25%)", "hanh nhan", "mè"],
+        "name": "Scenario 5: Mixed Nut Candy with OCR Typos (Peanut & Tree Nut allergy -> RED)",
+        "tokens": ["Sugar", "Malt", "peanutt (25%)", "almmond", "sesame"],
         "user_allergens": [{"code": "peanuts", "severity": "high"}, {"code": "tree_nuts", "severity": "high"}],
         "user_chronics": [],
         "expected_verdict": "RED",
     },
     {
-        "name": "Scenario 6: Bánh phở gạo truyền thống (User dị ứng Gluten & Đậu phộng -> GREEN)",
-        "tokens": ["Bột gạo (85%)", "Nước", "Muối"],
+        "name": "Scenario 6: Traditional Rice Noodles (Gluten & Peanut allergy -> GREEN)",
+        "tokens": ["Rice flour (85%)", "Water", "Salt"],
         "user_allergens": [{"code": "gluten", "severity": "high"}, {"code": "peanuts", "severity": "high"}],
         "user_chronics": [],
         "expected_verdict": "GREEN",
@@ -215,7 +192,7 @@ BENCHMARK_PACKAGING_SCENARIOS = [
 
 def run_evaluation():
     print("=" * 80)
-    print(" NUTRIVIET HYBRID ONTOLOGY ENGINE (FOODON + KALA) EVALUATION BENCHMARK")
+    print(" NUTRIVIET PURE-ENGLISH FOODON ENGINE EVALUATION BENCHMARK")
     print("=" * 80)
 
     t_init0 = time.perf_counter()
@@ -245,9 +222,7 @@ def run_evaluation():
         pred_allergens = set(res["allergens"])
         pred_chronics = set(res["chronics"])
 
-        # Allergen set evaluation
         al_ok = (pred_allergens == exp_allergens)
-        # Chronic set evaluation (if exp_chronics is not None and non-empty, check subset)
         ch_ok = True
         if exp_chronics:
             ch_ok = exp_chronics.issubset(pred_chronics)
@@ -302,7 +277,7 @@ def run_evaluation():
     print(f"[Benchmark 2: End-to-End Packaging Label Scenarios ({len(BENCHMARK_PACKAGING_SCENARIOS)} Scenarios)]")
     scenario_pass = 0
     for sc in BENCHMARK_PACKAGING_SCENARIOS:
-        ev = engine.evaluate_packaging_label(sc["tokens"], sc["user_allergens"], sc["user_chronics"])
+        ev = engine.evaluate_packaging_label(sc["tokens"], sc["user_allergens"], sc["user_chronics"], lang="en")
         ok = (ev["verdict"] == sc["expected_verdict"])
         if ok:
             scenario_pass += 1
@@ -310,9 +285,9 @@ def run_evaluation():
         print(f"  [{status}] {sc['name']}")
         print(f"         Verdict: {ev['wcag_glyph']} {ev['verdict']} (Expected: {sc['expected_verdict']}) | Latency: {ev['latency_ms']} ms")
         for rt in ev["red_triggers"]:
-            print(f"         -> RED Trigger: {rt['token']!r} [{rt['allergen_name_vi']}] via {rt['lineage']}")
+            print(f"         -> RED Trigger: {rt['token']!r} [{rt['allergen_name_en']}] via {rt['lineage']}")
         for yt in ev["yellow_triggers"]:
-            lbl = yt.get("allergen_name_vi") or yt.get("chronic_name_vi")
+            lbl = yt.get("allergen_name_en") or yt.get("chronic_name_en")
             print(f"         -> YELLOW Trigger: {yt['token']!r} [{lbl}] via {yt['lineage']}")
 
     print("=" * 80)
