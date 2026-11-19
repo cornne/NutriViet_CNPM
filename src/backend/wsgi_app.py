@@ -1193,13 +1193,77 @@ def application(environ, start_response):
                     **summary,
                 }, ensure_ascii=False).encode('utf-8')]
 
-        # 13. FoodOn + Kala Hybrid Ontology Explorer Web UI & REST API (FG3 / UC09)
+        # 13. FoodOn Official Ontology Explorer, Graph Visualizer & REST API
         if path == '/foodon-test' and method == 'GET':
             html_file = os.path.join(os.path.dirname(__file__), 'static', 'foodon_explorer.html')
             with open(html_file, 'r', encoding='utf-8') as f:
                 html_content = f.read()
             start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
             return [html_content.encode('utf-8')]
+
+        if path == '/foodon-graph' and method == 'GET':
+            html_file = os.path.join(os.path.dirname(__file__), 'static', 'foodon_graph.html')
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
+            return [html_content.encode('utf-8')]
+
+        if path == '/api/v1/foodon/graph' and method == 'GET':
+            eng = _get_foodon_engine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            curie = (query.get('curie', [''])[0] or '').strip()
+            allergen = (query.get('allergen', [''])[0] or '').strip()
+            try:
+                ancestor_hops = int(query.get('ancestor_hops', ['10'])[0])
+            except ValueError:
+                ancestor_hops = 10
+            try:
+                child_depth = int(query.get('child_depth', ['2'])[0])
+            except ValueError:
+                child_depth = 2
+            try:
+                max_children = int(query.get('max_children', ['24'])[0])
+            except ValueError:
+                max_children = 24
+            include_siblings = (query.get('siblings', ['1'])[0] or '1').strip() not in ('0', 'false', 'no')
+            res = eng.get_graph_neighborhood(
+                curie=curie,
+                ancestor_hops=ancestor_hops,
+                child_depth=child_depth,
+                max_children=max_children,
+                include_siblings=include_siblings,
+                allergen=allergen,
+            )
+            status = '200 OK' if res.get('success') else '404 Not Found'
+            start_response(status, headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
+
+        if path == '/api/v1/foodon/graph/expand' and method == 'GET':
+            eng = _get_foodon_engine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            curie = (query.get('curie', [''])[0] or '').strip()
+            try:
+                limit = int(query.get('limit', ['24'])[0])
+            except ValueError:
+                limit = 24
+            try:
+                offset = int(query.get('offset', ['0'])[0])
+            except ValueError:
+                offset = 0
+            res = eng.expand_graph_node(curie=curie, limit=limit, offset=offset)
+            status = '200 OK' if res.get('success') else '404 Not Found'
+            start_response(status, headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
+
+        if path == '/api/v1/foodon/graph/path' and method == 'GET':
+            eng = _get_foodon_engine()
+            query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+            src = (query.get('from', [''])[0] or '').strip()
+            tgt = (query.get('to', [''])[0] or '').strip()
+            res = eng.find_ontology_path(src, tgt)
+            status = '200 OK' if res.get('success') else '404 Not Found'
+            start_response(status, headers)
+            return [json.dumps(res, ensure_ascii=False).encode('utf-8')]
 
         if path == '/api/v1/foodon/allergy-lookup' and method == 'GET':
             eng = _get_foodon_engine()
