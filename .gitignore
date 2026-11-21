@@ -38,6 +38,11 @@ src/mobile/android/.kotlin/
 Thumbs.db
 *.swp
 
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Raw Dictionary Archives & Unfiltered Databases (Too large for GitHub)
 o_v3
 src/backend/data/o_v3.zip
