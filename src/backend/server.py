@@ -22,9 +22,26 @@ from database import (
     get_user_allergens,
     save_user_allergens,
     get_user_metrics,
-    save_user_metrics
+    save_user_metrics,
+    save_scan_session,
+    get_user_scan_history,
+    get_scan_by_id,
+    delete_scan_session,
+    get_scan_statistics
 )
 from email_service import send_verification_email
+from ocr_normalizer import (
+    normalize_ocr_payload,
+    clean_raw_ocr_text,
+    tokenize_ingredients,
+    extract_e_numbers
+)
+
+try:
+    from hybrid_ontology import HybridFoodOnEngine
+    _foodon_engine = HybridFoodOnEngine()
+except Exception as _eng_err:
+    _foodon_engine = None
 
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", 8000))
@@ -85,7 +102,7 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-Type", content_type)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
         self.end_headers()
 
@@ -150,6 +167,24 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
             self._set_headers(200)
             self.wfile.write(json.dumps({"success": True, "metrics": metrics}).encode('utf-8'))
 
+        elif path == "/api/v1/scans":
+            user_id = query.get("user_id", [None])[0]
+            if not user_id:
+                self._set_headers(400)
+                resp = {"success": False, "message": "user_id is required"}
+            else:
+                limit = int(query.get("limit", [50])[0])
+                scans = get_user_scan_history(int(user_id), limit=limit)
+                stats = get_scan_statistics(int(user_id))
+                self._set_headers(200)
+                resp = {
+                    "success": True,
+                    "user_id": int(user_id),
+                    "scans": scans,
+                    **stats
+                }
+            self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
+
         elif path == "/api/v1/users":
             users = get_all_users()
             self._set_headers(200)
@@ -164,6 +199,31 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
             self._set_headers(404)
             response = {"status": "error", "message": f"Route '{path}' not found"}
             self.wfile.write(json.dumps(response).encode('utf-8'))
+
+    def do_DELETE(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        query = urllib.parse.parse_qs(parsed_url.query)
+
+        if path == "/api/v1/scans":
+            scan_id = query.get("scan_id", [None])[0]
+            user_id = query.get("user_id", [None])[0]
+            if not scan_id:
+                self._set_headers(400)
+                resp = {"success": False, "message": "scan_id query parameter is required"}
+            else:
+                ok, err = delete_scan_session(int(scan_id), int(user_id) if user_id else None)
+                if ok:
+                    self._set_headers(200)
+                    resp = {"success": True, "message": "Đã xóa bản ghi quét khỏi cơ sở dữ liệu.", "deleted_id": int(scan_id)}
+                else:
+                    self._set_headers(404 if err == "SCAN_NOT_FOUND" else 500)
+                    resp = {"success": False, "message": err}
+            self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
+        else:
+            self._set_headers(404)
+            resp = {"status": "error", "message": f"Route '{path}' not found"}
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
 
     def do_POST(self):
         parsed_url = urllib.parse.urlparse(self.path)
@@ -326,6 +386,141 @@ class NutriVietAuthHandler(BaseHTTPRequestHandler):
                 self._set_headers(500)
                 resp = {"success": False, "message": err}
             self.wfile.write(json.dumps(resp).encode('utf-8'))
+
+        # 8. OCR Text Normalization (FG3 - UC07)
+        elif path == "/api/v1/ocr/normalize":
+            raw_text = (body.get("raw_text") or "").strip()
+            lang = (body.get("lang") or "vi").strip().lower()
+            if not raw_text:
+                self._set_headers(400)
+                resp = {"success": False, "message": "raw_text is required"}
+            else:
+                norm_res = normalize_ocr_payload(raw_text, lang=lang)
+                self._set_headers(200)
+                resp = norm_res
+            self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
+
+        # 9. Packaging Label Scan & Allergy Evaluation (FG3 - UC06, UC07, UC08)
+        elif path == "/api/v1/scans":
+            user_id = body.get("user_id")
+            raw_text = (body.get("raw_text") or body.get("ingredients") or "").strip()
+            label_title = (body.get("label_title") or "Kết quả quét").strip()
+            member_name = (body.get("member_name") or "").strip()
+            lang = (body.get("lang") or "vi").strip().lower()
+
+            if not user_id:
+                self._set_headers(400)
+                resp = {"success": False, "message": "user_id is required"}
+                self.wfile.write(json.dumps(resp).encode('utf-8'))
+                return
+
+            if not raw_text:
+                self._set_headers(400)
+                resp = {"success": False, "message": "Vui lòng nhập hoặc quét thành phần trên nhãn bao bì." if lang == "vi" else "Please enter or scan packaging ingredients."}
+                self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
+                return
+
+            # Clean & normalize raw text, extract tokens & E-numbers
+            norm_res = normalize_ocr_payload(raw_text, lang=lang)
+            tokens = norm_res["tokens"]
+            detected_additives = norm_res["extracted_e_numbers"]
+            normalized_text = norm_res["normalized_text"]
+
+            # Retrieve user allergens
+            user_als = get_user_allergens(int(user_id))
+
+            # Run hazard evaluation
+            if _foodon_engine is not None:
+                eval_res = _foodon_engine.evaluate_packaging_label(tokens, user_als, lang=lang)
+                existing_add_codes = {a.get("code") or a.get("standard_code") for a in eval_res.get("detected_additives", [])}
+                for add in detected_additives:
+                    if add.get("standard_code") not in existing_add_codes:
+                        eval_res.setdefault("detected_additives", []).append(add)
+            else:
+                red_triggers = []
+                for tok in tokens:
+                    tok_lower = tok.lower()
+                    for al in user_als:
+                        code = al.get("code", "").lower()
+                        name = al.get("name", "").lower()
+                        if (code and code in tok_lower) or (name and name in tok_lower):
+                            red_triggers.append({
+                                "token": tok,
+                                "allergen_code": code,
+                                "allergen_name": al.get("name", ""),
+                                "severity": al.get("severity", "high")
+                            })
+                verdict = "RED" if red_triggers else "GREEN"
+                eval_res = {
+                    "verdict": verdict,
+                    "title": "NGUY HIỂM: PHÁT HIỆN DỊ ỨNG" if verdict == "RED" else "AN TOÀN: KHÔNG PHÁT HIỆN DỊ ỨNG",
+                    "red_triggers": red_triggers,
+                    "yellow_triggers": [],
+                    "detected_additives": detected_additives
+                }
+
+            verdict = eval_res.get("verdict", "GREEN")
+            warning_count = len(eval_res.get("red_triggers", [])) + len(eval_res.get("yellow_triggers", []))
+            additive_count = len(eval_res.get("detected_additives", []))
+
+            if verdict == "RED":
+                risk_level = "high"
+                risk_label_vi = "Nguy cơ cao"
+            elif verdict == "YELLOW":
+                risk_level = "low"
+                risk_label_vi = "Nguy cơ thấp"
+            else:
+                risk_level = "safe"
+                risk_label_vi = "An toàn"
+
+            # Persist session to database
+            saved_scan, err = save_scan_session(
+                user_id=int(user_id),
+                raw_text=raw_text,
+                label_title=label_title,
+                member_name=member_name,
+                normalized_text=normalized_text,
+                tokens=tokens,
+                additives=detected_additives,
+                verdict=verdict,
+                risk_level=risk_level,
+                risk_label_vi=risk_label_vi,
+                additive_count=additive_count,
+                warning_count=warning_count,
+                result_json=eval_res
+            )
+
+            if err:
+                self._set_headers(500)
+                resp = {"success": False, "message": err}
+            else:
+                all_scans = get_user_scan_history(int(user_id))
+                stats = get_scan_statistics(int(user_id))
+                self._set_headers(200)
+                resp = {
+                    "success": True,
+                    "latest_scan": saved_scan,
+                    "scans": all_scans,
+                    **stats
+                }
+            self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
+
+        # 10. Delete Scan Session (POST fallback)
+        elif path == "/api/v1/scans/delete":
+            scan_id = body.get("scan_id")
+            user_id = body.get("user_id")
+            if not scan_id:
+                self._set_headers(400)
+                resp = {"success": False, "message": "scan_id is required"}
+            else:
+                ok, err = delete_scan_session(int(scan_id), int(user_id) if user_id else None)
+                if ok:
+                    self._set_headers(200)
+                    resp = {"success": True, "message": "Đã xóa bản ghi quét thành công.", "deleted_id": int(scan_id)}
+                else:
+                    self._set_headers(404 if err == "SCAN_NOT_FOUND" else 500)
+                    resp = {"success": False, "message": err}
+            self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
 
         else:
             self._set_headers(404)

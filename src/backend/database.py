@@ -8,6 +8,7 @@ import hashlib
 import os
 import secrets
 import datetime
+import json
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "nutriviet.db")
 
@@ -74,6 +75,41 @@ def init_db():
     """)
     conn.commit()
 
+    # 4. Packaging OCR Scan History Table (FG3 Deliverable)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS scan_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        member_name TEXT NOT NULL DEFAULT '',
+        label_title TEXT NOT NULL DEFAULT 'Kết quả quét',
+        raw_text TEXT NOT NULL,
+        normalized_text TEXT NOT NULL DEFAULT '',
+        tokens_json TEXT NOT NULL DEFAULT '[]',
+        additives_json TEXT NOT NULL DEFAULT '[]',
+        verdict TEXT NOT NULL DEFAULT 'GREEN',
+        risk_level TEXT NOT NULL DEFAULT 'safe',
+        risk_label_vi TEXT NOT NULL DEFAULT 'An toàn',
+        additive_count INTEGER NOT NULL DEFAULT 0,
+        warning_count INTEGER NOT NULL DEFAULT 0,
+        result_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_user ON scan_history(user_id, id DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_created ON scan_history(user_id, created_at DESC)")
+    conn.commit()
+
+    # Auto-migration for existing scan_history tables
+    cursor.execute("PRAGMA table_info(scan_history)")
+    sh_cols = [row[1] for row in cursor.fetchall()]
+    if "normalized_text" not in sh_cols:
+        cursor.execute("ALTER TABLE scan_history ADD COLUMN normalized_text TEXT NOT NULL DEFAULT ''")
+    if "tokens_json" not in sh_cols:
+        cursor.execute("ALTER TABLE scan_history ADD COLUMN tokens_json TEXT NOT NULL DEFAULT '[]'")
+    if "additives_json" not in sh_cols:
+        cursor.execute("ALTER TABLE scan_history ADD COLUMN additives_json TEXT NOT NULL DEFAULT '[]'")
+    conn.commit()
+
     # Seed an initial demo account if empty
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
@@ -115,7 +151,7 @@ def create_user(full_name: str, email: str, password: str, is_verified: int = 0)
     
     pwd_hash, salt = hash_password(password)
     verification_token = secrets.token_urlsafe(32)
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
     cursor.execute("""
         INSERT INTO users (full_name, email, password_hash, salt, is_verified, verification_token, created_at)
@@ -271,7 +307,7 @@ def save_user_allergens(user_id: int, allergens: list) -> tuple:
     
     conn = get_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
     try:
         # Atomic transaction: delete existing and insert new
@@ -324,7 +360,7 @@ def get_user_metrics(user_id: int) -> dict:
 def save_user_metrics(user_id: int, age: int, gender: str, height: float, weight: float, activity_level: str = 'moderate') -> tuple[bool, str]:
     conn = get_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     try:
         cursor.execute("""
         INSERT INTO user_metrics (user_id, age, gender, height, weight, activity_level, updated_at)
@@ -352,6 +388,202 @@ def get_all_users() -> list[dict]:
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+# -------------------------------------------------------------
+# Packaging OCR Scan History DAO (FG3: UC06, UC07, UC08)
+# -------------------------------------------------------------
+
+def save_scan_session(
+    user_id: int,
+    raw_text: str,
+    label_title: str = "Kết quả quét",
+    member_name: str = "",
+    normalized_text: str = "",
+    tokens: list = None,
+    additives: list = None,
+    verdict: str = "GREEN",
+    risk_level: str = "safe",
+    risk_label_vi: str = "An toàn",
+    additive_count: int = 0,
+    warning_count: int = 0,
+    result_json: dict = None
+) -> tuple[dict, str]:
+    if not user_id:
+        return None, "user_id is required"
+    if not raw_text:
+        return None, "raw_text is required"
+
+    tokens_str = json.dumps(tokens or [], ensure_ascii=False)
+    additives_str = json.dumps(additives or [], ensure_ascii=False)
+    eval_str = json.dumps(result_json or {}, ensure_ascii=False) if isinstance(result_json, dict) else str(result_json or "{}")
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+        INSERT INTO scan_history (
+            user_id, member_name, label_title, raw_text, normalized_text,
+            tokens_json, additives_json, verdict, risk_level, risk_label_vi,
+            additive_count, warning_count, result_json, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            member_name or "",
+            label_title or "Kết quả quét",
+            raw_text,
+            normalized_text or raw_text,
+            tokens_str,
+            additives_str,
+            verdict,
+            risk_level,
+            risk_label_vi,
+            additive_count,
+            warning_count,
+            eval_str,
+            now
+        ))
+        conn.commit()
+        scan_id = cursor.lastrowid
+        conn.close()
+
+        saved_record = {
+            "id": scan_id,
+            "user_id": user_id,
+            "member_name": member_name or "",
+            "label_title": label_title or "Kết quả quét",
+            "raw_text": raw_text,
+            "normalized_text": normalized_text or raw_text,
+            "tokens": tokens or [],
+            "additives": additives or [],
+            "verdict": verdict,
+            "risk_level": risk_level,
+            "risk_label_vi": risk_label_vi,
+            "additive_count": additive_count,
+            "warning_count": warning_count,
+            "evaluation": result_json if isinstance(result_json, dict) else {},
+            "created_at": now
+        }
+        return saved_record, None
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return None, str(e)
+
+def get_user_scan_history(user_id: int, limit: int = 50) -> list[dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, user_id, member_name, label_title, raw_text, normalized_text,
+               tokens_json, additives_json, verdict, risk_level, risk_label_vi,
+               additive_count, warning_count, result_json, created_at
+        FROM scan_history
+        WHERE user_id = ?
+        ORDER BY id DESC
+        LIMIT ?
+    """, (user_id, limit))
+    rows = cursor.fetchall()
+    conn.close()
+
+    scans = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["tokens"] = json.loads(d.pop("tokens_json", "[]"))
+        except Exception:
+            d["tokens"] = []
+        try:
+            d["additives"] = json.loads(d.pop("additives_json", "[]"))
+        except Exception:
+            d["additives"] = []
+        try:
+            d["evaluation"] = json.loads(d.pop("result_json", "{}"))
+        except Exception:
+            d["evaluation"] = {}
+        scans.append(d)
+    return scans
+
+def get_scan_by_id(scan_id: int, user_id: int = None) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT * FROM scan_history WHERE id = ? AND user_id = ?", (scan_id, user_id))
+    else:
+        cursor.execute("SELECT * FROM scan_history WHERE id = ?", (scan_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    d = dict(row)
+    try:
+        d["tokens"] = json.loads(d.pop("tokens_json", "[]"))
+    except Exception:
+        d["tokens"] = []
+    try:
+        d["additives"] = json.loads(d.pop("additives_json", "[]"))
+    except Exception:
+        d["additives"] = []
+    try:
+        d["evaluation"] = json.loads(d.pop("result_json", "{}"))
+    except Exception:
+        d["evaluation"] = {}
+    return d
+
+def delete_scan_session(scan_id: int, user_id: int = None) -> tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        if user_id:
+            cursor.execute("DELETE FROM scan_history WHERE id = ? AND user_id = ?", (scan_id, user_id))
+        else:
+            cursor.execute("DELETE FROM scan_history WHERE id = ?", (scan_id,))
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        if deleted_count > 0:
+            return True, None
+        return False, "SCAN_NOT_FOUND"
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, str(e)
+
+def get_scan_statistics(user_id: int) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, verdict, risk_level, warning_count, created_at
+        FROM scan_history
+        WHERE user_id = ?
+        ORDER BY id DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    total_scans = len(rows)
+    warning_scans = 0
+    monthly_scans = 0
+    monthly_warnings = 0
+    month_prefix = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m")
+
+    for r in rows:
+        is_warn = (r["warning_count"] > 0) or (r["verdict"] == "RED") or (r["risk_level"] == "high")
+        if is_warn:
+            warning_scans += 1
+        created_str = str(r["created_at"])
+        if created_str.startswith(month_prefix):
+            monthly_scans += 1
+            if is_warn:
+                monthly_warnings += int(r["warning_count"] or 1)
+
+    return {
+        "total_scans": total_scans,
+        "warning_scans": warning_scans,
+        "monthly_scans": monthly_scans,
+        "monthly_warnings": monthly_warnings
+    }
 
 if __name__ == "__main__":
     init_db()
