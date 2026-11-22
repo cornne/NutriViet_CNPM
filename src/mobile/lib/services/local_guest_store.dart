@@ -243,6 +243,28 @@ class LocalGuestStore {
     return _summarizeScans(scans);
   }
 
+  static Future<Map<String, dynamic>> deleteScan(int scanId) async {
+    final existing = await _readList(_kScans);
+    final updated = existing.where((s) {
+      final id = s['id'] is int ? s['id'] as int : int.tryParse('${s['id']}');
+      return id != scanId;
+    }).toList();
+    await _writeList(_kScans, updated);
+    return {
+      ..._summarizeScans(updated),
+      'deleted_id': scanId,
+    };
+  }
+
+  static Future<Map<String, dynamic>> clearScans() async {
+    final existing = await _readList(_kScans);
+    await _writeList(_kScans, []);
+    return {
+      ..._summarizeScans([]),
+      'deleted_count': existing.length,
+    };
+  }
+
   static Future<Map<String, dynamic>> createLocalScan({
     required String rawText,
     String? labelTitle,
