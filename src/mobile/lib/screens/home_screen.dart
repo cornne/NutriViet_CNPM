@@ -1,18 +1,23 @@
-import 'dart:async';
 import 'dart:math' as math;
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../services/local_guest_store.dart';
+import '../services/paddle_ocr_vl_service.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'allergy_profile_screen.dart';
+import 'community_feed_screen.dart';
+import 'login_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,14 +33,18 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color _brandGreen = Color(0xFF14803C);
   static const Color _riskHighRed = Color(0xFFDC2626);
 
-  final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0); // 0: Home, 1: Additives, 2: History, 3: Settings
+  final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0); // 0: Home, 1: Community, 2: History, 3: Settings
 
   int _userId = 0;
   String _userName = '';
   String _userEmail = '';
+  String _userRole = 'user';
+  String _authToken = '';
+  bool _isGuest = false;
+  int _communityRefreshTick = 0;
   String _langPref = AppLocale.code;
 
-  // Real data from Backend SQLite DB & FoodOn Hybrid Engine
+  // Real data from Backend SQLite DB & FoodOn Hybrid Engine (or LocalGuestStore for Guest)
   List<Map<String, dynamic>> _allergens = [];
   List<Map<String, dynamic>> _familyMembers = [];
   String _selectedMemberName = '';
@@ -48,13 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loadingInitialData = true;
   final Set<int> _expandedScanIds = {};
 
-  // Tab 1: Additives (Live from nutriviet_hybrid.db)
-  final TextEditingController _additiveSearchCtrl = TextEditingController();
-  Timer? _searchDebounce;
-  List<Map<String, dynamic>> _additiveItems = [];
-  bool _loadingAdditives = false;
-  String? _additiveError;
-
   // Home category filter ('sugar', 'salt', 'fat', 'allergen')
   String _selectedCategory = 'sugar';
   List<Map<String, dynamic>> _categoryItems = [];
@@ -62,9 +64,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late final VoidCallback _localeListener;
 
+  Map<String, dynamic> get _activeUserMap => {
+        'id': _userId,
+        'full_name': _userName,
+        'email': _userEmail,
+        'role': _isGuest ? 'guest' : _userRole,
+        'token': _isGuest ? '' : _authToken,
+        'is_guest': _isGuest,
+      };
+
+  void _openLoginFromGuest() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    final initial = widget.user;
+    if (initial != null) {
+      final uid = initial['id'] ?? 0;
+      _userId = uid is int ? uid : (int.tryParse(uid.toString()) ?? 0);
+      _userName = (initial['full_name'] ?? '').toString();
+      _userEmail = (initial['email'] ?? '').toString();
+      _userRole = (initial['role'] ?? 'user').toString();
+      _authToken = (initial['token'] ?? '').toString();
+      _isGuest = AuthService.isGuest(initial);
+    }
     _localeListener = () {
       if (!mounted) return;
       final newLang = AppLocale.code;
@@ -72,7 +100,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _langPref = newLang;
         });
-        _loadAdditives(_additiveSearchCtrl.text);
         _loadCategoryConcepts(_selectedCategory);
       } else {
         setState(() {});
@@ -85,8 +112,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppLocale.current.removeListener(_localeListener);
-    _searchDebounce?.cancel();
-    _additiveSearchCtrl.dispose();
     _tabNotifier.dispose();
     super.dispose();
   }
@@ -95,56 +120,75 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedMemberName.isNotEmpty) {
       return AppLocale.translateMemberName(_selectedMemberName);
     }
-    final trimmed = _userName.trim();
-    if (trimmed.isEmpty) return 'Bình';
-    final parts = trimmed.split(RegExp(r'\s+'));
-    for (final p in parts) {
-      if (p.toLowerCase() == 'bình' || p.toLowerCase() == 'binh') {
-        return 'Bình';
-      }
+    if (_isGuest) {
+      return AppLocale.t('Khách', 'Guest');
     }
+    final trimmed = _userName.trim();
+    if (trimmed.isEmpty) return AppLocale.t('Tôi', 'Me');
+    final parts = trimmed.split(RegExp(r'\s+'));
     final target = parts.length > 3 ? parts.first : parts.last;
     return target[0].toUpperCase() + (target.length > 1 ? target.substring(1) : '');
   }
 
   Future<void> _initSessionAndData() async {
     final session = await AuthService.getSession();
-    final uid = widget.user?['id'] ?? session?['id'] ?? 0;
+    final merged = <String, dynamic>{
+      if (session != null) ...session,
+      if (widget.user != null) ...widget.user!,
+    };
+    if ((merged['token'] ?? '').toString().isEmpty &&
+        session != null &&
+        (session['token'] ?? '').toString().isNotEmpty &&
+        merged['is_guest'] != true) {
+      merged['token'] = session['token'];
+    }
+    final uid = merged['id'] ?? 0;
     final parsedUid = uid is int ? uid : (int.tryParse(uid.toString()) ?? 0);
-    final name = (widget.user?['full_name'] ?? session?['full_name'] ?? '').toString();
-    final email = (widget.user?['email'] ?? session?['email'] ?? '').toString();
+    final isGuestMode = AuthService.isGuest(merged);
+    final name = (merged['full_name'] ?? '').toString();
+    final email = (merged['email'] ?? '').toString();
+    final role = (merged['role'] ?? (isGuestMode ? 'guest' : 'user')).toString();
+    final token = isGuestMode ? '' : (merged['token'] ?? '').toString();
 
     if (!mounted) return;
     setState(() {
       _userId = parsedUid;
       _userName = name;
       _userEmail = email;
+      _userRole = role;
+      _authToken = token;
+      _isGuest = isGuestMode;
       _langPref = AppLocale.code;
     });
 
-    await Future.wait([
-      _refreshUserData(),
-      _loadAdditives(''),
-    ]);
+    await _refreshUserData();
     if (mounted && _loadingInitialData) {
       setState(() => _loadingInitialData = false);
     }
   }
 
   Future<void> _refreshUserData() async {
-    if (_userId <= 0) {
+    if (!_isGuest && _userId <= 0) {
       if (mounted && _loadingInitialData) {
         setState(() => _loadingInitialData = false);
       }
       return;
     }
-    final results = await Future.wait([
-      ProfileService.getAllergens(_userId),
-      ProfileService.getChronics(_userId),
-      ProfileService.getFamilyMembers(_userId),
-      ProfileService.getScans(_userId),
-      ProfileService.getSettings(_userId),
-    ]);
+    final results = _isGuest
+        ? await Future.wait([
+            LocalGuestStore.getAllergens(),
+            LocalGuestStore.getChronics(),
+            LocalGuestStore.getFamilyMembers(),
+            LocalGuestStore.getScans(),
+            LocalGuestStore.getSettings(),
+          ])
+        : await Future.wait([
+            ProfileService.getAllergens(_userId),
+            ProfileService.getChronics(_userId),
+            ProfileService.getFamilyMembers(_userId),
+            ProfileService.getScans(_userId),
+            ProfileService.getSettings(_userId),
+          ]);
     if (!mounted) return;
 
     String? backendLang;
@@ -199,34 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
-    await Future.wait([
-      _loadCategoryConcepts(_selectedCategory),
-      _loadAdditives(_additiveSearchCtrl.text),
-    ]);
-  }
-
-  Future<void> _loadAdditives(String query) async {
-    if (!mounted) return;
-    setState(() {
-      _loadingAdditives = true;
-      _additiveError = null;
-    });
-
-    final res = await ProfileService.getAdditives(
-      query: query,
-      lang: AppLocale.code,
-      limit: 60,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _loadingAdditives = false;
-      if (res['success'] == true) {
-        _additiveItems = List<Map<String, dynamic>>.from(res['items'] ?? []);
-      } else {
-        _additiveError = res['message']?.toString();
-      }
-    });
+    await _loadCategoryConcepts(_selectedCategory);
   }
 
   Future<void> _loadCategoryConcepts(String category) async {
@@ -264,6 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
           userId: _userId,
           userName: _userName,
           userEmail: _userEmail,
+          isGuest: _isGuest,
         ),
       ),
     );
@@ -333,11 +351,16 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 final name = nameCtrl.text.trim();
                 if (name.isEmpty) return;
-                final res = await ProfileService.addFamilyMember(
-                  userId: _userId,
-                  memberName: name,
-                  relationship: relCtrl.text.trim(),
-                );
+                final res = _isGuest
+                    ? await LocalGuestStore.addFamilyMember(
+                        memberName: name,
+                        relationship: relCtrl.text.trim(),
+                      )
+                    : await ProfileService.addFamilyMember(
+                        userId: _userId,
+                        memberName: name,
+                        relationship: relCtrl.text.trim(),
+                      );
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
                 if (res['success'] == true) {
@@ -381,6 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
         pageBuilder: (_, __, ___) => _PackagingScannerScreen(
           userId: _userId,
           memberName: _shortName,
+          isGuest: _isGuest,
         ),
         transitionsBuilder: (_, animation, __, child) {
           final curved = CurvedAnimation(
@@ -422,20 +446,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Concept Detail Bottom Sheet (Strictly Monolingual: 100% VI or 100% EN)
+  // Concept Detail Bottom Sheet (Pure Official English FoodOn — Zero Fallback)
   // ---------------------------------------------------------------------------
   void _showConceptDetailSheet(Map<String, dynamic> item) {
     final code = (item['code'] ?? item['curie'] ?? '').toString();
     final curie = (item['curie'] ?? '').toString();
-    final title = AppLocale.isEn
-        ? (item['title_en'] ?? item['title'] ?? item['label_en'] ?? '').toString()
-        : (item['title_vi'] ?? item['title'] ?? item['label_vi'] ?? '').toString();
-    final desc = AppLocale.isEn
-        ? (item['description_en'] ?? item['description'] ?? '').toString()
-        : (item['description_vi'] ?? item['description'] ?? '').toString();
+    final title = (item['title_en'] ?? item['label_en'] ?? item['title'] ?? curie).toString();
+    final desc = (item['description_en'] ?? item['definition_en'] ?? item['description'] ?? '').toString();
     final riskLevel = (item['risk_level'] ?? 'low').toString();
     final lineageNodes = List<Map<String, dynamic>>.from(item['lineage_nodes'] ?? []);
-    final viTerms = List<String>.from(item['terms_vi'] ?? []);
     final enTerms = List<String>.from(item['terms_en'] ?? []);
     final ecodes = List<String>.from(item['ecodes'] ?? []);
 
@@ -506,17 +525,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
-              if (AppLocale.isVi && viTerms.isNotEmpty) ...[
+              if (enTerms.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Tên gọi tương đương: ${viTerms.join(", ")}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-                ),
-              ],
-              if (AppLocale.isEn && enTerms.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Synonyms: ${enTerms.join(", ")}',
+                  AppLocale.t(
+                    'Tên gọi gốc FoodOn: ${enTerms.join(", ")}',
+                    'FoodOn synonyms: ${enTerms.join(", ")}',
+                  ),
                   style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
                 ),
               ],
@@ -538,9 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   spacing: 6,
                   runSpacing: 6,
                   children: lineageNodes.map((n) {
-                    final lbl = AppLocale.isEn
-                        ? (n['display_label_en'] ?? n['label_en'] ?? '').toString()
-                        : (n['display_label_vi'] ?? n['label_vi'] ?? '').toString();
+                    final lbl = (n['display_label_en'] ?? n['label_en'] ?? '').toString();
                     if (lbl.isEmpty) return const SizedBox.shrink();
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1554,236 +1567,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Tab 1: Phụ gia / Additives
-  // ---------------------------------------------------------------------------
-  Widget _buildAdditivesTab() {
-    final double topInset = MediaQuery.paddingOf(context).top;
-    final double listTopPadding = topInset + 136;
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: NutriVietGlassScrollArea(
-            child: _loadingAdditives
-                ? SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    padding: EdgeInsets.fromLTRB(20, listTopPadding, 20, 128),
-                    child: const NutriVietConceptListSkeleton(itemCount: 4),
-                  )
-                : _additiveError != null
-                    ? Center(
-                        child: Padding(
-                          padding:
-                              EdgeInsets.fromLTRB(24, listTopPadding, 24, 120),
-                          child: NutriVietEntranceMotion(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const NutriVietGlassIconTile(
-                                  icon: PhosphorIconsDuotone.cloudSlash,
-                                  color: _riskHighRed,
-                                  size: 68,
-                                  isCircle: true,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _additiveError!,
-                                  textAlign: TextAlign.center,
-                                  style:
-                                      const TextStyle(color: Color(0xFF4B5563)),
-                                ),
-                                const SizedBox(height: 16),
-                                LiquidGlassButton(
-                                  height: 44,
-                                  style: NutriVietGlass.emeraldButton,
-                                  touch: NutriVietGlass.touchHorizontalCapsule,
-                                  foregroundColor: Colors.white,
-                                  label: AppLocale.t('Thử lại', 'Retry'),
-                                  onPressed: () =>
-                                      _loadAdditives(_additiveSearchCtrl.text),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    : _additiveItems.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                  24, listTopPadding, 24, 120),
-                              child: Text(
-                                AppLocale.t(
-                                  'Không tìm thấy mã E hoặc thành phần phù hợp.',
-                                  'No matching E-codes or ingredients found.',
-                                ),
-                                textAlign: TextAlign.center,
-                                style:
-                                    const TextStyle(color: Color(0xFF6B7280)),
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            scrollCacheExtent:
-                                const ScrollCacheExtent.pixels(800),
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            addAutomaticKeepAlives: false,
-                            padding: EdgeInsets.fromLTRB(
-                                20, listTopPadding, 20, 128),
-                            itemCount: _additiveItems.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 14),
-                            itemBuilder: (ctx, idx) {
-                              return RepaintBoundary(
-                                child: _buildAdditiveOrConceptCard(
-                                    _additiveItems[idx]),
-                              );
-                            },
-                          ),
-          ),
-        ),
-
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: LiquidGlassScrollEdge(
-            edge: LiquidGlassEdge.top,
-            height: topInset + 168,
-            blur: 0,
-            style: LiquidGlassScrollEdgeStyle.soft,
-            curve: const Interval(0.42, 1.0, curve: Curves.easeOut),
-            color: const Color(0xDCEEF6F2),
-          ),
-        ),
-
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: RepaintBoundary(
-            child: LiquidGlassBatch.exclude(
-              child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      AppLocale.t('Phụ gia', 'Additives'),
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xEEFFFFFF),
-                            Color(0xD8F4FAF6),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.94),
-                          width: 1.3,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                const Color(0xFF0F172A).withValues(alpha: 0.05),
-                            blurRadius: 14,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: TextField(
-                          controller: _additiveSearchCtrl,
-                          onChanged: (val) {
-                            _searchDebounce?.cancel();
-                            _searchDebounce =
-                                Timer(const Duration(milliseconds: 220), () {
-                              _loadAdditives(val);
-                            });
-                          },
-                          style: const TextStyle(
-                              fontSize: 15.5, color: Color(0xFF111827)),
-                          decoration: InputDecoration(
-                            filled: false,
-                            hintText: AppLocale.t(
-                              'Tìm mã E hoặc thành phần',
-                              'Search E-code or ingredient',
-                            ),
-                            hintStyle: const TextStyle(
-                                fontSize: 15.5, color: Color(0xFF6B7280)),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 14, right: 8),
-                              child: PhosphorIcon(
-                                PhosphorIconsDuotone.magnifyingGlass,
-                                color: _brandGreen,
-                                size: 21,
-                                duotoneSecondaryOpacity: 0.25,
-                                duotoneSecondaryColor: _brandGreen,
-                              ),
-                            ),
-                            prefixIconConstraints: const BoxConstraints(
-                                minWidth: 42, minHeight: 42),
-                            suffixIcon: _additiveSearchCtrl.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const PhosphorIcon(
-                                      PhosphorIconsFill.xCircle,
-                                      size: 19,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                    onPressed: () {
-                                      _additiveSearchCtrl.clear();
-                                      _loadAdditives('');
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildAdditiveOrConceptCard(Map<String, dynamic> item) {
     final code = (item['code'] ?? item['curie'] ?? '').toString();
-    final title = AppLocale.isEn
-        ? (item['title_en'] ?? item['title'] ?? item['label_en'] ?? '').toString()
-        : (item['title_vi'] ?? item['title'] ?? item['label_vi'] ?? '').toString();
-    final desc = AppLocale.isEn
-        ? (item['description_en'] ?? item['description'] ?? '').toString()
-        : (item['description_vi'] ?? item['description'] ?? '').toString();
+    final title = (item['title_en'] ?? item['label_en'] ?? item['title'] ?? code).toString();
+    final desc = (item['description_en'] ?? item['definition_en'] ?? item['description'] ?? '').toString();
     final riskLevel = (item['risk_level'] ?? 'low').toString();
 
     return NutriVietGlassCard(
@@ -1858,30 +1645,170 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Resolve a localized display name for a scanned ingredient detail entry
+  /// Resolve official English FoodOn display name for a scanned ingredient detail entry
   String _localizedDetailName(Map<String, dynamic> detail) {
     final matches = List<Map<String, dynamic>>.from(detail['matches'] ?? []);
     if (matches.isNotEmpty) {
       final first = matches.first;
-      if (AppLocale.isEn) {
-        final enTitle = (first['title_en'] ?? '').toString().trim();
-        if (enTitle.isNotEmpty) return enTitle;
-        final labelEn = (first['label_en'] ?? '').toString().trim();
-        if (labelEn.isNotEmpty) {
-          return labelEn[0].toUpperCase() + (labelEn.length > 1 ? labelEn.substring(1) : '');
-        }
-      } else {
-        final viTitle = (first['title_vi'] ?? '').toString().trim();
-        if (viTitle.isNotEmpty) return viTitle;
-        final termsVi = List<String>.from(first['terms_vi'] ?? []);
-        if (termsVi.isNotEmpty && termsVi.first.trim().isNotEmpty) {
-          final v = termsVi.first.trim();
-          return v[0].toUpperCase() + (v.length > 1 ? v.substring(1) : '');
-        }
+      final enTitle = (first['title_en'] ?? '').toString().trim();
+      if (enTitle.isNotEmpty) return enTitle;
+      final labelEn = (first['label_en'] ?? '').toString().trim();
+      if (labelEn.isNotEmpty) {
+        return labelEn[0].toUpperCase() + (labelEn.length > 1 ? labelEn.substring(1) : '');
       }
     }
     final rawInput = (detail['input'] ?? '').toString().trim();
     return rawInput;
+  }
+
+  void _applyScanSummary(Map<String, dynamic> res) {
+    final updatedScans = List<Map<String, dynamic>>.from(res['scans'] ?? []);
+    final validIds = updatedScans.map((s) => s['id']).whereType<int>().toSet();
+    setState(() {
+      _scans = updatedScans;
+      _totalScans = (res['total_scans'] ?? updatedScans.length) as int;
+      _warningScans = (res['warning_scans'] ?? 0) as int;
+      _monthlyScans = (res['monthly_scans'] ?? 0) as int;
+      _monthlyWarnings = (res['monthly_warnings'] ?? 0) as int;
+      _expandedScanIds.removeWhere((id) => !validIds.contains(id));
+    });
+  }
+
+  Future<bool> _confirmAndDeleteScan(int scanId, String title) async {
+    final confirmed = await showNutriVietGlassDialog<bool>(
+      context: context,
+      builder: (ctx) => NutriVietGlassDialog(
+        title: Text(
+          AppLocale.t('Xóa bản ghi lịch sử?', 'Delete scan record?'),
+        ),
+        content: Text(
+          AppLocale.t(
+            'Bạn có chắc muốn xóa "$title" khỏi lịch sử quét nhãn không?',
+            'Are you sure you want to remove "$title" from scan history?',
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF4B5563),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          NutriVietGlassPillButton(
+            label: AppLocale.t('Hủy', 'Cancel'),
+            variant: NutriVietGlassButtonVariant.neutral,
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+          NutriVietGlassPillButton(
+            label: AppLocale.t('Xóa', 'Delete'),
+            variant: NutriVietGlassButtonVariant.danger,
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return false;
+
+    final res = _isGuest
+        ? await LocalGuestStore.deleteScan(scanId)
+        : await ProfileService.deleteScan(userId: _userId, scanId: scanId);
+    if (!mounted) return false;
+
+    if (res['success'] == true) {
+      HapticFeedback.mediumImpact();
+      _applyScanSummary(res);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocale.t('Đã xóa bản ghi khỏi lịch sử.', 'Removed from scan history.'),
+          ),
+          backgroundColor: _brandGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return true;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          (res['message'] ??
+                  AppLocale.t('Không thể xóa lịch sử quét.', 'Unable to delete scan.'))
+              .toString(),
+        ),
+        backgroundColor: _riskHighRed,
+      ),
+    );
+    return false;
+  }
+
+  Future<void> _confirmAndClearAllScans() async {
+    if (_scans.isEmpty) return;
+    final count = _scans.length;
+    final confirmed = await showNutriVietGlassDialog<bool>(
+      context: context,
+      builder: (ctx) => NutriVietGlassDialog(
+        title: Text(
+          AppLocale.t('Xóa toàn bộ lịch sử?', 'Clear all scan history?'),
+        ),
+        content: Text(
+          AppLocale.t(
+            'Hành động này sẽ xóa vĩnh viễn tất cả $count lần quét nhãn của bạn.',
+            'This will permanently delete all $count saved label scans.',
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF4B5563),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          NutriVietGlassPillButton(
+            label: AppLocale.t('Hủy', 'Cancel'),
+            variant: NutriVietGlassButtonVariant.neutral,
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+          NutriVietGlassPillButton(
+            label: AppLocale.t('Xóa tất cả', 'Clear all'),
+            variant: NutriVietGlassButtonVariant.danger,
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final res = _isGuest
+        ? await LocalGuestStore.clearScans()
+        : await ProfileService.clearScans(userId: _userId);
+    if (!mounted) return;
+
+    if (res['success'] == true) {
+      HapticFeedback.mediumImpact();
+      _applyScanSummary(res);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocale.t('Đã xóa toàn bộ lịch sử quét.', 'Cleared all scan history.'),
+          ),
+          backgroundColor: _brandGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (res['message'] ??
+                    AppLocale.t(
+                      'Không thể xóa toàn bộ lịch sử quét.',
+                      'Unable to clear scan history.',
+                    ))
+                .toString(),
+          ),
+          backgroundColor: _riskHighRed,
+        ),
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1900,15 +1827,93 @@ class _HomeScreenState extends State<HomeScreen> {
                 parent: AlwaysScrollableScrollPhysics()),
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
             children: [
-              Text(
-                AppLocale.t('Lịch sử', 'History'),
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
-                  letterSpacing: -0.5,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    AppLocale.t('Lịch sử', 'History'),
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (_scans.isNotEmpty)
+                    NutriVietPressScale(
+                      pressedScale: 0.95,
+                      enableHaptic: true,
+                      child: GestureDetector(
+                        onTap: _confirmAndClearAllScans,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2).withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: _riskHighRed.withValues(alpha: 0.35),
+                              width: 1.1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const PhosphorIcon(
+                                PhosphorIconsBold.trash,
+                                size: 15,
+                                color: _riskHighRed,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                AppLocale.t('Xóa tất cả', 'Clear all'),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: _riskHighRed,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
+              if (_isGuest) ...[
+                const SizedBox(height: 12),
+                NutriVietGlassCard(
+                  cornerRadius: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  onTap: _openLoginFromGuest,
+                  child: Row(
+                    children: [
+                      const PhosphorIcon(
+                        PhosphorIconsDuotone.deviceMobile,
+                        color: _brandGreen,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          AppLocale.t(
+                            'Chế độ Khách: Lịch sử quét lưu cục bộ trên máy. Nhấn để đăng nhập & đồng bộ đám mây.',
+                            'Guest Mode: Scans are saved locally on this device. Tap to sign in & sync to cloud.',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF334155),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 18),
               if (_loadingInitialData && _scans.isEmpty)
                 const NutriVietHistoryListSkeleton(itemCount: 3)
@@ -1986,12 +1991,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: NutriVietEntranceMotion(
-                    delayMs: idx < 6 ? idx * 45 : 0,
-                    child: RepaintBoundary(
-                      child: NutriVietGlassCard(
-                        cornerRadius: 22,
-                        padding: const EdgeInsets.all(16),
+                  child: Dismissible(
+                    key: ValueKey('history_scan_$scanId'),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFEF4444), Color(0xFFB91C1C)],
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppLocale.t('Xóa', 'Delete'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const PhosphorIcon(
+                            PhosphorIconsBold.trash,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                    confirmDismiss: (_) async {
+                      await _confirmAndDeleteScan(scanId, title);
+                      return false;
+                    },
+                    child: NutriVietEntranceMotion(
+                      delayMs: idx < 6 ? idx * 45 : 0,
+                      child: RepaintBoundary(
+                        child: NutriVietGlassCard(
+                          cornerRadius: 22,
+                          padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -2160,20 +2201,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: redTriggers.map((t) {
-                                                  final alLabel = AppLocale.translateAllergenCode(
-                                                    t['allergen_code']?.toString(),
-                                                    fallback: AppLocale.isEn
-                                                        ? (t['allergen_name_en'] ?? t['allergen_code']).toString()
-                                                        : (t['allergen_name_vi'] ?? t['allergen_code']).toString(),
-                                                  );
-                                                  final matchedName = AppLocale.isEn
-                                                      ? (t['matched_en'] ?? t['matched'] ?? t['token']).toString()
-                                                      : (t['matched_vi'] ?? t['token'] ?? t['matched']).toString();
-                                                  final srcFood = (AppLocale.isEn
-                                                          ? (t['source_food_en'] ?? t['source_food'] ?? '')
-                                                          : (t['source_food_vi'] ?? t['source_food'] ?? ''))
-                                                      .toString()
-                                                      .trim();
+                                                  final alLabel =
+                                                      (t['allergen_name_en'] ?? t['allergen_name'] ?? t['allergen_code'])
+                                                          .toString();
+                                                  final matchedName =
+                                                      (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
+                                                          .toString();
+                                                  final srcFood =
+                                                      (t['source_food_en'] ?? t['source_food'] ?? '')
+                                                          .toString()
+                                                          .trim();
                                                   final hasSrcFood =
                                                       srcFood.isNotEmpty && srcFood.toLowerCase() != alLabel.toLowerCase();
 
@@ -2222,13 +2259,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ...yellowTriggers.map((t) {
                                               final chLabel = AppLocale.translateChronicCode(
                                                 t['chronic_code']?.toString(),
-                                                fallback: AppLocale.isEn
-                                                    ? (t['chronic_name_en'] ?? t['chronic_code']).toString()
-                                                    : (t['chronic_name_vi'] ?? t['chronic_code']).toString(),
+                                                fallback: (t['chronic_name_en'] ?? t['chronic_code']).toString(),
                                               );
-                                              final matchedName = AppLocale.isEn
-                                                  ? (t['matched_en'] ?? t['matched'] ?? t['token']).toString()
-                                                  : (t['matched_vi'] ?? t['token'] ?? t['matched']).toString();
+                                              final matchedName =
+                                                  (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
+                                                      .toString();
                                               return Padding(
                                                 padding: const EdgeInsets.only(bottom: 6),
                                                 child: Row(
@@ -2370,6 +2405,62 @@ class _HomeScreenState extends State<HomeScreen> {
                                               },
                                             ),
                                           ],
+                                          const SizedBox(height: 14),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              NutriVietGlassPillButton(
+                                                height: 38,
+                                                variant:
+                                                    NutriVietGlassButtonVariant
+                                                        .danger,
+                                                label: AppLocale.t(
+                                                  'Xóa',
+                                                  'Delete',
+                                                ),
+                                                onPressed: () =>
+                                                    _confirmAndDeleteScan(
+                                                  scanId,
+                                                  title,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              NutriVietGlassPillButton(
+                                                height: 38,
+                                                label: AppLocale.t(
+                                                  'Chia sẻ lên Cộng đồng',
+                                                  'Share to Community',
+                                                ),
+                                                onPressed: () async {
+                                                  final evalVerdict =
+                                                      (evaluation['verdict'] ??
+                                                              scan['verdict'] ??
+                                                              (riskLevel == 'high'
+                                                                  ? 'RED'
+                                                                  : (riskLevel ==
+                                                                          'low'
+                                                                      ? 'YELLOW'
+                                                                      : 'GREEN')))
+                                                          .toString();
+                                                  final published =
+                                                      await CommunityFeedScreen
+                                                          .openComposeSheet(
+                                                    context: context,
+                                                    user: _activeUserMap,
+                                                    initialProductName: title,
+                                                    initialVerdict: evalVerdict,
+                                                    initialIngredients: rawText,
+                                                  );
+                                                  if (published && mounted) {
+                                                    setState(() =>
+                                                        _communityRefreshTick++);
+                                                    _tabNotifier.value = 1;
+                                                  }
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     )
@@ -2380,6 +2471,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
+                ),
                 );
               }),
           ],
@@ -2447,9 +2539,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: AppLocale.t('Trang chủ', 'Home'),
               ),
               LiquidGlassTabBarItem(
-                icon: PhosphorIconsRegular.flask,
-                selectedIcon: PhosphorIconsFill.flask,
-                label: AppLocale.t('Phụ gia', 'Additives'),
+                icon: PhosphorIconsRegular.usersThree,
+                selectedIcon: PhosphorIconsFill.usersThree,
+                label: AppLocale.t('Cộng đồng', 'Community'),
               ),
               LiquidGlassTabBarItem(
                 icon: PhosphorIconsRegular.clockCounterClockwise,
@@ -2486,12 +2578,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final tabChildren = <Widget>[
       _buildHomeTab(),
-      _buildAdditivesTab(),
+      CommunityFeedScreen(
+        user: _activeUserMap,
+        embedded: true,
+        refreshTick: _communityRefreshTick,
+        onRequireAuth: _openLoginFromGuest,
+      ),
       _buildHistoryTab(),
       SettingsScreen(
         userId: _userId,
         userName: _userName,
         userEmail: _userEmail,
+        isGuest: _isGuest,
+        userRole: _userRole,
+        authToken: _authToken,
         onProfileUpdated: _refreshUserData,
       ),
     ];
@@ -2523,40 +2623,457 @@ class _HomeScreenState extends State<HomeScreen> {
 class _PackagingScannerScreen extends StatefulWidget {
   final int userId;
   final String memberName;
+  final bool isGuest;
 
   const _PackagingScannerScreen({
     required this.userId,
     required this.memberName,
+    this.isGuest = false,
   });
 
   @override
   State<_PackagingScannerScreen> createState() => _PackagingScannerScreenState();
 }
 
-class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
+class _PackagingScannerScreenState extends State<_PackagingScannerScreen>
+    with WidgetsBindingObserver {
   static const Color _brandGreen = Color(0xFF14803C);
   static const Color _brandPurple = Color(0xFF4F37C8);
 
+  CameraController? _cameraController;
+  bool _isCameraInitializing = true;
+  String? _cameraError;
+  bool _torchOn = false;
+  bool _isTakingPicture = false;
+  Offset? _focusRingPoint;
+
   bool _isScanning = false;
+  bool _isRunningOcr = false;
+  Uint8List? _capturedImageBytes;
+  String? _ocrStatsBadge;
+  String? _ocrProgressMessage;
+  PaddleOcrCancelToken? _ocrCancelToken;
+
+  final ImagePicker _picker = ImagePicker();
   late final TextEditingController _labelTitleCtrl;
   late final TextEditingController _ingredientsCtrl;
+
+  bool get _hasExtractedResult =>
+      !_isRunningOcr && _ingredientsCtrl.text.trim().isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _labelTitleCtrl = TextEditingController(
       text: AppLocale.t('Kết quả quét', 'Scan result'),
     );
-    _ingredientsCtrl = TextEditingController(
-      text: AppLocale.t(
-        'Bột mì, đường kính, dầu cọ, sữa bột (8%), đạm whey, chất nhũ hóa (E322), chất tạo màu (E102, E110), chất điều vị (E621)',
-        'Wheat flour, refined sugar, palm oil, milk powder (8%), whey protein, emulsifier (E322), food colors (E102, E110), flavor enhancer (E621)',
-      ),
+    _ingredientsCtrl = TextEditingController();
+    _initLiveCamera();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final ctrl = _cameraController;
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      if (ctrl != null && ctrl.value.isInitialized) {
+        _cameraController = null;
+        ctrl.dispose();
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_cameraController == null && mounted && _capturedImageBytes == null) {
+        _initLiveCamera();
+      }
+    }
+  }
+
+  Future<void> _initLiveCamera() async {
+    if (!mounted) return;
+    setState(() {
+      _isCameraInitializing = true;
+      _cameraError = null;
+    });
+    try {
+      final cameras = await availableCameras();
+      if (!mounted) return;
+      if (cameras.isEmpty) {
+        setState(() {
+          _isCameraInitializing = false;
+          _cameraError = AppLocale.t(
+            'Không tìm thấy camera trên thiết bị. Bạn vẫn có thể chọn ảnh từ thư viện.',
+            'No camera found on this device. You can still pick a photo from gallery.',
+          );
+        });
+        return;
+      }
+
+      final backCam = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      final ctrl = CameraController(
+        backCam,
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+
+      await ctrl.initialize();
+      try {
+        await ctrl.setFocusMode(FocusMode.auto);
+        await ctrl.setFlashMode(FlashMode.off);
+      } catch (_) {
+        // Optional camera feature not supported on all devices.
+      }
+
+      if (!mounted) {
+        await ctrl.dispose();
+        return;
+      }
+
+      final old = _cameraController;
+      setState(() {
+        _cameraController = ctrl;
+        _isCameraInitializing = false;
+        _torchOn = false;
+      });
+      await old?.dispose();
+    } on CameraException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCameraInitializing = false;
+        _cameraError = e.code == 'CameraAccessDenied'
+            ? AppLocale.t(
+                'Ứng dụng cần quyền Camera để quét trực tiếp nhãn bao bì.',
+                'Camera permission is required for live packaging scanning.',
+              )
+            : AppLocale.t(
+                'Không thể khởi động camera (${e.code}). Hãy thử lại hoặc chọn ảnh từ thư viện.',
+                'Unable to start camera (${e.code}). Please retry or pick from gallery.',
+              );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCameraInitializing = false;
+        _cameraError = AppLocale.t(
+          'Không thể mở camera trực tiếp. Hãy chọn ảnh từ thư viện hoặc thử lại.',
+          'Unable to open live camera. Pick a photo from gallery or retry.',
+        );
+      });
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    final ctrl = _cameraController;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    try {
+      final next = !_torchOn;
+      await ctrl.setFlashMode(next ? FlashMode.torch : FlashMode.off);
+      if (!mounted) return;
+      HapticFeedback.selectionClick();
+      setState(() => _torchOn = next);
+    } catch (_) {
+      // Device has no torch.
+    }
+  }
+
+  Future<void> _onTapCameraToFocus(
+    TapDownDetails details,
+    BoxConstraints constraints,
+  ) async {
+    final ctrl = _cameraController;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    if (_isRunningOcr || _capturedImageBytes != null) return;
+
+    final local = details.localPosition;
+    final nx = (local.dx / constraints.maxWidth).clamp(0.0, 1.0);
+    final ny = (local.dy / constraints.maxHeight).clamp(0.0, 1.0);
+    setState(() => _focusRingPoint = local);
+    try {
+      await ctrl.setFocusPoint(Offset(nx, ny));
+      await ctrl.setExposurePoint(Offset(nx, ny));
+    } catch (_) {
+      // Focus point not supported.
+    }
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      if (mounted && _focusRingPoint == local) {
+        setState(() => _focusRingPoint = null);
+      }
+    });
+  }
+
+  void _retakeLiveCamera() {
+    _ocrCancelToken?.cancel();
+    _ocrCancelToken = null;
+    setState(() {
+      _capturedImageBytes = null;
+      _ocrStatsBadge = null;
+      _ocrProgressMessage = null;
+      _isRunningOcr = false;
+      _ingredientsCtrl.clear();
+    });
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      _initLiveCamera();
+    }
+  }
+
+  void _cancelActiveOcr() {
+    _ocrCancelToken?.cancel();
+    _ocrCancelToken = null;
+    if (!mounted) return;
+    setState(() {
+      _isRunningOcr = false;
+      _ocrProgressMessage = null;
+      if (_ingredientsCtrl.text.trim().isEmpty) {
+        _capturedImageBytes = null;
+      }
+    });
+  }
+
+  Future<void> _openTokenConfigDialog() async {
+    final existing = await PaddleOcrVlService.resolveToken();
+    if (!mounted) return;
+    final tokenCtrl = TextEditingController(text: existing);
+    try {
+      await showNutriVietGlassDialog<void>(
+        context: context,
+        builder: (ctx) => NutriVietGlassDialog(
+          title: Text(
+            AppLocale.t(
+              'Cấu hình AI Studio Token',
+              'Configure AI Studio Token',
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocale.t(
+                  'Mặc định ứng dụng sử dụng Cloudflare Cloud OCR bảo mật (không cần nhập key). Để trống để dùng mặc định hoặc nhập AI Studio Token riêng của bạn.',
+                  'By default, the app uses secure Cloudflare Cloud OCR (no key needed). Leave blank for default or enter your own AI Studio Token.',
+                ),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF4B5563),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: tokenCtrl,
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                style: const TextStyle(color: Color(0xFF111827)),
+                decoration: InputDecoration(
+                  hintText: AppLocale.t(
+                    'Dán AI Studio Token...',
+                    'Paste AI Studio Token...',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            NutriVietGlassPillButton(
+              label: AppLocale.t('Hủy', 'Cancel'),
+              variant: NutriVietGlassButtonVariant.neutral,
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+            NutriVietGlassPillButton(
+              label: AppLocale.t('Lưu token', 'Save token'),
+              onPressed: () async {
+                await PaddleOcrVlService.saveToken(tokenCtrl.text);
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppLocale.t(
+                        'Đã lưu AI Studio Token cục bộ.',
+                        'Saved AI Studio token locally.',
+                      ),
+                    ),
+                    backgroundColor: _brandGreen,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    } finally {
+      tokenCtrl.dispose();
+    }
+  }
+
+  Future<void> _captureFromLiveCamera() async {
+    if (_isRunningOcr || _isScanning || _isTakingPicture) return;
+    final ctrl = _cameraController;
+    if (ctrl == null || !ctrl.value.isInitialized) {
+      // Fallback to system camera picker only if live viewfinder unavailable
+      await _pickImageViaPicker(ImageSource.camera);
+      return;
+    }
+
+    setState(() => _isTakingPicture = true);
+    try {
+      HapticFeedback.heavyImpact();
+      final xfile = await ctrl.takePicture();
+      final bytes = await xfile.readAsBytes();
+      if (!mounted) return;
+      setState(() => _isTakingPicture = false);
+      await _runOcrOnBytes(bytes, fileName: xfile.name);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isTakingPicture = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocale.t(
+              'Không thể chụp ảnh từ camera: $e',
+              'Unable to capture frame: $e',
+            ),
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickImageViaPicker(ImageSource source) async {
+    if (_isRunningOcr || _isScanning || _isTakingPicture) return;
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 80,
+      );
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      await _runOcrOnBytes(bytes, fileName: picked.name);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocale.t('Không thể mở ảnh: $e', 'Unable to open photo: $e'),
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
+  }
+
+  Future<void> _runOcrOnBytes(
+    Uint8List bytes, {
+    required String fileName,
+  }) async {
+    final cancelToken = PaddleOcrCancelToken();
+    _ocrCancelToken = cancelToken;
+
+    setState(() {
+      _capturedImageBytes = bytes;
+      _isRunningOcr = true;
+      _ocrStatsBadge = null;
+      _ingredientsCtrl.clear();
+      _ocrProgressMessage = AppLocale.t(
+        'Đang tải ảnh lên PaddleOCR-VL-1.6...',
+        'Uploading photo to PaddleOCR-VL-1.6...',
+      );
+    });
+
+    final ocrRes = await PaddleOcrVlService.recognizeImage(
+      imageBytes: bytes,
+      fileName: fileName,
+      useDocOrientationClassify: true,
+      useDocUnwarping: false,
+      cancelToken: cancelToken,
+      onProgress: (progress) {
+        if (!mounted || cancelToken.isCancelled) return;
+        setState(() => _ocrProgressMessage = progress.message);
+      },
     );
+
+    if (!mounted) return;
+    final wasCancelled = cancelToken.isCancelled || ocrRes['cancelled'] == true;
+    if (_ocrCancelToken == cancelToken) {
+      _ocrCancelToken = null;
+    }
+    setState(() {
+      _isRunningOcr = false;
+      _ocrProgressMessage = null;
+    });
+
+    if (wasCancelled) return;
+
+    if (ocrRes['success'] == true) {
+      final extracted = (ocrRes['text'] ?? '').toString().trim();
+      final lineCount = ocrRes['line_count'] ?? 0;
+      final totalMs = (ocrRes['total_ms'] as num?)?.toInt() ?? 0;
+      final secLabel = (totalMs / 1000).toStringAsFixed(1);
+      if (extracted.isNotEmpty) {
+        HapticFeedback.mediumImpact();
+        setState(() {
+          _ingredientsCtrl.text = extracted;
+          _ocrStatsBadge =
+              'PaddleOCR-VL-1.6 · $lineCount ${AppLocale.t('dòng', 'lines')} · ${secLabel}s';
+        });
+      } else {
+        setState(() => _capturedImageBytes = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocale.t(
+                'Không phát hiện được chữ rõ ràng trên ảnh. Hãy đưa camera lại gần vùng Thành phần hơn.',
+                'No clear text detected. Move camera closer to the Ingredients section.',
+              ),
+            ),
+            backgroundColor: const Color(0xFFD97706),
+          ),
+        );
+      }
+    } else {
+      final isAuthErr = ocrRes['auth_error'] == true;
+      setState(() => _capturedImageBytes = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (ocrRes['message'] ??
+                    AppLocale.t(
+                      'Lỗi nhận dạng ảnh PaddleOCR-VL-1.6.',
+                      'PaddleOCR-VL-1.6 OCR error.',
+                    ))
+                .toString(),
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          duration: const Duration(seconds: 5),
+          action: isAuthErr
+              ? SnackBarAction(
+                  label: AppLocale.t('Nhập token', 'Set token'),
+                  textColor: Colors.white,
+                  onPressed: _openTokenConfigDialog,
+                )
+              : null,
+        ),
+      );
+      if (isAuthErr) {
+        _openTokenConfigDialog();
+      }
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _ocrCancelToken?.cancel();
+    _cameraController?.dispose();
     _labelTitleCtrl.dispose();
     _ingredientsCtrl.dispose();
     super.dispose();
@@ -2569,8 +3086,8 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
         SnackBar(
           content: Text(
             AppLocale.t(
-              'Vui lòng nhập hoặc dán danh sách thành phần trên bao bì.',
-              'Please enter or paste the packaging ingredient list.',
+              'Vui lòng chụp nhãn bao bì hoặc nhập danh sách thành phần.',
+              'Please capture a packaging label or enter ingredients.',
             ),
           ),
         ),
@@ -2579,14 +3096,21 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
     }
 
     setState(() => _isScanning = true);
-    final res = await ProfileService.createScan(
-      userId: widget.userId,
-      rawText: text,
-      labelTitle: _labelTitleCtrl.text.trim().isEmpty
-          ? AppLocale.t('Kết quả quét', 'Scan result')
-          : _labelTitleCtrl.text.trim(),
-      memberName: widget.memberName,
-    );
+    final resolvedTitle = _labelTitleCtrl.text.trim().isEmpty
+        ? AppLocale.t('Kết quả quét', 'Scan result')
+        : _labelTitleCtrl.text.trim();
+    final res = widget.isGuest
+        ? await LocalGuestStore.createLocalScan(
+            rawText: text,
+            labelTitle: resolvedTitle,
+            memberName: widget.memberName,
+          )
+        : await ProfileService.createScan(
+            userId: widget.userId,
+            rawText: text,
+            labelTitle: resolvedTitle,
+            memberName: widget.memberName,
+          );
     if (!mounted) return;
     setState(() => _isScanning = false);
 
@@ -2625,8 +3149,8 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
               const SizedBox(height: 8),
               Text(
                 AppLocale.t(
-                  'Nhập / Dán thành phần nhãn bao bì',
-                  'Enter / Paste Packaging Ingredients',
+                  'Nhập / Chỉnh sửa thành phần bao bì',
+                  'Enter / Edit Packaging Ingredients',
                 ),
                 style: const TextStyle(
                   fontSize: 19,
@@ -2639,13 +3163,14 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                 controller: _labelTitleCtrl,
                 style: const TextStyle(color: Color(0xFF111827)),
                 decoration: InputDecoration(
-                  labelText: AppLocale.t('Tên nhãn / sản phẩm', 'Product / label name'),
+                  labelText:
+                      AppLocale.t('Tên nhãn / sản phẩm', 'Product / label name'),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _ingredientsCtrl,
-                maxLines: 4,
+                maxLines: 5,
                 style: const TextStyle(color: Color(0xFF111827)),
                 decoration: InputDecoration(
                   labelText: AppLocale.t(
@@ -2653,8 +3178,8 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                     'Ingredient list & E-codes on packaging',
                   ),
                   hintText: AppLocale.t(
-                    'VD: Bột mì, đường, sữa bột, E102, E621...',
-                    'e.g., Wheat flour, sugar, milk powder, E102, E621...',
+                    'Dán hoặc gõ thành phần sản phẩm...',
+                    'Paste or type product ingredients...',
                   ),
                 ),
               ),
@@ -2679,17 +3204,125 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
     );
   }
 
+  Widget _buildCameraOrPhotoBackground() {
+    // 1. Frozen captured photo while OCR runs or when reviewing OCR text
+    if (_capturedImageBytes != null) {
+      return Positioned.fill(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.memory(
+              _capturedImageBytes!,
+              fit: BoxFit.cover,
+            ),
+            Container(
+              color: Colors.black.withValues(
+                alpha: _isRunningOcr ? 0.38 : 0.56,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 2. Live full-screen camera viewfinder
+    final ctrl = _cameraController;
+    if (ctrl != null && ctrl.value.isInitialized) {
+      return Positioned.fill(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenAspect = constraints.maxWidth /
+                math.max(1.0, constraints.maxHeight);
+            final previewAspect = 1.0 / ctrl.value.aspectRatio;
+            var scale = screenAspect / previewAspect;
+            if (scale < 1.0) scale = 1.0 / scale;
+
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (d) => _onTapCameraToFocus(d, constraints),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRect(
+                    child: Transform.scale(
+                      scale: scale,
+                      child: Center(child: CameraPreview(ctrl)),
+                    ),
+                  ),
+                  // Subtle top/bottom vignette for legible glass controls
+                  IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.transparent,
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.55),
+                          ],
+                          stops: const [0.0, 0.24, 0.72, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_focusRingPoint != null)
+                    Positioned(
+                      left: _focusRingPoint!.dx - 32,
+                      top: _focusRingPoint!.dy - 32,
+                      child: IgnorePointer(
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF6EE7B7),
+                              width: 2.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // 3. Camera initializing or permission/hardware unavailable
+    return Positioned.fill(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0A1F17), Color(0xFF09121B)],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.sizeOf(context).width;
+    final hasLiveCam = _cameraController != null &&
+        _cameraController!.value.isInitialized &&
+        _capturedImageBytes == null;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: NutriVietGlassBackdrop(
-        dark: true,
-        child: Scaffold(
-        backgroundColor: Colors.transparent,
+      child: Scaffold(
+        backgroundColor: Colors.black,
         body: Stack(
           children: [
+            // Full-bleed Live Camera Preview or Frozen Captured Photo
+            _buildCameraOrPhotoBackground(),
+
             // Top Floating Liquid Glass App Bar
             Positioned(
               top: 0,
@@ -2709,12 +3342,18 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                       leading: Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: LiquidGlassTabBarAction(
-                          icon: PhosphorIconsBold.notePencil,
-                          foregroundColor: _brandGreen,
+                          icon: _torchOn
+                              ? PhosphorIconsFill.lightning
+                              : PhosphorIconsBold.lightning,
+                          foregroundColor: _torchOn
+                              ? const Color(0xFFD97706)
+                              : (hasLiveCam
+                                  ? _brandGreen
+                                  : const Color(0xFF9CA3AF)),
                           size: 40,
                           style: NutriVietGlass.circleOrb,
                           touch: NutriVietGlass.touchPronounced,
-                          onTap: _openTextEditorSheet,
+                          onTap: hasLiveCam ? _toggleTorch : _openTokenConfigDialog,
                         ),
                       ),
                       title: RichText(
@@ -2726,8 +3365,9 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                           ),
                           children: [
                             TextSpan(
-                                text: 'Nutri',
-                                style: TextStyle(color: _brandPurple)),
+                              text: 'Nutri',
+                              style: TextStyle(color: _brandPurple),
+                            ),
                             TextSpan(
                               text: 'Viet',
                               style: TextStyle(color: _brandGreen),
@@ -2736,12 +3376,21 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                         ),
                       ),
                       actions: [
+                        LiquidGlassTabBarAction(
+                          icon: PhosphorIconsBold.key,
+                          foregroundColor: _brandGreen,
+                          size: 38,
+                          style: NutriVietGlass.circleOrb,
+                          touch: NutriVietGlass.touchPronounced,
+                          onTap: _openTokenConfigDialog,
+                        ),
+                        const SizedBox(width: 6),
                         Padding(
                           padding: const EdgeInsets.only(right: 4),
                           child: LiquidGlassTabBarAction(
                             icon: PhosphorIconsBold.x,
                             foregroundColor: const Color(0xFF1F2937),
-                            size: 40,
+                            size: 38,
                             style: NutriVietGlass.circleOrb,
                             touch: NutriVietGlass.touchPronounced,
                             onTap: () => Navigator.pop(context),
@@ -2754,143 +3403,115 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
               ),
             ),
 
-            // Top Instruction Floating Glass Banner
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 84,
-              left: 24,
-              right: 24,
-              child: NutriVietEntranceMotion(
-                offsetY: -10,
-                child: LiquidGlassLens(
-                  style: NutriVietGlass.smokedCameraGlass,
-                  touch: NutriVietGlass.touchHorizontalCapsule,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                    child: Text(
-                      AppLocale.t(
-                        'Hướng camera vào mã vạch hoặc danh sách thành phần',
-                        'Point the camera at a barcode or ingredient list',
-                      ),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Center Interactive Packaging Preview Card with Animated 120Hz Reticle
-            Center(
-              child: NutriVietPressScale(
-                pressedScale: 0.97,
-                child: GestureDetector(
-                  onTap: _openTextEditorSheet,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Stack(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: LiquidGlassLens(
-                            style: NutriVietGlass.cardGlass(
-                              cornerRadius: 22,
-                              tint: const Color(0xDCFFFFFF),
-                            ).copyWith(
-                              blur: 7.5,
-                              refractionIndex: 1.07,
-                              refractionWidth: 18,
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(22),
-                                border: Border.all(
-                                  color: _brandGreen.withValues(alpha: 0.55),
-                                  width: 1.4,
+            // Top Instruction Banner (only when not reviewing extracted result)
+            if (!_hasExtractedResult)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 82,
+                left: 24,
+                right: 24,
+                child: IgnorePointer(
+                  child: NutriVietEntranceMotion(
+                    offsetY: -8,
+                    child: LiquidGlassLens(
+                      style: NutriVietGlass.smokedCameraGlass,
+                      touch: NutriVietGlass.touchHorizontalCapsule,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 11,
+                        ),
+                        child: Text(
+                          _isRunningOcr
+                              ? (_ocrProgressMessage ??
+                                  AppLocale.t(
+                                    'PaddleOCR-VL-1.6 đang đọc nhãn bao bì...',
+                                    'PaddleOCR-VL-1.6 reading packaging label...',
+                                  ))
+                              : AppLocale.t(
+                                  'Đưa vùng Thành phần vào khung, chạm để lấy nét rồi nhấn chụp',
+                                  'Align the Ingredients block in frame, tap to focus & capture',
                                 ),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        AppLocale.t(
-                                          'NHÃN THÀNH PHẦN ĐANG QUÉT',
-                                          'PACKAGING LABEL IN VIEW',
-                                        ),
-                                        style: const TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: _brandGreen,
-                                          letterSpacing: 0.4,
-                                        ),
-                                      ),
-                                      Row(
-                                        children: [
-                                          const PhosphorIcon(
-                                            PhosphorIconsDuotone.notePencil,
-                                            size: 16,
-                                            color: _brandGreen,
-                                            duotoneSecondaryOpacity: 0.28,
-                                            duotoneSecondaryColor: _brandGreen,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            AppLocale.t('Chỉnh sửa', 'Edit'),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: _brandGreen
-                                                  .withValues(alpha: 0.9),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _ingredientsCtrl.text,
-                                    maxLines: 4,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13.5,
-                                      color: Color(0xFF1F2937),
-                                      height: 1.4,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            height: 1.32,
                           ),
                         ),
-                        Positioned.fill(
-                          child:
-                              NutriVietScannerReticle(isScanning: _isScanning),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
+
+            // Center Layer:
+            // - Live Camera Mode -> Unobstructed transparent Reticle viewfinder!
+            // - Camera Error Mode -> Clean retry/gallery prompt (no fake data)
+            // - Running OCR Mode -> Animated scanning Reticle + Cancel button
+            // - Result Review Mode -> Real extracted text card + Analyze / Retake
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _hasExtractedResult
+                    ? _buildExtractedResultCard()
+                    : _isRunningOcr
+                        ? _buildScanningOverlay(screenW)
+                        : (!hasLiveCam && !_isCameraInitializing && _cameraError != null)
+                            ? _buildCameraUnavailableCard()
+                            : IgnorePointer(
+                                child: SizedBox(
+                                  width: screenW - 48,
+                                  height: 270,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      const Positioned.fill(
+                                        child: NutriVietScannerReticle(
+                                          isScanning: false,
+                                        ),
+                                      ),
+                                      if (_isCameraInitializing)
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const SizedBox(
+                                              width: 28,
+                                              height: 28,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<Color>(
+                                                  Color(0xFF6EE7B7),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Text(
+                                              AppLocale.t(
+                                                'Đang mở camera...',
+                                                'Opening camera...',
+                                              ),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+              ),
             ),
 
-            // Bottom Liquid Glass Blender Dock + Morphing Status Pill
+            // Bottom Liquid Glass Shutter Dock + Morphing Status Pill
             Positioned(
               left: 0,
               right: 0,
-              bottom: 28,
+              bottom: 24,
               child: SafeArea(
                 top: false,
                 child: Column(
@@ -2904,7 +3525,9 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           GestureDetector(
-                            onTap: _openTextEditorSheet,
+                            onTap: (_isScanning || _isRunningOcr || _isTakingPicture)
+                                ? null
+                                : () => _pickImageViaPicker(ImageSource.gallery),
                             child: const SizedBox(
                               width: 56,
                               height: 56,
@@ -2923,7 +3546,11 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                           ),
                           const SizedBox(width: 18),
                           GestureDetector(
-                            onTap: _isScanning ? null : _executeRealScan,
+                            onTap: (_isScanning || _isRunningOcr || _isTakingPicture)
+                                ? null
+                                : (_hasExtractedResult
+                                    ? _retakeLiveCamera
+                                    : _captureFromLiveCamera),
                             child: SizedBox(
                               width: 84,
                               height: 84,
@@ -2933,7 +3560,9 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
-                                    if (_isScanning)
+                                    if (_isScanning ||
+                                        _isRunningOcr ||
+                                        _isTakingPicture)
                                       NutriVietPulseHalo(
                                         glowColor: Colors.white,
                                         size: 74,
@@ -2951,8 +3580,10 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                                           ),
                                         ),
                                       ),
-                                    const PhosphorIcon(
-                                      PhosphorIconsBold.scan,
+                                    PhosphorIcon(
+                                      _hasExtractedResult
+                                          ? PhosphorIconsBold.arrowCounterClockwise
+                                          : PhosphorIconsBold.camera,
                                       color: Colors.white,
                                       size: 30,
                                     ),
@@ -2963,7 +3594,9 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                           ),
                           const SizedBox(width: 18),
                           GestureDetector(
-                            onTap: _isScanning ? null : _openTextEditorSheet,
+                            onTap: (_isScanning || _isRunningOcr)
+                                ? null
+                                : _openTextEditorSheet,
                             child: const SizedBox(
                               width: 56,
                               height: 56,
@@ -2983,45 +3616,66 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    LiquidGlassMorph(
-                      motion: LiquidGlassMorphMotion.fluid,
-                      smoothness: 24,
-                      touch: NutriVietGlass.touchHorizontalCapsule,
-                      style: NutriVietGlass.smokedCameraGlass,
-                      child: Padding(
-                        key: ValueKey(
-                            'scan_pill_${_isScanning}_${AppLocale.code}'),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 9),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_isScanning) ...[
-                              const NutriVietShimmerBox.circle(
-                                size: 12,
-                                baseColor: Color(0x8834D399),
-                                highlightColor: Colors.white,
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: LiquidGlassMorph(
+                        motion: LiquidGlassMorphMotion.fluid,
+                        smoothness: 24,
+                        touch: NutriVietGlass.touchHorizontalCapsule,
+                        style: NutriVietGlass.smokedCameraGlass,
+                        child: Padding(
+                          key: ValueKey(
+                            'scan_pill_${_isScanning}_${_isRunningOcr}_${_hasExtractedResult}_${_ocrProgressMessage ?? ''}_${AppLocale.code}',
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 9,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_isScanning || _isRunningOcr) ...[
+                                const NutriVietShimmerBox.circle(
+                                  size: 12,
+                                  baseColor: Color(0x8834D399),
+                                  highlightColor: Colors.white,
+                                ),
+                                const SizedBox(width: 9),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  _isRunningOcr
+                                      ? (_ocrProgressMessage ??
+                                          AppLocale.t(
+                                            'PaddleOCR-VL-1.6 đang đọc nhãn...',
+                                            'Running PaddleOCR-VL-1.6...',
+                                          ))
+                                      : _isScanning
+                                          ? AppLocale.t(
+                                              'Đang phân tích thành phần...',
+                                              'Analyzing label ingredients...',
+                                            )
+                                          : _hasExtractedResult
+                                              ? AppLocale.t(
+                                                  'Đã đọc xong · Nhấn Phân tích hoặc Chụp lại',
+                                                  'Done · Tap Analyze or Retake',
+                                                )
+                                              : AppLocale.t(
+                                                  'Camera trực tiếp · PaddleOCR-VL-1.6',
+                                                  'Live camera · PaddleOCR-VL-1.6',
+                                                ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 9),
                             ],
-                            Text(
-                              _isScanning
-                                  ? AppLocale.t(
-                                      'Đang phân tích thành phần...',
-                                      'Analyzing label ingredients...',
-                                    )
-                                  : AppLocale.t(
-                                      'Nhấn để đọc nhãn...',
-                                      'Tap to scan label...',
-                                    ),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -3032,7 +3686,221 @@ class _PackagingScannerScreenState extends State<_PackagingScannerScreen> {
           ],
         ),
       ),
-    ),
+    );
+  }
+
+  Widget _buildScanningOverlay(double screenW) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: screenW - 48,
+          height: 270,
+          child: const IgnorePointer(
+            child: NutriVietScannerReticle(isScanning: true),
+          ),
+        ),
+        const SizedBox(height: 18),
+        NutriVietGlassPillButton(
+          height: 40,
+          variant: NutriVietGlassButtonVariant.neutral,
+          label: AppLocale.t('Hủy nhận dạng', 'Cancel OCR'),
+          onPressed: _cancelActiveOcr,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCameraUnavailableCard() {
+    return LiquidGlassLens(
+      style: NutriVietGlass.cardGlass(
+        cornerRadius: 22,
+        tint: const Color(0xE8FFFFFF),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const PhosphorIcon(
+              PhosphorIconsDuotone.cameraSlash,
+              size: 42,
+              color: _brandGreen,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _cameraError ??
+                  AppLocale.t(
+                    'Không thể mở camera trực tiếp.',
+                    'Unable to open live camera.',
+                  ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1F2937),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: NutriVietGlassPillButton(
+                    height: 44,
+                    variant: NutriVietGlassButtonVariant.neutral,
+                    label: AppLocale.t('Thử lại', 'Retry'),
+                    onPressed: _initLiveCamera,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: NutriVietGlassPillButton(
+                    height: 44,
+                    label: AppLocale.t('Chọn ảnh', 'Pick photo'),
+                    onPressed: () => _pickImageViaPicker(ImageSource.gallery),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtractedResultCard() {
+    return LiquidGlassLens(
+      style: NutriVietGlass.cardGlass(
+        cornerRadius: 22,
+        tint: const Color(0xECFFFFFF),
+      ).copyWith(
+        blur: 8.0,
+        refractionIndex: 1.07,
+        refractionWidth: 18,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: _brandGreen.withValues(alpha: 0.55),
+            width: 1.4,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  AppLocale.t(
+                    'THÀNH PHẦN ĐÃ NHẬN DẠNG',
+                    'EXTRACTED INGREDIENTS',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: _brandGreen,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _openTextEditorSheet,
+                  child: Row(
+                    children: [
+                      const PhosphorIcon(
+                        PhosphorIconsDuotone.notePencil,
+                        size: 16,
+                        color: _brandGreen,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        AppLocale.t('Chỉnh sửa', 'Edit'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _brandGreen.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (_ocrStatsBadge != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F4EA),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const PhosphorIcon(
+                      PhosphorIconsFill.sparkle,
+                      size: 13,
+                      color: _brandGreen,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _ocrStatsBadge!,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: _brandGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 165),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Text(
+                  _ingredientsCtrl.text,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    color: Color(0xFF1F2937),
+                    height: 1.42,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                NutriVietGlassPillButton(
+                  height: 44,
+                  variant: NutriVietGlassButtonVariant.neutral,
+                  label: AppLocale.t('Chụp lại', 'Retake'),
+                  onPressed: _isScanning ? null : _retakeLiveCamera,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: NutriVietGlassPillButton(
+                    height: 44,
+                    isLoading: _isScanning,
+                    label: AppLocale.t(
+                      'Phân tích ngay',
+                      'Analyze now',
+                    ),
+                    onPressed: _isScanning ? null : _executeRealScan,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

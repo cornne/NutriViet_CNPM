@@ -3,11 +3,13 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
+import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
+import 'admin_moderation_screen.dart';
 import 'allergy_profile_screen.dart';
 import 'login_screen.dart';
 
@@ -15,6 +17,9 @@ class SettingsScreen extends StatefulWidget {
   final int userId;
   final String userName;
   final String userEmail;
+  final bool isGuest;
+  final String userRole;
+  final String authToken;
   final VoidCallback? onProfileUpdated;
 
   const SettingsScreen({
@@ -22,6 +27,9 @@ class SettingsScreen extends StatefulWidget {
     required this.userId,
     required this.userName,
     required this.userEmail,
+    this.isGuest = false,
+    this.userRole = 'user',
+    this.authToken = '',
     this.onProfileUpdated,
   });
 
@@ -96,11 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final trimmed = _currentName.trim();
     if (trimmed.isEmpty) return AppLocale.t('Tôi', 'Me');
     final parts = trimmed.split(RegExp(r'\s+'));
-    for (final p in parts) {
-      if (p.toLowerCase() == 'bình' || p.toLowerCase() == 'binh') {
-        return 'Bình';
-      }
-    }
     final target = parts.length > 3 ? parts.first : parts.last;
     return target[0].toUpperCase() + (target.length > 1 ? target.substring(1) : '');
   }
@@ -126,6 +129,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    if (widget.isGuest) {
+      final results = await Future.wait([
+        LocalGuestStore.getChronics(),
+        LocalGuestStore.getAllergens(),
+        LocalGuestStore.getSettings(),
+      ]);
+      if (!mounted) return;
+      _chronics = List<Map<String, dynamic>>.from(results[0]['chronics'] ?? []);
+      _allergens = List<Map<String, dynamic>>.from(results[1]['allergens'] ?? []);
+      final s = results[2]['settings'] is Map
+          ? Map<String, dynamic>.from(results[2]['settings'] as Map)
+          : <String, dynamic>{};
+      final localLang = (s['language'] ?? '').toString();
+      if (localLang == 'en' || localLang == 'vi') {
+        _language = localLang;
+        await AppLocale.setLanguage(_language);
+      } else {
+        _language = AppLocale.code;
+      }
+      _notifyBadges = s['notify_badges'] ?? true;
+      _notifyReminders = s['notify_reminders'] ?? false;
+      setState(() => _isLoading = false);
+      return;
+    }
+
     final results = await Future.wait([
       ProfileService.getChronics(widget.userId),
       ProfileService.getAllergens(widget.userId),
@@ -155,6 +183,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _persistSettings() async {
+    if (widget.isGuest) {
+      await LocalGuestStore.saveSettings({
+        'language': _language,
+        'notify_badges': _notifyBadges,
+        'notify_reminders': _notifyReminders,
+      });
+      widget.onProfileUpdated?.call();
+      return;
+    }
     await ProfileService.saveSettings(
       userId: widget.userId,
       language: _language,
@@ -246,10 +283,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           .where((c) => activeCodes.contains(c['code']))
                           .map((c) => {'code': c['code']!, 'name': c['name']!})
                           .toList();
-                      final res = await ProfileService.saveChronics(
-                        userId: widget.userId,
-                        chronics: payload,
-                      );
+                      final res = widget.isGuest
+                          ? await LocalGuestStore.saveChronics(payload)
+                          : await ProfileService.saveChronics(
+                              userId: widget.userId,
+                              chronics: payload,
+                            );
                       if (!ctx.mounted) return;
                       Navigator.pop(ctx);
                       if (res['success'] == true) {
@@ -357,6 +396,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           userId: widget.userId,
           userName: _currentName,
           userEmail: widget.userEmail,
+          isGuest: widget.isGuest,
         ),
       ),
     );
@@ -714,28 +754,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
               cornerRadius: 22,
               child: Column(
                 children: [
-                  _buildSettingRow(
-                    icon: PhosphorIconsDuotone.lockKey,
-                    iconColor: _brandGreen,
-                    title: AppLocale.t('Đổi mật khẩu', 'Change password'),
-                    trailingText: widget.userEmail,
-                    onTap: _openPasswordDialog,
-                  ),
-                  _buildSettingRow(
-                    icon: PhosphorIconsDuotone.signOut,
-                    iconColor: const Color(0xFFDC2626),
-                    title: AppLocale.t('Đăng xuất', 'Sign out'),
-                    trailingText: '',
-                    onTap: () async {
-                      await AuthService.logout();
-                      if (!context.mounted) return;
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    },
-                  ),
+                  if (widget.isGuest) ...[
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.signIn,
+                      iconColor: _brandGreen,
+                      title: AppLocale.t(
+                        'Đăng nhập & Đồng bộ Cloud',
+                        'Sign In & Cloud Sync',
+                      ),
+                      trailingText: AppLocale.t('Khách', 'Guest'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        );
+                      },
+                    ),
+                    Divider(
+                      height: 1,
+                      indent: 68,
+                      color: Colors.black.withValues(alpha: 0.05),
+                    ),
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.signOut,
+                      iconColor: const Color(0xFFDC2626),
+                      title: AppLocale.t('Thoát chế độ Khách', 'Exit Guest Mode'),
+                      trailingText: '',
+                      onTap: () async {
+                        await AuthService.logout();
+                        if (!context.mounted) return;
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                  ] else ...[
+                    if (widget.userRole.toLowerCase() == 'admin') ...[
+                      _buildSettingRow(
+                        icon: PhosphorIconsDuotone.shieldCheck,
+                        iconColor: _brandPurple,
+                        title: AppLocale.t('Quản trị Cộng đồng', 'Admin Moderation'),
+                        trailingText: 'ADMIN',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AdminModerationScreen(
+                                token: widget.authToken,
+                                currentUserId: widget.userId,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 68,
+                        color: Colors.black.withValues(alpha: 0.05),
+                      ),
+                    ],
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.lockKey,
+                      iconColor: _brandGreen,
+                      title: AppLocale.t('Đổi mật khẩu', 'Change password'),
+                      trailingText: widget.userEmail,
+                      onTap: _openPasswordDialog,
+                    ),
+                    _buildSettingRow(
+                      icon: PhosphorIconsDuotone.signOut,
+                      iconColor: const Color(0xFFDC2626),
+                      title: AppLocale.t('Đăng xuất', 'Sign out'),
+                      trailingText: '',
+                      onTap: () async {
+                        await AuthService.logout();
+                        if (!context.mounted) return;
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

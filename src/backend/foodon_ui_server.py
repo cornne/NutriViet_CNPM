@@ -1,7 +1,7 @@
 """
-Unified Local Server for NutriViet Backend WSGI & FoodOn + Kala Hybrid Engine
-=============================================================================
-Serves all REST APIs (`/api/v1/*`) and the Bilingual Test UI (`/foodon-test`).
+Unified Local Server for NutriViet Backend WSGI & FoodOn Ontology Engine
+========================================================================
+Serves all REST APIs (`/api/v1/*`) and the FoodOn Graph UI (`/foodon-graph`).
 """
 
 import os
@@ -49,7 +49,7 @@ class QuietWSGIHandler(WSGIRequestHandler):
 def app_with_root_redirect(environ, start_response):
     path = environ.get("PATH_INFO", "/")
     if path in ("/", "/index.html"):
-        environ["PATH_INFO"] = "/foodon-test"
+        environ["PATH_INFO"] = "/foodon-graph"
     return wsgi_app.application(environ, start_response)
 
 
@@ -63,7 +63,7 @@ def main():
         server_class=ThreadingWSGIServer,
         handler_class=QuietWSGIHandler,
     ) as httpd:
-        print(f"NutriViet Full Backend + FoodOn Hybrid Server running at: http://0.0.0.0:{PORT}/foodon-test", flush=True)
+        print(f"NutriViet Full Backend + FoodOn Server running at: http://0.0.0.0:{PORT}/foodon-graph", flush=True)
         httpd.serve_forever()
 
 

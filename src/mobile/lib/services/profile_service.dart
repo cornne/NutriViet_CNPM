@@ -7,7 +7,7 @@ import '../l10n/app_locale.dart';
 class ProfileService {
   static const String cloudApiRoot = String.fromEnvironment(
     'NUTRIVIET_API_ROOT',
-    defaultValue: 'https://ngobinh2006.pythonanywhere.com/api/v1',
+    defaultValue: 'https://nutriviet.nutriviet-api.workers.dev/api/v1',
   );
   static const String _loopbackRoot = 'http://127.0.0.1:8050/api/v1';
   static const String _emulatorRoot = 'http://10.0.2.2:8050/api/v1';
@@ -17,8 +17,8 @@ class ProfileService {
   static String? _cachedWorkingRoot;
 
   /// Resolves backend API roots in priority order.
-  /// Release builds prioritize PythonAnywhere HTTPS first and never probe dead
-  /// developer LAN/emulator IPs; debug builds check `127.0.0.1:8050` first.
+  /// Release builds target Cloudflare Workers HTTPS exclusively (zero localhost
+  /// fallback probes); debug builds check `127.0.0.1:8050` first.
   @visibleForTesting
   static List<String> buildApiRoots({
     required bool isReleaseMode,
@@ -28,7 +28,7 @@ class ProfileService {
   }) {
     final List<String> base;
     if (isReleaseMode) {
-      base = <String>[cloudApiRoot, _loopbackRoot];
+      base = <String>[cloudApiRoot];
     } else if (!isWeb && platform == TargetPlatform.android) {
       base = <String>[_loopbackRoot, cloudApiRoot, _emulatorRoot];
     } else {
@@ -51,6 +51,8 @@ class ProfileService {
         isWeb: kIsWeb,
         cachedWorkingRoot: _cachedWorkingRoot,
       );
+
+  static List<String> get apiRoots => _apiRoots;
 
   static Duration _timeoutForRoot(String root) {
     if (root.contains('127.0.0.1')) {
@@ -186,6 +188,64 @@ class ProfileService {
       return bestResponse;
     }
     return {'_ok': false, 'success': false, 'message': lastError};
+  }
+
+  static Future<Map<String, dynamic>> _deleteJson(String subPath) async {
+    String lastError = AppLocale.t(
+      'Không thể kết nối tới máy chủ.',
+      'Unable to connect to the server.',
+    );
+    int? lastStatusCode;
+    for (final root in _apiRoots) {
+      final url = Uri.parse('$root$subPath');
+      try {
+        final response = await _client
+            .delete(url, headers: {'Content-Type': 'application/json'})
+            .timeout(_timeoutForRoot(root));
+        lastStatusCode = response.statusCode;
+        if (response.statusCode == 200) {
+          final data = await _decodeJsonBytes(response.bodyBytes);
+          if (data is Map<String, dynamic>) {
+            _cachedWorkingRoot = root;
+            return {'_ok': true, ...data};
+          }
+        } else if (response.statusCode == 404 || response.statusCode == 405) {
+          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
+          try {
+            final errData = await _decodeJsonBytes(response.bodyBytes);
+            if (errData is Map && errData['message'] != null) {
+              lastError = errData['message'].toString();
+            }
+          } catch (_) {}
+        } else {
+          try {
+            final errData = await _decodeJsonBytes(response.bodyBytes);
+            lastError = errData['message'] ??
+                AppLocale.t(
+                  'Lỗi máy chủ (${response.statusCode})',
+                  'Server error (${response.statusCode})',
+                );
+          } catch (_) {
+            lastError = AppLocale.t(
+              'Lỗi máy chủ (${response.statusCode})',
+              'Server error (${response.statusCode})',
+            );
+          }
+        }
+      } catch (e) {
+        if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
+        lastError = AppLocale.t(
+          'Không thể kết nối máy chủ ($e)',
+          'Unable to connect to server ($e)',
+        );
+      }
+    }
+    return {
+      '_ok': false,
+      'success': false,
+      'status_code': lastStatusCode,
+      'message': lastError,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -514,7 +574,7 @@ class ProfileService {
       'raw_text': rawText,
       'label_title': labelTitle ?? AppLocale.t('Kết quả quét', 'Scan result'),
       'member_name': memberName,
-      'lang': AppLocale.code,
+      'lang': 'en',
     });
     if (res['_ok'] == true) {
       return {
@@ -537,17 +597,96 @@ class ProfileService {
     };
   }
 
+  static Future<Map<String, dynamic>> deleteScan({
+    required int userId,
+    required int scanId,
+  }) async {
+    final res = await _deleteJson('/scans/$scanId?user_id=$userId');
+    if (res['_ok'] == true) {
+      return {
+        'success': true,
+        'deleted_id': res['deleted_id'] ?? scanId,
+        'scans': res['scans'] ?? [],
+        'total_scans': res['total_scans'] ?? 0,
+        'warning_scans': res['warning_scans'] ?? 0,
+        'monthly_scans': res['monthly_scans'] ?? 0,
+        'monthly_warnings': res['monthly_warnings'] ?? 0,
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể xóa bản ghi lịch sử quét trên máy chủ.',
+            'Unable to delete scan history entry on server.',
+          ),
+    };
+  }
+
+  static Future<Map<String, dynamic>> clearScans({
+    required int userId,
+  }) async {
+    final res = await _deleteJson('/scans?user_id=$userId');
+    if (res['_ok'] == true) {
+      return {
+        'success': true,
+        'deleted_count': res['deleted_count'] ?? 0,
+        'scans': res['scans'] ?? [],
+        'total_scans': res['total_scans'] ?? 0,
+        'warning_scans': res['warning_scans'] ?? 0,
+        'monthly_scans': res['monthly_scans'] ?? 0,
+        'monthly_warnings': res['monthly_warnings'] ?? 0,
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể xóa toàn bộ lịch sử quét trên máy chủ.',
+            'Unable to clear scan history on server.',
+          ),
+    };
+  }
+
+  /// Stateless FoodOn packaging label evaluation for Guest mode (zero cloud writes).
+  static Future<Map<String, dynamic>> evaluateLabelStateless({
+    required String rawText,
+    List<Map<String, dynamic>> allergens = const [],
+    List<String> chronics = const [],
+  }) async {
+    final res = await _postJson('/foodon/evaluate', {
+      'raw_text': rawText,
+      'allergens': allergens,
+      'chronics': chronics,
+      'lang': 'en',
+    });
+    if (res['_ok'] == true) {
+      final evaluation = Map<String, dynamic>.from(res)..remove('_ok');
+      return {
+        'success': true,
+        'evaluation': evaluation,
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể phân tích nhãn bao bì.',
+            'Unable to analyze packaging label.',
+          ),
+    };
+  }
+
   // ---------------------------------------------------------------------------
-  // 7. Live FoodOn + Kala Ontology Endpoints ("Phụ gia" & Category Filters)
+  // 7. Live Official Pure-English FoodOn Ontology Endpoints (Zero Fallback)
   // ---------------------------------------------------------------------------
   static Future<Map<String, dynamic>> getAdditives({
     String query = '',
     String? lang,
     int limit = 60,
   }) async {
-    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final qEnc = Uri.encodeQueryComponent(query);
-    final res = await _getJson('/foodon/additives?q=$qEnc&lang=$activeLang&limit=$limit');
+    final res = await _getJson('/foodon/additives?q=$qEnc&lang=en&limit=$limit');
     if (res['_ok'] == true) {
       return {
         'success': true,
@@ -573,10 +712,9 @@ class ProfileService {
     String? lang,
     int limit = 20,
   }) async {
-    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final alParam = Uri.encodeQueryComponent(allergens.join(','));
     final res = await _getJson(
-      '/foodon/category?category=$category&allergens=$alParam&lang=$activeLang&limit=$limit',
+      '/foodon/category?category=$category&allergens=$alParam&lang=en&limit=$limit',
     );
     if (res['_ok'] == true) {
       return {
@@ -601,10 +739,9 @@ class ProfileService {
     String? lang,
     int limit = 12,
   }) async {
-    final activeLang = AppLocale.normalize(lang ?? AppLocale.code);
     final qEnc = Uri.encodeQueryComponent(query);
     final res = await _getJson(
-      '/foodon/allergy-lookup?q=$qEnc&lang=$activeLang&limit=$limit',
+      '/foodon/allergy-lookup?q=$qEnc&lang=en&limit=$limit',
     );
     if (res['_ok'] == true) {
       return {

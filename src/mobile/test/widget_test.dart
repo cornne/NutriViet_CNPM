@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nutriviet_mobile/l10n/app_locale.dart';
 import 'package:nutriviet_mobile/main.dart';
+import 'package:nutriviet_mobile/screens/community_feed_screen.dart';
+import 'package:nutriviet_mobile/screens/home_screen.dart';
 import 'package:nutriviet_mobile/screens/login_screen.dart';
 import 'package:nutriviet_mobile/screens/settings_screen.dart';
+import 'package:nutriviet_mobile/services/auth_service.dart';
+import 'package:nutriviet_mobile/services/local_guest_store.dart';
 import 'package:nutriviet_mobile/services/profile_service.dart';
 import 'package:nutriviet_mobile/theme/nutriviet_glass.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_glass_modal.dart';
@@ -371,13 +376,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('ProfileService prioritizes PythonAnywhere HTTPS in release mode without LAN probes', () {
+  test('ProfileService targets Cloudflare Workers HTTPS exclusively in release mode', () {
     final releaseRoots = ProfileService.buildApiRoots(
       isReleaseMode: true,
       platform: TargetPlatform.android,
       isWeb: false,
     );
-    expect(releaseRoots.first, ProfileService.cloudApiRoot);
+    expect(releaseRoots, [ProfileService.cloudApiRoot]);
+    expect(releaseRoots, isNot(contains('http://127.0.0.1:8050/api/v1')));
     expect(releaseRoots, isNot(contains('http://192.168.1.15:8050/api/v1')));
     expect(releaseRoots, isNot(contains('http://10.0.2.2:8050/api/v1')));
 
@@ -388,6 +394,259 @@ void main() {
     );
     expect(debugRoots.first, 'http://127.0.0.1:8050/api/v1');
     expect(debugRoots[1], ProfileService.cloudApiRoot);
+  });
+
+  test('LocalGuestStore persists locally and survives AuthService.logout until cleared', () async {
+    expect(await LocalGuestStore.hasLocalData(), isFalse);
+
+    final guest = await AuthService.enterGuestMode();
+    expect(AuthService.isGuest(guest), isTrue);
+    expect(AuthService.isAdmin(guest), isFalse);
+
+    final session = await AuthService.getSession();
+    expect(AuthService.isGuest(session), isTrue);
+
+    await LocalGuestStore.saveAllergens([
+      {'code': 'milk', 'name': 'Milk', 'severity': 'high'},
+    ]);
+    await LocalGuestStore.saveChronics([
+      {'code': 'diabetes', 'name': 'Diabetes'},
+    ]);
+    await LocalGuestStore.addFamilyMember(
+      memberName: 'Bé An',
+      relationship: 'Con',
+    );
+    final emptyMetrics = await LocalGuestStore.getMetrics();
+    expect(emptyMetrics['has_metrics'], isFalse);
+    expect(emptyMetrics['metrics'], isNull);
+
+    await LocalGuestStore.saveMetrics(
+      age: 26,
+      gender: 'female',
+      height: 162,
+      weight: 52,
+      activityLevel: 'moderate',
+    );
+
+    expect(await LocalGuestStore.hasLocalData(), isTrue);
+    final alRes = await LocalGuestStore.getAllergens();
+    expect((alRes['allergens'] as List).length, 1);
+    final famRes = await LocalGuestStore.getFamilyMembers();
+    expect((famRes['members'] as List).length, 2);
+    final mRes = await LocalGuestStore.getMetrics();
+    expect((mRes['metrics'] as Map)['age'], 26);
+
+    // Logout removes only auth session keys so Guest local data can be synced on login
+    await AuthService.logout();
+    expect(await AuthService.getSession(), isNull);
+    expect(await LocalGuestStore.hasLocalData(), isTrue);
+
+    await LocalGuestStore.clearAll();
+    expect(await LocalGuestStore.hasLocalData(), isFalse);
+  });
+
+  test('LocalGuestStore deleteScan and clearScans update local scan history accurately', () async {
+    final nowIso = DateTime.now().toIso8601String();
+    SharedPreferences.setMockInitialValues({
+      'nv_guest_scans':
+          '[{"id":101,"label_title":"Sữa tươi","raw_text":"milk","risk_level":"safe","warning_count":0,"additive_count":1,"created_at":"$nowIso"},'
+          '{"id":102,"label_title":"Bánh quy","raw_text":"peanut, E102","risk_level":"high","warning_count":2,"additive_count":2,"created_at":"$nowIso"}]',
+    });
+
+    final before = await LocalGuestStore.getScans();
+    expect(before['total_scans'], 2);
+    expect(before['warning_scans'], 1);
+    expect(before['monthly_warnings'], 2);
+
+    final afterDelete = await LocalGuestStore.deleteScan(102);
+    expect(afterDelete['success'], isTrue);
+    expect(afterDelete['total_scans'], 1);
+    expect(afterDelete['warning_scans'], 0);
+    expect(afterDelete['monthly_warnings'], 0);
+    expect(((afterDelete['scans'] as List).first as Map)['id'], 101);
+
+    final afterClear = await LocalGuestStore.clearScans();
+    expect(afterClear['success'], isTrue);
+    expect(afterClear['deleted_count'], 1);
+    expect(afterClear['total_scans'], 0);
+    expect(afterClear['scans'], isEmpty);
+  });
+
+  test('AuthService role helpers distinguish guest, user, and admin strictly', () {
+    expect(AuthService.isAdmin({'id': 1, 'role': 'admin', 'token': 'tok', 'is_guest': false}), isTrue);
+    expect(AuthService.isAdmin({'id': 2, 'role': 'user', 'token': 'tok', 'is_guest': false}), isFalse);
+    expect(AuthService.isAdmin({'id': 0, 'role': 'admin', 'token': '', 'is_guest': true}), isFalse);
+    expect(AuthService.isGuest({'id': 0, 'role': 'guest', 'token': '', 'is_guest': true}), isTrue);
+    expect(AuthService.isGuest({'id': 2, 'role': 'user', 'token': 'tok', 'is_guest': false}), isFalse);
+  });
+
+  testWidgets('CommunityFeedScreen blocks Guests with Sign-In gate and hides Admin UI', (
+    WidgetTester tester,
+  ) async {
+    await AppLocale.setLanguage('vi');
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CommunityFeedScreen(
+            embedded: true,
+            user: {
+              'id': 0,
+              'full_name': 'Khách',
+              'role': 'guest',
+              'token': '',
+              'is_guest': true,
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Mạng xã hội Cộng đồng'), findsOneWidget);
+    expect(find.text('Đăng nhập để mở khóa'), findsOneWidget);
+    expect(find.text('+ Đăng bài'), findsNothing);
+    expect(find.byIcon(PhosphorIconsFill.shieldCheck), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('CommunityFeedScreen shows Admin Shield ONLY for admin role', (
+    WidgetTester tester,
+  ) async {
+    await AppLocale.setLanguage('vi');
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CommunityFeedScreen(
+            key: ValueKey('community_user'),
+            embedded: true,
+            user: {
+              'id': 10,
+              'full_name': 'Normal User',
+              'role': 'user',
+              'token': 'fake-user-token',
+              'is_guest': false,
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Cộng đồng'), findsOneWidget);
+    expect(find.text('+ Đăng bài'), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsFill.shieldCheck), findsNothing);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CommunityFeedScreen(
+            key: ValueKey('community_admin'),
+            embedded: true,
+            user: {
+              'id': 1,
+              'full_name': 'Admin',
+              'role': 'admin',
+              'token': 'fake-admin-token',
+              'is_guest': false,
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byIcon(PhosphorIconsFill.shieldCheck), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('SettingsScreen exposes hidden Admin row only to admin and Cloud Sync to Guest', (
+    WidgetTester tester,
+  ) async {
+    await AppLocale.setLanguage('vi');
+    // Standard user must NOT see Admin Moderation
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SettingsScreen(
+          key: ValueKey('settings_user_rbac'),
+          userId: 10,
+          userName: 'Alice',
+          userEmail: 'alice@example.com',
+          userRole: 'user',
+        ),
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Tài khoản'),
+      250.0,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Quản trị Cộng đồng'), findsNothing);
+    expect(find.text('Đăng xuất'), findsOneWidget);
+
+    // Admin user MUST see hidden Admin Moderation row
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SettingsScreen(
+          key: ValueKey('settings_admin_rbac'),
+          userId: 1,
+          userName: 'Admin',
+          userEmail: 'admin@nutriviet.vn',
+          userRole: 'admin',
+          authToken: 'admin-token',
+        ),
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Quản trị Cộng đồng'),
+      250.0,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Quản trị Cộng đồng'), findsOneWidget);
+
+    // Guest user MUST see Sign In & Cloud Sync, never Admin Moderation
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SettingsScreen(
+          key: ValueKey('settings_guest_rbac'),
+          userId: 0,
+          userName: 'Khách',
+          userEmail: '',
+          isGuest: true,
+          userRole: 'guest',
+        ),
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Đăng nhập & Đồng bộ Cloud'),
+      250.0,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Đăng nhập & Đồng bộ Cloud'), findsOneWidget);
+    expect(find.text('Quản trị Cộng đồng'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('HomeScreen replaces Additives tab with Community tab on bottom navigation', (
+    WidgetTester tester,
+  ) async {
+    await AppLocale.setLanguage('vi');
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HomeScreen(
+          user: {
+            'id': 0,
+            'full_name': 'Khách',
+            'email': '',
+            'role': 'guest',
+            'token': '',
+            'is_guest': true,
+          },
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Cộng đồng'), findsWidgets);
+    expect(find.text('Phụ gia'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }
 
