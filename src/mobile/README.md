@@ -1,54 +1,79 @@
 # NutriViet Mobile Application (Flutter)
 
-**Course:** CS300 - CSC13002 - Introduction to Software Engineering  
-**Project Assignment:** PA3-2026 (Section E Deliverable)  
-**Functional Group:** FG1 - Authentication & Authorization  
+Android-first mobile client for **NutriViet**, built with **Flutter (Dart 3.x)** and a lightweight **Kotlin native** image-optimization bridge. Out of the box, it connects directly to the live **Cloudflare Workers + D1** production backend (`https://nutriviet.nutriviet-api.workers.dev/api/v1`) — no local server or client API keys required.
 
 ---
 
-## 📱 How to Open and Run in Android Studio
+## Key Capabilities
 
-### 1. Prerequisite: Start the Backend Server First
-Before launching the Flutter app, ensure the backend server is running so that the Android app can communicate with it:
-```bash
-cd d:\NutriViet\src\backend
-python server.py
+- **Live CameraX Packaging Scanner + Edge OCR:** Full-screen camera viewfinder with flash, focus, gallery picker, native Android EXIF-aware JPEG compression (`MainActivity.kt` `com.nutriviet/image_opt` down to `<= 110 KB`), and **PaddleOCR-VL-1.6** via Cloudflare Edge Proxy (`/api/v1/ocr/jobs`).
+- **Personalized FoodOn Allergen & Chronic Alerts:** Instant **RED / YELLOW / GREEN** label evaluation backed by 33,688 FoodOn ontology concepts, dynamic everyday trigger food lookup, and body metrics (BMI/TDEE).
+- **Local-First Guest Mode + Cloud Sync:** Guests can configure allergens, chronics, family members, and scan labels locally (`LocalGuestStore`), then seamlessly sync everything to a cloud account upon sign-in.
+- **Scan History Management:** View detailed allergen/additive breakdowns, swipe or tap to delete individual scans, or clear full history (both Cloud & Guest).
+- **Community Feed & Admin Moderation (RBAC):** Authenticated users share product reviews with photos stored on Cloudflare D1; `admin` accounts unlock hidden moderation controls.
+- **Liquid Glass UI & Strict Monolingual VI / EN Toggle:** Reactive `AppLocale` switching with zero mixed-language strings.
+
+---
+
+## Project Structure
+
+```text
+src/mobile/
+├── android/app/src/main/kotlin/com/nutriviet/nutriviet_mobile/
+│   └── MainActivity.kt               # Native Android EXIF-aware JPEG compressor channel
+├── lib/
+│   ├── main.dart                     # App entrypoint & session bootstrap
+│   ├── l10n/app_locale.dart          # Reactive VI / EN language controller
+│   ├── screens/                      # Home (+ Live Scanner/History), Login, Register, Verify,
+│   │                                 # AllergyProfile, Settings, CommunityFeed, AdminModeration
+│   ├── services/
+│   │   ├── auth_service.dart         # Cloud auth & SharedPreferences session store
+│   │   ├── profile_service.dart      # Profile, scans, and FoodOn ontology REST client
+│   │   ├── paddle_ocr_vl_service.dart# Cloudflare Edge OCR proxy client + native compression
+│   │   ├── community_service.dart    # Community posts, D1 image upload & Admin RBAC API
+│   │   └── local_guest_store.dart    # On-device Guest Mode storage & Cloud Sync
+│   ├── theme/nutriviet_glass.dart    # Liquid Glass design tokens & backdrop
+│   └── widgets/                      # Reusable glass modals, shimmer skeletons & scanner reticle
+└── test/
+    ├── paddle_ocr_vl_service_test.dart # Edge OCR proxy, retry, auth & cancellation tests
+    └── widget_test.dart              # UI, localization, Guest store, profile & RBAC tests
 ```
-*(The backend will be listening on `http://0.0.0.0:8000`)*
 
 ---
 
-### 2. Open Project in Android Studio
-1. Open **Android Studio**.
-2. Select **Open** (or `File > Open...`).
-3. Navigate to `d:\NutriViet\src\mobile` and click **OK**.
-4. If prompted to get Flutter dependencies, click **Get dependencies** (or run `flutter pub get` in terminal).
+## Quick Start
+
+### Prerequisites
+- Flutter SDK `>= 3.24` (Dart `>= 3.5`)
+- Android SDK / Emulator or physical Android device (min SDK 26)
+
+### Run & Verify
+```bash
+cd src/mobile
+
+# 1. Install dependencies
+flutter pub get
+
+# 2. Static analysis & unit/widget tests (22 tests)
+flutter analyze
+flutter test
+
+# 3. Run on a connected Android device or emulator
+flutter run
+
+# 4. Build a clean Release APK (no API token flags needed)
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
+```
 
 ---
 
-### 3. Launch on Android Emulator
-1. Open **Device Manager** in Android Studio (icon in top right or `Tools > Device Manager`).
-2. Start any Android Virtual Device (e.g., *Pixel 7 Pro*, *Medium Phone API 34*).
-3. Select the emulator as target device and click **Run** (`Shift + F10` or the green Play icon).
+## Backend URL Configuration
 
-> [!NOTE]
-> In Android Emulator, network requests to `http://10.0.2.2:8000` automatically connect to the host computer's backend on port 8000. This is pre-configured in `auth_service.dart`.
-
----
-
-## 🧪 Testing the Feature (Full-Stack Verification)
-
-1. **Test Registration (UC01):**
-   * Click *"Đăng ký ngay"*
-   * Enter full name, your personal email, password
-   * Submit ➔ Verify HTTP 201 response and redirect to Home screen
-   * Check the backend terminal log and SQLite database to see your new user record!
-
-2. **Test Negative Scenario (UC02 Alternative Flow):**
-   * Log out
-   * Try entering an incorrect password ➔ Verify the red warning banner appears immediately!
-
-3. **Test Successful Login (UC02 Basic Flow):**
-   * Click *"Dùng tài khoản mẫu (Demo)"* to auto-fill `demo@nutriviet.vn`
-   * Click *"Đăng nhập"* ➔ Verify HTTP 200 and redirect to Home screen.
-
+- **Release builds (`kReleaseMode == true`)** call `https://nutriviet.nutriviet-api.workers.dev/api/v1` exclusively (zero localhost probes).
+- **Debug builds** check `http://127.0.0.1:8050/api/v1` first (for local testing with `src/backend/foodon_ui_server.py` + `adb reverse tcp:8050 tcp:8050`) and fall back to Cloudflare automatically.
+- **Custom backend override:**
+  ```bash
+  flutter build apk --release --dart-define=NUTRIVIET_API_ROOT=https://your-worker.workers.dev/api/v1
+  ```
+- **Optional personal AI Studio OCR token:** By default, OCR uses the encrypted secret on Cloudflare Worker. Users can optionally enter a custom token via the Key icon on the Scanner screen (sent in `X-PaddleOCR-Token`).
