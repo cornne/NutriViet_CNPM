@@ -427,10 +427,13 @@ export function registerAuthAndProfileRoutes(app: Hono<{ Bindings: Env }>) {
     if (!body.user_id) return c.json({ success: false, message: "user_id is required" }, 400);
 
     const uid = Number(body.user_id);
-    const age = Number(body.age ?? 22);
+    const age = Number(body.age);
+    const height = Number(body.height);
+    const weight = Number(body.weight);
+    if (!Number.isFinite(age) || age <= 0 || !Number.isFinite(height) || height <= 0 || !Number.isFinite(weight) || weight <= 0) {
+      return c.json({ success: false, message: "age, height, and weight must be positive numbers." }, 400);
+    }
     const gender = String(body.gender ?? "male").toLowerCase();
-    const height = Number(body.height ?? 170.0);
-    const weight = Number(body.weight ?? 65.0);
     const activity = String(body.activity_level ?? "moderate");
     const info = calculateMetricsInfo(age, gender, height, weight, activity);
 
