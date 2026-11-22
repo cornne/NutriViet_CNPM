@@ -120,12 +120,10 @@ class PaddleOcrVlService {
     bool useDocUnwarping = false,
     Duration submitTimeout = const Duration(seconds: 45),
     Duration pollTimeout = const Duration(seconds: 25),
-    Duration downloadTimeout = const Duration(seconds: 35),
     Duration pollInterval = const Duration(milliseconds: 1400),
     Duration maxWait = const Duration(seconds: 120),
     int maxSubmitAttempts = 2,
     int maxConsecutivePollErrors = 3,
-    int maxDownloadAttempts = 2,
     PaddleOcrCancelToken? cancelToken,
     void Function(PaddleOcrProgress progress)? onProgress,
     http.Client? client,
@@ -291,7 +289,6 @@ class PaddleOcrVlService {
       // -----------------------------------------------------------------------
       // Stage 2: Poll async job status (Worker parses JSONL on Cloudflare Edge)
       // -----------------------------------------------------------------------
-      String jsonlUrl = '';
       String? directText;
       String? directRawMarkdown;
       int pollCount = 0;
@@ -367,19 +364,14 @@ class PaddleOcrVlService {
             (pollJson?['state'] ?? data?['state'] ?? '').toString().toLowerCase();
 
         if (state == 'done') {
-          if (pollJson?.containsKey('text') == true) {
-            directText = (pollJson?['text'] ?? '').toString();
-            directRawMarkdown = (pollJson?['raw_markdown'] ?? '').toString();
-            emit(
-              PaddleOcrStage.parsing,
-              'Đang tổng hợp danh sách thành phần...',
-              'Finalizing extracted ingredient text...',
-              pollCount: pollCount,
-            );
-            break;
-          }
-          final resultUrl = _asMap(data?['resultUrl']);
-          jsonlUrl = (resultUrl?['jsonUrl'] ?? '').toString().trim();
+          directText = (pollJson?['text'] ?? '').toString();
+          directRawMarkdown = (pollJson?['raw_markdown'] ?? '').toString();
+          emit(
+            PaddleOcrStage.parsing,
+            'Đang tổng hợp danh sách thành phần...',
+            'Finalizing extracted ingredient text...',
+            pollCount: pollCount,
+          );
           break;
         } else if (state == 'failed') {
           final errMsg =
@@ -417,26 +409,7 @@ class PaddleOcrVlService {
 
       if (cancelToken?.isCancelled == true) return _cancelledResult();
 
-      // Fast path: Cloudflare Worker already fetched & parsed the JSONL payload on Edge!
-      if (directText != null) {
-        final cleaned = directText.trim();
-        final nonEmptyLines = cleaned
-            .split('\n')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-        return {
-          'success': true,
-          'text': cleaned,
-          'raw_markdown': directRawMarkdown ?? '',
-          'line_count': nonEmptyLines.length,
-          'total_ms': sw.elapsedMilliseconds,
-          'job_id': jobId,
-          'engine': modelName,
-        };
-      }
-
-      if (jsonlUrl.isEmpty) {
+      if (directText == null) {
         return {
           'success': false,
           'message': AppLocale.t(
@@ -446,83 +419,16 @@ class PaddleOcrVlService {
         };
       }
 
-      // -----------------------------------------------------------------------
-      // Stage 3 (Legacy fallback): Download & parse JSONL directly if returned
-      // -----------------------------------------------------------------------
-      emit(
-        PaddleOcrStage.parsing,
-        'Đang tải và tổng hợp danh sách thành phần...',
-        'Downloading and extracting ingredient text...',
-        pollCount: pollCount,
-      );
-
-      http.Response? resultResp;
-      for (int attempt = 1; attempt <= maxDownloadAttempts; attempt++) {
-        if (cancelToken?.isCancelled == true) return _cancelledResult();
-        try {
-          resultResp = await httpClient
-              .get(Uri.parse(jsonlUrl))
-              .timeout(downloadTimeout);
-          break;
-        } catch (e) {
-          debugPrint('[PaddleOCR-VL-1.6 DOWNLOAD attempt=$attempt] $e');
-          if (attempt < maxDownloadAttempts) {
-            await Future<void>.delayed(const Duration(milliseconds: 800));
-          }
-        }
-      }
-
-      if (cancelToken?.isCancelled == true) return _cancelledResult();
-
-      if (resultResp == null || resultResp.statusCode != 200) {
-        final code = resultResp?.statusCode;
-        return {
-          'success': false,
-          'message': code == null
-              ? AppLocale.t(
-                  'Tải tệp kết quả OCR bị quá hạn. Hãy thử quét lại.',
-                  'Downloading OCR result timed out. Please retry.',
-                )
-              : AppLocale.t(
-                  'Không thể tải tệp kết quả OCR (HTTP $code).',
-                  'Unable to download OCR result payload (HTTP $code).',
-                ),
-        };
-      }
-
-      final jsonlText = utf8.decode(resultResp.bodyBytes, allowMalformed: true);
-      final markdownChunks = <String>[];
-
-      for (final rawLine in const LineSplitter().convert(jsonlText)) {
-        final trimmed = rawLine.trim();
-        if (trimmed.isEmpty) continue;
-        final decoded = _asMap(jsonDecode(trimmed));
-        final resultObj = _asMap(decoded?['result']);
-        final layoutResults = resultObj?['layoutParsingResults'];
-        if (layoutResults is List) {
-          for (final item in layoutResults) {
-            final itemMap = _asMap(item);
-            final mdMap = _asMap(itemMap?['markdown']);
-            final md = mdMap?['text']?.toString().trim();
-            if (md != null && md.isNotEmpty) {
-              markdownChunks.add(md);
-            }
-          }
-        }
-      }
-
-      final rawMarkdown = markdownChunks.join('\n\n').trim();
-      final cleaned = extractCleanText(rawMarkdown);
+      final cleaned = directText.trim();
       final nonEmptyLines = cleaned
           .split('\n')
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();
-
       return {
         'success': true,
         'text': cleaned,
-        'raw_markdown': rawMarkdown,
+        'raw_markdown': directRawMarkdown ?? '',
         'line_count': nonEmptyLines.length,
         'total_ms': sw.elapsedMilliseconds,
         'job_id': jobId,
