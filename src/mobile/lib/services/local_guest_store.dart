@@ -171,19 +171,18 @@ class LocalGuestStore {
       try {
         final map = jsonDecode(raw);
         if (map is Map) {
-          return {'success': true, 'metrics': Map<String, dynamic>.from(map)};
+          return {
+            'success': true,
+            'has_metrics': true,
+            'metrics': Map<String, dynamic>.from(map),
+          };
         }
       } catch (_) {}
     }
     return {
       'success': true,
-      'metrics': {
-        'age': 22,
-        'gender': 'male',
-        'height': 170.0,
-        'weight': 65.0,
-        'activity_level': 'moderate',
-      },
+      'has_metrics': false,
+      'metrics': null,
     };
   }
 
