@@ -122,10 +122,10 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   late TextEditingController _nameController;
   String _currentEmail = '';
 
-  int _age = 22;
+  int? _age;
   String _gender = 'male';
-  double _height = 170.0;
-  double _weight = 65.0;
+  double? _height;
+  double? _weight;
   String _activityLevel = 'moderate';
 
   late TextEditingController _ageController;
@@ -138,17 +138,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   bool _isSearchingFood = false;
   bool _allergensChanged = false;
   List<Map<String, dynamic>> _foodSearchResults = [];
-
-  static const List<Map<String, String>> _quickEverydayFoods = [
-    {'label': 'Butter', 'emoji': '🧈'},
-    {'label': 'Cheese', 'emoji': '🧀'},
-    {'label': 'Bread', 'emoji': '🍞'},
-    {'label': 'Shrimp', 'emoji': '🦐'},
-    {'label': 'Fish sauce', 'emoji': '🐟'},
-    {'label': 'Mayonnaise', 'emoji': '🥚'},
-    {'label': 'Tofu', 'emoji': '🌱'},
-    {'label': 'Peanut butter', 'emoji': '🥜'},
-  ];
+  List<Map<String, String>> _quickEverydayFoods = [];
 
   final List<AllergenChipItem> _allergens = [
     AllergenChipItem(
@@ -269,11 +259,32 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     });
     _currentEmail = widget.userEmail ?? '';
     _loadUserEmail();
-    _ageController = TextEditingController(text: '$_age');
-    _heightController = TextEditingController(text: '$_height');
-    _weightController = TextEditingController(text: '$_weight');
+    _ageController = TextEditingController();
+    _heightController = TextEditingController();
+    _weightController = TextEditingController();
     _foodSearchController = TextEditingController();
     _loadProfile();
+    _loadQuickTriggerFoods();
+  }
+
+  Future<void> _loadQuickTriggerFoods() async {
+    final res = await ProfileService.searchAllergyFoods(
+      query: '',
+      lang: AppLocale.code,
+      limit: 8,
+    );
+    if (!mounted || res['success'] != true) return;
+    final items = (res['items'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => {
+              'label': (m['food_name_en'] ?? m['food_name'] ?? '').toString().trim(),
+              'emoji': (m['emoji'] ?? '🍽️').toString(),
+            })
+        .where((m) => (m['label'] ?? '').isNotEmpty)
+        .toList();
+    if (items.isNotEmpty) {
+      setState(() => _quickEverydayFoods = items);
+    }
   }
 
   Future<void> _loadUserEmail() async {
@@ -404,10 +415,12 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     );
   }
 
-  double _calculateBmi() {
-    final hM = _height / 100.0;
-    if (hM <= 0) return 22.0;
-    return double.parse((_weight / (hM * hM)).toStringAsFixed(1));
+  double? _calculateBmi() {
+    if (_height == null || _weight == null || _height! <= 0 || _weight! <= 0) {
+      return null;
+    }
+    final hM = _height! / 100.0;
+    return double.parse((_weight! / (hM * hM)).toStringAsFixed(1));
   }
 
   String _getBmiStatus(double bmi) {
@@ -424,10 +437,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     return const Color(0xFFEF4444);
   }
 
-  int _calculateTdee() {
+  int? _calculateTdee() {
+    if (_age == null || _height == null || _weight == null) return null;
     double bmr = _gender == 'female'
-        ? (10 * _weight + 6.25 * _height - 5 * _age - 161)
-        : (10 * _weight + 6.25 * _height - 5 * _age + 5);
+        ? (10 * _weight! + 6.25 * _height! - 5 * _age! - 161)
+        : (10 * _weight! + 6.25 * _height! - 5 * _age! + 5);
     return (bmr * 1.55).round();
   }
 
@@ -532,17 +546,24 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       _warnTraces = s['warn_traces'] ?? true;
     }
 
-    if (metricsRes['success'] == true && metricsRes['metrics'] != null) {
-      final m = metricsRes['metrics'];
-      _age = m['age'] is int ? m['age'] : int.tryParse(m['age'].toString()) ?? 22;
-      _gender = m['gender'] ?? 'male';
-      _height = (m['height'] is num) ? (m['height'] as num).toDouble() : 170.0;
-      _weight = (m['weight'] is num) ? (m['weight'] as num).toDouble() : 65.0;
-      _activityLevel = m['activity_level'] ?? 'moderate';
+    if (metricsRes['success'] == true && metricsRes['metrics'] is Map) {
+      final m = metricsRes['metrics'] as Map;
+      final parsedAge = m['age'] is int ? m['age'] as int : int.tryParse('${m['age']}');
+      final parsedH = m['height'] is num ? (m['height'] as num).toDouble() : double.tryParse('${m['height']}');
+      final parsedW = m['weight'] is num ? (m['weight'] as num).toDouble() : double.tryParse('${m['weight']}');
+      _age = (parsedAge != null && parsedAge > 0) ? parsedAge : null;
+      _gender = (m['gender'] ?? 'male').toString();
+      _height = (parsedH != null && parsedH > 0) ? parsedH : null;
+      _weight = (parsedW != null && parsedW > 0) ? parsedW : null;
+      _activityLevel = (m['activity_level'] ?? 'moderate').toString();
 
-      _ageController.text = '$_age';
-      _heightController.text = _height.toStringAsFixed(_height.truncateToDouble() == _height ? 0 : 1);
-      _weightController.text = _weight.toStringAsFixed(_weight.truncateToDouble() == _weight ? 0 : 1);
+      _ageController.text = _age != null ? '$_age' : '';
+      _heightController.text = _height != null
+          ? _height!.toStringAsFixed(_height!.truncateToDouble() == _height! ? 0 : 1)
+          : '';
+      _weightController.text = _weight != null
+          ? _weight!.toStringAsFixed(_weight!.truncateToDouble() == _weight! ? 0 : 1)
+          : '';
     }
 
     setState(() => _isLoading = false);
@@ -576,17 +597,21 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
             })
         .toList();
 
+    final hasValidMetrics =
+        _age != null && _height != null && _weight != null;
+
     final results = widget.isGuest
         ? await Future.wait([
             LocalGuestStore.saveAllergens(selectedAllergens),
             LocalGuestStore.saveChronics(selectedChronics),
-            LocalGuestStore.saveMetrics(
-              age: _age,
-              gender: _gender,
-              height: _height,
-              weight: _weight,
-              activityLevel: _activityLevel,
-            ),
+            if (hasValidMetrics)
+              LocalGuestStore.saveMetrics(
+                age: _age!,
+                gender: _gender,
+                height: _height!,
+                weight: _weight!,
+                activityLevel: _activityLevel,
+              ),
           ])
         : await Future.wait([
             ProfileService.saveAllergens(
@@ -597,14 +622,15 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
               userId: widget.userId,
               chronics: selectedChronics,
             ),
-            ProfileService.saveMetrics(
-              userId: widget.userId,
-              age: _age,
-              gender: _gender,
-              height: _height,
-              weight: _weight,
-              activityLevel: _activityLevel,
-            ),
+            if (hasValidMetrics)
+              ProfileService.saveMetrics(
+                userId: widget.userId,
+                age: _age!,
+                gender: _gender,
+                height: _height!,
+                weight: _weight!,
+                activityLevel: _activityLevel,
+              ),
           ]);
 
     final res = results[0];
@@ -810,60 +836,62 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  AppLocale.t(
-                    'Chạm nhanh món ăn phổ biến:',
-                    'Quick tap common trigger foods:',
+                if (_quickEverydayFoods.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    AppLocale.t(
+                      'Chạm nhanh món ăn phổ biến (FoodOn):',
+                      'Quick tap common trigger foods (FoodOn):',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF92400E),
+                    ),
                   ),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF92400E),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _quickEverydayFoods.map((qf) {
-                    final label = qf['label']!;
-                    final isCurrentQuery =
-                        _foodSearchController.text.trim().toLowerCase() ==
-                        label.toLowerCase();
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        _foodSearchController.text = label;
-                        _searchEverydayAllergyFood(label);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isCurrentQuery
-                              ? const Color(0xFFFEE2E2)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _quickEverydayFoods.map((qf) {
+                      final label = qf['label']!;
+                      final isCurrentQuery =
+                          _foodSearchController.text.trim().toLowerCase() ==
+                          label.toLowerCase();
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          _foodSearchController.text = label;
+                          _searchEverydayAllergyFood(label);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
                             color: isCurrentQuery
-                                ? const Color(0xFFDC2626)
-                                : const Color(0xFFFCD34D),
+                                ? const Color(0xFFFEE2E2)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isCurrentQuery
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFFFCD34D),
+                            ),
+                          ),
+                          child: Text(
+                            '${qf['emoji']} $label',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isCurrentQuery
+                                  ? const Color(0xFFB91C1C)
+                                  : const Color(0xFF78350F),
+                            ),
                           ),
                         ),
-                        child: Text(
-                          '${qf['emoji']} $label',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: isCurrentQuery
-                                ? const Color(0xFFB91C1C)
-                                : const Color(0xFF78350F),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                      );
+                    }).toList(),
+                  ),
+                ],
 
                 if (_isSearchingFood) ...[
                   const SizedBox(height: 10),
@@ -1319,26 +1347,45 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                 ),
                               ],
                               const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: _getBmiColor(_calculateBmi()),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'BMI ${_calculateBmi().toStringAsFixed(1)} • ${_getBmiStatus(_calculateBmi())}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: _getBmiColor(_calculateBmi()),
-                                    ),
-                                  ),
-                                ],
+                              Builder(
+                                builder: (_) {
+                                  final bmi = _calculateBmi();
+                                  if (bmi == null) {
+                                    return Text(
+                                      AppLocale.t(
+                                        'BMI: Chưa cập nhật chỉ số thể trạng',
+                                        'BMI: Body metrics not set yet',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    );
+                                  }
+                                  final bmiColor = _getBmiColor(bmi);
+                                  return Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: bmiColor,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'BMI ${bmi.toStringAsFixed(1)} • ${_getBmiStatus(bmi)}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: bmiColor,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -1498,9 +1545,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                     ),
                                     onChanged: (val) {
                                       final parsed = int.tryParse(val.trim());
-                                      if (parsed != null && parsed > 0 && parsed < 120) {
-                                        setState(() => _age = parsed);
-                                      }
+                                      setState(() {
+                                        _age = (parsed != null && parsed > 0 && parsed < 120)
+                                            ? parsed
+                                            : null;
+                                      });
                                     },
                                   ),
                                 ],
@@ -1625,9 +1674,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                     ),
                                     onChanged: (val) {
                                       final parsed = double.tryParse(val.trim());
-                                      if (parsed != null && parsed > 50 && parsed < 260) {
-                                        setState(() => _height = parsed);
-                                      }
+                                      setState(() {
+                                        _height = (parsed != null && parsed > 50 && parsed < 260)
+                                            ? parsed
+                                            : null;
+                                      });
                                     },
                                   ),
                                 ],
@@ -1659,9 +1710,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                     ),
                                     onChanged: (val) {
                                       final parsed = double.tryParse(val.trim());
-                                      if (parsed != null && parsed > 20 && parsed < 300) {
-                                        setState(() => _weight = parsed);
-                                      }
+                                      setState(() {
+                                        _weight = (parsed != null && parsed > 20 && parsed < 300)
+                                            ? parsed
+                                            : null;
+                                      });
                                     },
                                   ),
                                 ],
@@ -1671,71 +1724,104 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // BMI & Calorie Result Badge
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _getBmiColor(_calculateBmi()).withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        // BMI & Calorie Result Badge (real values only, zero fake defaults)
+                        Builder(
+                          builder: (_) {
+                            final bmi = _calculateBmi();
+                            final tdee = _calculateTdee();
+                            if (bmi == null) {
+                              return Container(
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: _getBmiColor(_calculateBmi()).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
                                 ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      _calculateBmi().toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w800,
-                                        color: _getBmiColor(_calculateBmi()),
-                                      ),
-                                    ),
-                                    const Text(
-                                      'BMI',
-                                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
-                                    ),
-                                  ],
+                                child: Text(
+                                  AppLocale.t(
+                                    'Nhập tuổi, chiều cao và cân nặng thực tế để tính chỉ số BMI & nhu cầu năng lượng (TDEE).',
+                                    'Enter your actual age, height, and weight to calculate BMI & daily energy needs (TDEE).',
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                    height: 1.35,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _getBmiStatus(_calculateBmi()),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: _getBmiColor(_calculateBmi()),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      AppLocale.t(
-                                        'Nhu cầu năng lượng ước tính: ~${_calculateTdee()} kcal/ngày',
-                                        'Estimated daily energy need: ~${_calculateTdee()} kcal/day',
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Color(0xFF475569),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+                              );
+                            }
+                            final bmiColor = _getBmiColor(bmi);
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: bmiColor.withValues(alpha: 0.3),
                                 ),
                               ),
-                            ],
-                          ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: bmiColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          bmi.toStringAsFixed(1),
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w800,
+                                            color: bmiColor,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'BMI',
+                                          style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _getBmiStatus(bmi),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: bmiColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          tdee != null
+                                              ? AppLocale.t(
+                                                  'Nhu cầu năng lượng ước tính: ~$tdee kcal/ngày',
+                                                  'Estimated daily energy need: ~$tdee kcal/day',
+                                                )
+                                              : AppLocale.t(
+                                                  'Nhập thêm tuổi để tính nhu cầu calo (TDEE).',
+                                                  'Enter age to calculate daily calorie target (TDEE).',
+                                                ),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF475569),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
