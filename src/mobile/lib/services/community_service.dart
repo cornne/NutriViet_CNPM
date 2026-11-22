@@ -4,17 +4,10 @@ import 'package:http/http.dart' as http;
 import '../l10n/app_locale.dart';
 import 'profile_service.dart';
 
-/// Authenticated Community Feed, Media Upload (Firebase Storage REST or backend
-/// fallback), and Hidden Admin Moderation API client.
+/// Authenticated Community Feed, Media Upload (Cloudflare Worker + D1),
+/// and Hidden Admin Moderation API client.
 class CommunityService {
   static final http.Client _client = http.Client();
-
-  /// Optional Firebase Storage bucket configured at build time via:
-  /// `--dart-define=NUTRIVIET_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app`
-  static const String firebaseStorageBucket = String.fromEnvironment(
-    'NUTRIVIET_FIREBASE_STORAGE_BUCKET',
-    defaultValue: '',
-  );
 
   static String get _apiRoot => ProfileService.cloudApiRoot;
 
@@ -120,9 +113,8 @@ class CommunityService {
     return {'success': false, 'status': lastStatus, 'message': lastError};
   }
 
-  /// Uploads a compressed product photo to Firebase Storage when
-  /// `NUTRIVIET_FIREBASE_STORAGE_BUCKET` is configured; otherwise falls back to
-  /// the authenticated backend `/api/v1/community/upload-image` endpoint.
+  /// Uploads a compressed product photo directly to Cloudflare Worker
+  /// `/api/v1/community/upload-image` (persisted in D1 `community_media`).
   static Future<Map<String, dynamic>> uploadProductImage({
     required String token,
     required Uint8List bytes,
@@ -132,37 +124,6 @@ class CommunityService {
     final contentType = lower.endsWith('.png')
         ? 'image/png'
         : (lower.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
-    final ext = contentType == 'image/png'
-        ? 'png'
-        : (contentType == 'image/webp' ? 'webp' : 'jpg');
-
-    if (firebaseStorageBucket.isNotEmpty) {
-      try {
-        final objPath = 'community/${DateTime.now().millisecondsSinceEpoch}.$ext';
-        final uploadUri = Uri.parse(
-          'https://firebasestorage.googleapis.com/v0/b/$firebaseStorageBucket/o'
-          '?uploadType=media&name=${Uri.encodeQueryComponent(objPath)}',
-        );
-        final res = await _client
-            .post(
-              uploadUri,
-              headers: {'Content-Type': contentType},
-              body: bytes,
-            )
-            .timeout(const Duration(seconds: 20));
-        if (res.statusCode == 200 || res.statusCode == 201) {
-          final meta = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-          final dlToken = (meta['downloadTokens'] ?? '').toString().split(',').first;
-          final encoded = Uri.encodeComponent(objPath);
-          final url = dlToken.isNotEmpty
-              ? 'https://firebasestorage.googleapis.com/v0/b/$firebaseStorageBucket/o/$encoded?alt=media&token=$dlToken'
-              : 'https://firebasestorage.googleapis.com/v0/b/$firebaseStorageBucket/o/$encoded?alt=media';
-          return {'success': true, 'image_url': url, 'provider': 'firebase'};
-        }
-      } catch (e) {
-        debugPrint('[FIREBASE UPLOAD FALLBACK] $e');
-      }
-    }
 
     final res = await _request(
       'POST',
@@ -179,7 +140,7 @@ class CommunityService {
       return {
         'success': true,
         'image_url': resolveMediaUrl(rawUrl),
-        'provider': 'backend',
+        'provider': 'cloudflare-d1',
       };
     }
     return res;
