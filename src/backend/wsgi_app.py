@@ -16,6 +16,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import urllib.parse
 from datetime import datetime
+from ocr_normalizer import normalize_ocr_payload
 
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if _BACKEND_DIR not in sys.path:
@@ -1040,6 +1041,17 @@ def application(environ, start_response):
                 start_response('200 OK', headers)
                 return [json.dumps({"success": True, "members": members}).encode('utf-8')]
 
+        # 11b. OCR Text Normalization (FG3 - UC07)
+        if path == '/api/v1/ocr/normalize' and method == 'POST':
+            raw_text = (body.get('raw_text') or '').strip()
+            lang = (body.get('lang') or 'vi').strip().lower()
+            if not raw_text:
+                start_response('400 Bad Request', headers)
+                return [json.dumps({"success": False, "message": "raw_text is required"}).encode('utf-8')]
+            norm_res = normalize_ocr_payload(raw_text, lang=lang)
+            start_response('200 OK', headers)
+            return [json.dumps(norm_res, ensure_ascii=False).encode('utf-8')]
+
         # 12. Real Scan History & Packaging Label Evaluation ("Quét nhãn" & "Lịch sử")
         if path == '/api/v1/scans':
             eng = _get_foodon_engine()
@@ -1105,10 +1117,11 @@ def application(environ, start_response):
                 cursor.execute("SELECT chronic_code FROM user_chronics WHERE user_id = ?", (int(uid),))
                 user_chs = [r["chronic_code"] for r in cursor.fetchall()]
 
-                # Split ingredients by comma, semicolon, or newline
-                import re as _re
-                cleaned_text = _re.sub(r"^(?:thành phần|ingredients)\s*[:\-]\s*", "", raw_text, flags=_re.IGNORECASE)
-                tokens = [t.strip(" .") for t in _re.split(r"[,;\n]+", cleaned_text) if t.strip(" .")]
+                # Normalize raw text and split ingredients using ocr_normalizer
+                norm_res = normalize_ocr_payload(raw_text, lang=lang)
+                tokens = norm_res["tokens"]
+                normalized_text = norm_res["normalized_text"]
+                extracted_additives = norm_res["extracted_e_numbers"]
 
                 eval_res = eng.evaluate_packaging_label(tokens, user_als, user_chs, lang=lang)
 
@@ -1127,6 +1140,18 @@ def application(environ, start_response):
                             card = eng._build_concept_card(c, lang=lang)
                             detected_additives.append(card)
 
+                # Merge detected additives from normalizer
+                existing_codes = {str(a.get("code") or a.get("standard_code", "")) for a in detected_additives}
+                for ea in extracted_additives:
+                    if ea.get("standard_code") not in existing_codes:
+                        detected_additives.append({
+                            "curie": f"INS:{ea['standard_code']}",
+                            "pref_label": ea["name"],
+                            "pref_label_vi": ea["name"],
+                            "pref_label_en": ea["name"],
+                            "risk_level": ea.get("risk", "safe"),
+                            "ecodes": [ea["standard_code"]]
+                        })
                 eval_res["detected_additives"] = detected_additives
                 warning_count = len(eval_res.get("red_triggers", [])) + len(eval_res.get("yellow_triggers", []))
                 additive_count = len(detected_additives) if detected_additives else len([d for d in eval_res.get("details", []) if d.get("matched")])
