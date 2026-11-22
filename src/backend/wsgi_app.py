@@ -425,7 +425,7 @@ def application(environ, start_response):
     headers = [
         ('Content-Type', 'application/json; charset=utf-8'),
         ('Access-Control-Allow-Origin', '*'),
-        ('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'),
+        ('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS'),
         ('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
     ]
 
@@ -453,9 +453,9 @@ def application(environ, start_response):
         start_response('400 Bad Request', [('Content-Type', 'text/html; charset=utf-8')])
         return [HTML_VERIFIED_FAIL.encode('utf-8')]
 
-    # Read JSON body for POST
+    # Read JSON body for POST / DELETE
     body = {}
-    if method == 'POST':
+    if method in ('POST', 'DELETE'):
         try:
             length = int(environ.get('CONTENT_LENGTH', 0))
             if length > 0:
@@ -1065,7 +1065,7 @@ def application(environ, start_response):
                 return [json.dumps({"success": True, "members": members}).encode('utf-8')]
 
         # 12. Real Scan History & Packaging Label Evaluation ("Quét nhãn" & "Lịch sử")
-        if path == '/api/v1/scans':
+        if path == '/api/v1/scans' or path.startswith('/api/v1/scans/'):
             eng = _get_foodon_engine()
 
             def _fetch_user_scan_summary(conn, uid_int: int):
@@ -1097,7 +1097,43 @@ def application(environ, start_response):
                     "monthly_warnings": monthly_warnings,
                 }
 
-            if method == 'GET':
+            # DELETE /api/v1/scans/<scan_id>?user_id=<uid> or DELETE /api/v1/scans?user_id=<uid>
+            if method == 'DELETE':
+                query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
+                uid = query.get('user_id', [None])[0] or body.get('user_id')
+                if not uid:
+                    start_response('400 Bad Request', headers)
+                    return [json.dumps({"success": False, "message": "user_id is required"}).encode('utf-8')]
+                uid_int = int(uid)
+                conn = get_db()
+                cursor = conn.cursor()
+                if path.startswith('/api/v1/scans/'):
+                    raw_sid = path[len('/api/v1/scans/'):].strip('/')
+                    if not raw_sid.isdigit():
+                        conn.close()
+                        start_response('400 Bad Request', headers)
+                        return [json.dumps({"success": False, "message": "Invalid scan_id"}).encode('utf-8')]
+                    scan_id_int = int(raw_sid)
+                    cursor.execute("DELETE FROM scan_history WHERE id = ? AND user_id = ?", (scan_id_int, uid_int))
+                    if cursor.rowcount == 0:
+                        conn.close()
+                        start_response('404 Not Found', headers)
+                        return [json.dumps({"success": False, "message": "Không tìm thấy bản ghi lịch sử quét."}).encode('utf-8')]
+                    conn.commit()
+                    summary = _fetch_user_scan_summary(conn, uid_int)
+                    conn.close()
+                    start_response('200 OK', headers)
+                    return [json.dumps({"success": True, "deleted_id": scan_id_int, **summary}, ensure_ascii=False).encode('utf-8')]
+                else:
+                    cursor.execute("DELETE FROM scan_history WHERE user_id = ?", (uid_int,))
+                    deleted_count = cursor.rowcount
+                    conn.commit()
+                    summary = _fetch_user_scan_summary(conn, uid_int)
+                    conn.close()
+                    start_response('200 OK', headers)
+                    return [json.dumps({"success": True, "deleted_count": deleted_count, **summary}, ensure_ascii=False).encode('utf-8')]
+
+            if path == '/api/v1/scans' and method == 'GET':
                 query = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
                 uid = query.get('user_id', [None])[0]
                 if not uid:
@@ -1109,7 +1145,41 @@ def application(environ, start_response):
                 start_response('200 OK', headers)
                 return [json.dumps({"success": True, **summary}, ensure_ascii=False).encode('utf-8')]
 
-            if method == 'POST':
+            if path == '/api/v1/scans' and method == 'POST':
+                action = (body.get('action') or '').strip().lower()
+                if action in ('delete', 'clear'):
+                    uid = body.get('user_id')
+                    if not uid:
+                        start_response('400 Bad Request', headers)
+                        return [json.dumps({"success": False, "message": "user_id is required"}).encode('utf-8')]
+                    uid_int = int(uid)
+                    conn = get_db()
+                    cursor = conn.cursor()
+                    if action == 'delete':
+                        scan_id = body.get('scan_id')
+                        if scan_id is None:
+                            conn.close()
+                            start_response('400 Bad Request', headers)
+                            return [json.dumps({"success": False, "message": "scan_id is required"}).encode('utf-8')]
+                        cursor.execute("DELETE FROM scan_history WHERE id = ? AND user_id = ?", (int(scan_id), uid_int))
+                        if cursor.rowcount == 0:
+                            conn.close()
+                            start_response('404 Not Found', headers)
+                            return [json.dumps({"success": False, "message": "Không tìm thấy bản ghi lịch sử quét."}).encode('utf-8')]
+                        conn.commit()
+                        summary = _fetch_user_scan_summary(conn, uid_int)
+                        conn.close()
+                        start_response('200 OK', headers)
+                        return [json.dumps({"success": True, "deleted_id": int(scan_id), **summary}, ensure_ascii=False).encode('utf-8')]
+                    else:
+                        cursor.execute("DELETE FROM scan_history WHERE user_id = ?", (uid_int,))
+                        deleted_count = cursor.rowcount
+                        conn.commit()
+                        summary = _fetch_user_scan_summary(conn, uid_int)
+                        conn.close()
+                        start_response('200 OK', headers)
+                        return [json.dumps({"success": True, "deleted_count": deleted_count, **summary}, ensure_ascii=False).encode('utf-8')]
+
                 uid = body.get('user_id')
                 raw_text = (body.get('raw_text') or body.get('ingredients') or '').strip()
                 lang = (body.get('lang') or 'vi').strip().lower()
@@ -1193,14 +1263,7 @@ def application(environ, start_response):
                     **summary,
                 }, ensure_ascii=False).encode('utf-8')]
 
-        # 13. FoodOn Official Ontology Explorer, Graph Visualizer & REST API
-        if path == '/foodon-test' and method == 'GET':
-            html_file = os.path.join(os.path.dirname(__file__), 'static', 'foodon_explorer.html')
-            with open(html_file, 'r', encoding='utf-8') as f:
-                html_content = f.read()
-            start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
-            return [html_content.encode('utf-8')]
-
+        # 13. FoodOn Official Ontology Graph Visualizer & REST API
         if path == '/foodon-graph' and method == 'GET':
             html_file = os.path.join(os.path.dirname(__file__), 'static', 'foodon_graph.html')
             with open(html_file, 'r', encoding='utf-8') as f:
