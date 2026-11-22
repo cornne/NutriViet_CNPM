@@ -1,61 +1,60 @@
-# NutriViet Backend: Authentication Microservice
+# NutriViet Local Python Reference Backend & FoodOn Engine
 
-**Course:** CS300 - CSC13002 - Introduction to Software Engineering  
-**Project Assignment:** PA3-2026 (Section E Deliverable)  
-**Functional Group:** FG1 - Authentication & Authorization  
+> **Production Note:** NutriViet's live production API, databases, and OCR proxy now run on **Cloudflare Workers + Cloudflare D1** (see [`src/cloudflare-worker/README.md`](../cloudflare-worker/README.md)).  
+> This `src/backend/` directory serves as the **zero-dependency local development server**, the **FoodOn ontology compiler/benchmark toolkit**, and the **Python automated regression test suite**.
 
 ---
 
-## 🚀 How to Run the Backend Server
+## Key Components
 
-This backend is designed with Python standard libraries (`sqlite3`, `http.server`, `hashlib`), so it runs immediately **without requiring external package installation**:
+| File | Description |
+| :--- | :--- |
+| `wsgi_app.py` | Pure Python stdlib WSGI application mirroring Auth, Profile, Scan History, FoodOn Graph (`/foodon-graph`), and FoodOn REST API (`/api/v1/foodon/*`). |
+| `foodon_ui_server.py` | Threaded local HTTP dev server on port `8050` (redirects `/` → `/foodon-graph` and configures `adb reverse tcp:8050` if an Android device is attached). |
+| `hybrid_ontology.py` | Core pure-English FoodOn ontology engine (33,688 concepts, 53,242 lexical terms, 742 E-codes), ancestor allergen inference, graph traversal, and Kaggle CSV exporter. |
+| `community_service.py` | Community feed, media upload/serve, and strict Admin RBAC moderation logic. |
+| `monolingual_catalog.py` | Pure-English FoodOn formatting and code-label utilities (zero hardcoded Vietnamese fallback tables). |
+| `data/nutriviet_hybrid.db` | Pre-compiled FoodOn SQLite database (`16.1 MB`) used by local tests and benchmarks. |
+| `static/foodon_graph.html` | Interactive FoodOn Ontology Graph web visualizer served at `/foodon-graph`. |
+| `evaluate_hybrid.py` | Accuracy, compaction, and latency benchmark suite for the FoodOn recognition engine. |
+
+---
+
+## Quick Start (Local Development)
+
+Requires **Python 3.10+** (standard library only at runtime — no `pip install` needed):
 
 ```bash
-# 1. Navigate to the backend directory
 cd src/backend
 
-# 2. Start the server
-python server.py
+# Start local dev server at http://127.0.0.1:8050/foodon-graph
+python -B foodon_ui_server.py
 ```
 
----
-
-## 📡 Endpoints Provided
-
-| Method | Endpoint | Description |
-|:---:|:---|:---|
-| **GET** | `/health` | Check service health & available routes |
-| **POST** | `/api/v1/auth/register` | Register new user account (hashes password, persists to SQLite) |
-| **POST** | `/api/v1/auth/login` | Authenticate user credentials & issue session token |
-| **GET** | `/api/v1/users` | View persistent registered users in SQLite (for demo inspection) |
+### Key Local Endpoints
+- `GET /health` — Service health & ontology status
+- `GET /foodon-graph` — Interactive FoodOn Graph Visualizer
+- `GET /api/v1/foodon/*` & `POST /api/v1/foodon/evaluate` — FoodOn ontology search, graph, additives, allergy lookup & label evaluation
+- `/api/v1/auth/*`, `/api/v1/profile/*`, `/api/v1/scans`, `/api/v1/community/*`, `/api/v1/admin/*` — Full API parity with Cloudflare Worker
 
 ---
 
-## 💾 Database Persistence
-The SQLite database is saved persistently in `nutriviet.db`. A default demo account is seeded automatically:
-* **Email:** `demo@nutriviet.vn`
-* **Password:** `NutriPass123!`
+## Running Tests & Benchmarks
 
----
+Use `python -B` to avoid generating `__pycache__/` artifacts:
 
-## ☁️ Deploying / Updating on PythonAnywhere (Production WSGI)
+```bash
+cd src/backend
 
-The unified production WSGI entrypoint is `wsgi_app.py` (which serves Auth, Profile, Scan History, and the FoodOn + Kala Hybrid Engine backed by `data/nutriviet_hybrid.db` using pure Python standard library at runtime — no `pip install` needed).
+# Run all 17 backend unit & integration tests (isolated temporary SQLite DBs)
+python -B -m unittest test_wsgi_pythonanywhere.py test_community_rbac.py test_foodon_graph.py -v
 
-1. **Pull latest code on PythonAnywhere Bash console:**
-   ```bash
-   cd ~/NutriViet_CNPM
-   git pull origin Better-F-and-Update-B
-   ```
-   *(Ensure `src/backend/data/nutriviet_hybrid.db` is present.)*
+# Run FoodOn recognition & latency benchmark
+python -B evaluate_hybrid.py
+```
 
-2. **Configure the Web tab WSGI file** using [`pythonanywhere_wsgi_template.py`](./pythonanywhere_wsgi_template.py):
-   - Point `sys.path` to `/home/ngobinh2006/NutriViet_CNPM/src/backend`
-   - Import `from wsgi_app import application`
-   - Optional environment overrides (`NUTRIVIET_GMAIL_USER`, `NUTRIVIET_GMAIL_PASS`, `NUTRIVIET_DB_PATH`, `NUTRIVIET_PUBLIC_BASE_URL`) can also be placed in `src/backend/.env`.
-
-3. **Reload & verify:**
-   - Click **Reload** in the PythonAnywhere Web tab.
-   - Check `/health` returns `{"status": "healthy", "service": "NutriViet", "version": "2.0.0", "foodon_hybrid": true}`.
-
-
+| Test File | Coverage |
+| :--- | :--- |
+| `test_wsgi_pythonanywhere.py` | Pure-English FoodOn DB integrity, zero hardcoded fallback checks, profile roundtrips, scan delete/clear isolation, Kaggle export |
+| `test_community_rbac.py` | Token auth, Guest gate, Community posts/likes/comments/reports, image upload validation, Admin RBAC & ban enforcement |
+| `test_foodon_graph.py` | Ontology children map, neighborhood graph, expansion pagination, shortest ontology path, and `/foodon-graph` HTML route |
