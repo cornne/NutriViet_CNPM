@@ -172,9 +172,12 @@ class PureEnglishFoodOnTests(unittest.TestCase):
         self.assertEqual(data["version"], "2.0.0")
         self.assertTrue(data["foodon_hybrid"])
 
-        html_code, _, html = _call_wsgi(self.app, "GET", "/foodon-test")
+        html_code, _, html = _call_wsgi(self.app, "GET", "/foodon-graph")
         self.assertEqual(html_code, 200)
         self.assertIn("<html", html.lower())
+
+        removed_code, _, _ = _call_wsgi(self.app, "GET", "/foodon-test")
+        self.assertEqual(removed_code, 404)
 
     def test_foodon_endpoints_pure_english_without_yaml(self):
         # Butter -> milk family via FoodOn ontology
@@ -264,7 +267,7 @@ class PureEnglishFoodOnTests(unittest.TestCase):
         conn = self.wsgi_app.get_db()
         try:
             conn.execute(
-                "INSERT INTO users (id, full_name, email, password_hash, salt, is_verified, created_at) "
+                "INSERT OR IGNORE INTO users (id, full_name, email, password_hash, salt, is_verified, created_at) "
                 "VALUES (501, 'Test User', 'test@nutriviet.vn', 'h', 's', 1, '2026-01-01')"
             )
             conn.commit()
@@ -307,6 +310,106 @@ class PureEnglishFoodOnTests(unittest.TestCase):
         )
         self.assertEqual(c_al_get, 200)
         self.assertEqual(len(json.loads(r_al_get)["allergens"]), 1)
+
+    def test_scan_history_delete_and_clear_with_user_isolation(self):
+        # Seed two real users so scan_history FOREIGN KEY constraint is satisfied
+        conn = self.wsgi_app.get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT OR IGNORE INTO users (id, full_name, email, password_hash, salt, is_verified, created_at) VALUES (601, 'User A', 'scan_a@test.vn', 'h', 's', 1, '2026-01-01')"
+        )
+        cur.execute(
+            "INSERT OR IGNORE INTO users (id, full_name, email, password_hash, salt, is_verified, created_at) VALUES (602, 'User B', 'scan_b@test.vn', 'h', 's', 1, '2026-01-01')"
+        )
+        conn.commit()
+        conn.close()
+
+        # Create 2 scans for user 601 and 1 scan for user 602
+        c1, _, r1 = _call_wsgi(
+            self.app,
+            "POST",
+            "/api/v1/scans",
+            body_dict={
+                "user_id": 601,
+                "label_title": "Snack A",
+                "raw_text": "Wheat flour, sugar, E102",
+                "lang": "en",
+            },
+        )
+        self.assertEqual(c1, 200)
+        scan1_id = json.loads(r1)["latest_scan"]["id"]
+
+        c2, _, r2 = _call_wsgi(
+            self.app,
+            "POST",
+            "/api/v1/scans",
+            body_dict={
+                "user_id": 601,
+                "label_title": "Milk B",
+                "raw_text": "Fresh cow milk, stabilizers (E407)",
+                "lang": "en",
+            },
+        )
+        self.assertEqual(c2, 200)
+        self.assertEqual(json.loads(r2)["total_scans"], 2)
+
+        c3, _, r3 = _call_wsgi(
+            self.app,
+            "POST",
+            "/api/v1/scans",
+            body_dict={
+                "user_id": 602,
+                "label_title": "Other User Scan",
+                "raw_text": "Water, salt",
+                "lang": "en",
+            },
+        )
+        self.assertEqual(c3, 200)
+        other_scan_id = json.loads(r3)["latest_scan"]["id"]
+
+        # User 601 MUST NOT be able to delete user 602's scan
+        c_idor, _, _ = _call_wsgi(
+            self.app, "DELETE", f"/api/v1/scans/{other_scan_id}", "user_id=601"
+        )
+        self.assertEqual(c_idor, 404)
+
+        # User 601 deletes 1 of their own scans via REST DELETE
+        c_del, _, r_del = _call_wsgi(
+            self.app, "DELETE", f"/api/v1/scans/{scan1_id}", "user_id=601"
+        )
+        self.assertEqual(c_del, 200)
+        del_data = json.loads(r_del)
+        self.assertTrue(del_data["success"])
+        self.assertEqual(del_data["deleted_id"], scan1_id)
+        self.assertEqual(del_data["total_scans"], 1)
+
+        # User 601 clears remaining history via DELETE /api/v1/scans
+        c_clr, _, r_clr = _call_wsgi(
+            self.app, "DELETE", "/api/v1/scans", "user_id=601"
+        )
+        self.assertEqual(c_clr, 200)
+        clr_data = json.loads(r_clr)
+        self.assertTrue(clr_data["success"])
+        self.assertEqual(clr_data["deleted_count"], 1)
+        self.assertEqual(clr_data["total_scans"], 0)
+        self.assertEqual(clr_data["scans"], [])
+
+        # User 602's scan must remain completely intact
+        c_check, _, r_check = _call_wsgi(
+            self.app, "GET", "/api/v1/scans", "user_id=602"
+        )
+        self.assertEqual(c_check, 200)
+        self.assertEqual(json.loads(r_check)["total_scans"], 1)
+
+        # Also test POST action='delete' fallback on user 602
+        c_post_del, _, r_post_del = _call_wsgi(
+            self.app,
+            "POST",
+            "/api/v1/scans",
+            body_dict={"user_id": 602, "action": "delete", "scan_id": other_scan_id},
+        )
+        self.assertEqual(c_post_del, 200)
+        self.assertEqual(json.loads(r_post_del)["total_scans"], 0)
 
     def test_kaggle_csv_export(self):
         from hybrid_ontology import HYBRID_DB_PATH, export_concepts_for_kaggle
