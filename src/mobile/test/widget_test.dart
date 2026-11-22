@@ -376,7 +376,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('ProfileService prioritizes PythonAnywhere HTTPS in release mode without LAN probes', () {
+  test('ProfileService prioritizes Cloudflare Workers HTTPS in release mode without LAN probes', () {
     final releaseRoots = ProfileService.buildApiRoots(
       isReleaseMode: true,
       platform: TargetPlatform.android,
@@ -438,6 +438,33 @@ void main() {
 
     await LocalGuestStore.clearAll();
     expect(await LocalGuestStore.hasLocalData(), isFalse);
+  });
+
+  test('LocalGuestStore deleteScan and clearScans update local scan history accurately', () async {
+    final nowIso = DateTime.now().toIso8601String();
+    SharedPreferences.setMockInitialValues({
+      'nv_guest_scans':
+          '[{"id":101,"label_title":"Sữa tươi","raw_text":"milk","risk_level":"safe","warning_count":0,"additive_count":1,"created_at":"$nowIso"},'
+          '{"id":102,"label_title":"Bánh quy","raw_text":"peanut, E102","risk_level":"high","warning_count":2,"additive_count":2,"created_at":"$nowIso"}]',
+    });
+
+    final before = await LocalGuestStore.getScans();
+    expect(before['total_scans'], 2);
+    expect(before['warning_scans'], 1);
+    expect(before['monthly_warnings'], 2);
+
+    final afterDelete = await LocalGuestStore.deleteScan(102);
+    expect(afterDelete['success'], isTrue);
+    expect(afterDelete['total_scans'], 1);
+    expect(afterDelete['warning_scans'], 0);
+    expect(afterDelete['monthly_warnings'], 0);
+    expect(((afterDelete['scans'] as List).first as Map)['id'], 101);
+
+    final afterClear = await LocalGuestStore.clearScans();
+    expect(afterClear['success'], isTrue);
+    expect(afterClear['deleted_count'], 1);
+    expect(afterClear['total_scans'], 0);
+    expect(afterClear['scans'], isEmpty);
   });
 
   test('AuthService role helpers distinguish guest, user, and admin strictly', () {
