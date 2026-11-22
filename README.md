@@ -4,19 +4,30 @@
 [![Institution](https://img.shields.io/badge/Institution-VNU--HCM%20University%20of%20Science-green.svg)](https://hcmus.edu.vn/)
 [![Methodology](https://img.shields.io/badge/Methodology-Scrum%20%2F%20Agile-orange.svg)]()
 [![Development](https://img.shields.io/badge/Spec--Driven-GitHub%20Spec%20Kit-purple.svg)](https://github.com/github/spec-kit)
+[![Backend](https://img.shields.io/badge/Backend-Cloudflare%20Workers%20%2B%20D1-F38020.svg?logo=cloudflare&logoColor=white)](https://nutriviet.nutriviet-api.workers.dev/health)
 [![Video Demo](https://img.shields.io/badge/YouTube-Video%20Demo-red.svg?logo=youtube)](https://www.youtube.com/watch?v=-LUs4PHV20Q)
 
-> **NutriViet** is an intelligent Android mobile application engineered to safeguard consumers with personalized food allergy hazard warnings and proactive nutrition management. By combining on-device Optical Character Recognition (OCR), Levenshtein fuzzy matching, and the FoodOn semantic ontology, NutriViet instantly translates complex packaging labels into unambiguous, color-coded safety alerts (RED dangerous / YELLOW caution / GREEN safe), while providing structured dietary logging, safe food alternative recommendations, and a verified community crowdsourcing ecosystem.
+> **NutriViet** is an Android mobile application engineered to protect consumers with personalized food allergy hazard alerts and proactive nutrition management. Combining a full-screen **Live CameraX** label scanner, **PaddleOCR-VL-1.6** via a secure **Cloudflare Workers Edge Proxy**, and the **FoodOn semantic ontology (33,688 concepts)** hosted on **Cloudflare D1 (APAC)**, NutriViet translates complex ingredient labels into unambiguous color-coded alerts (**RED** allergen hazard / **YELLOW** chronic condition caution / **GREEN** safe), alongside local-first Guest Mode, scan history management, and an RBAC-protected Community & Admin Moderation platform.
 
 ---
 
-## 👥 Team Members & Leadership Roster
+## Live Production Services (Cloudflare Free Tier — APAC)
+
+| Service | URL |
+| :--- | :--- |
+| **API Health Check** | https://nutriviet.nutriviet-api.workers.dev/health |
+| **Interactive FoodOn Ontology Graph** | https://nutriviet.nutriviet-api.workers.dev/foodon-graph |
+| **REST API Base URL** | `https://nutriviet.nutriviet-api.workers.dev/api/v1` |
+
+---
+
+## Team Members & Leadership Roster
 
 **Group:** Group 07 - NutriViet Team  
 **Institution:** Faculty of Information Technology, VNU-HCM University of Science (HCMUS)
 
 | No. | Student ID | Full Name | Project Role & Primary Responsibilities |
-|:---:|:---:|:---|:---|
+| :---: | :---: | :--- | :--- |
 | 1 | **24127004** | **Ngo Tien Binh** | **Project Manager (PM) & AI Lead** / Full-Stack Engineer |
 | 2 | **23127432** | **Le Tat Nam** | **Backend & System Architecture Lead** / Full-Stack Engineer |
 | 3 | **24127456** | **Luong Hoang Nam** | **UI/UX & Flutter Lead** / Full-Stack Engineer |
@@ -25,116 +36,118 @@
 
 ---
 
-## 📅 Project Milestones & Semester Roadmap (5 Sprints)
-
-The project is structured into **5 sequential Scrum Sprints**, each mapping to an official Project Assignment (PA) milestone:
+## Project Milestones & Semester Roadmap (5 Sprints)
 
 | Sprint | Milestone | Status | Duration | Primary Focus & Deliverables |
-|:---:|:---|:---:|:---:|:---|
+| :---: | :--- | :---: | :---: | :--- |
 | **Sprint 1** | **PA1-2026** | **Completed** | 25/09 – 17/10/2026 | Project Proposal, Existing App Survey (Yuko & Soosee), Team Contract, Scrum Setup |
 | **Sprint 2** | **PA2-2026** | **Completed** | 18/10 – 31/10/2026 | Vision Document, Project Plan, GitHub Spec Kit Integration, Sprint 2 Reports |
-| **Sprint 3** | **PA3-2026** | **Active / Delivered** | 01/11 – 14/11/2026 | Use-Case Model (Mermaid), 18 Detailed Use-Case Specs & 17 Prototypes, Full-Stack Spec Kit Implementation (FG1 & FG2), Video Demo |
-| **Sprint 4** | **PA4-2026** | *Planned* | 15/11 – 05/12/2026 | Core OCR & Allergen Engine Implementation, API Contracts, Unit Testing ($\ge 80\%$ coverage) |
-| **Sprint 5** | **PA5-2026** | *Planned* | 06/12 – 22/12/2026 | System Verification, Crowdsourcing Portal, Polish, Final Release APK, and Live Demo |
+| **Sprint 3** | **PA3-2026** | **Completed** | 01/11 – 14/11/2026 | Use-Case Model (Mermaid), 18 Use-Case Specs & 17 Prototypes, Full-Stack FG1 & FG2, Video Demo |
+| **Sprint 4** | **PA4-2026** | **Active / Implemented** | 15/11 – 05/12/2026 | Full Cloudflare Workers + D1 Migration, FoodOn 33,688-Concept Engine & Graph UI, Live CameraX + PaddleOCR-VL-1.6 Edge Proxy, Guest Mode + RBAC Community/Admin, Automated Test Suites |
+| **Sprint 5** | **PA5-2026** | *Upcoming* | 06/12 – 22/12/2026 | System Verification, Final Polish, Production APK Release, and Final Live Demo |
 
 ---
 
-## 📂 Repository Directory Structure
+## Repository Directory Structure
 
 ```text
-NutriViet/
-├── .github/                           # GitHub workflows and Spec Kit AI agent skills
-│   └── skills/                        # Prompts and skills for Spec-Driven Development
-├── .specify/                          # GitHub Spec Kit root configuration
-│   ├── memory/                        # Long-term memory governance (constitution.md)
-│   ├── templates/                     # Standardized spec, plan, and task templates
-│   └── scripts/                       # Automation scripts for SDD workflow
-├── docs/                              # Project documentation across all milestones
-│   ├── assets/                        # Diagrams, setup proofs, UI screenshots
-│   │   ├── setup/                     # Tool setup & Trello board evidence
-│   │   └── survey/                    # Empirical app survey screenshots
-│   ├── requirements/                  # Requirements specifications
-│   │   ├── README.md
-│   │   ├── vision.md                  # [PA2/PA3] Master Vision Document & Quantifiable NFRs
-│   │   ├── use-cases.md               # [PA3] Use-Case Model & 18 Detailed Specifications
-│   │   └── assets/prototypes/         # [PA3] 17 High-Fidelity UI Prototype Screenshots
-│   ├── management/                    # Agile Scrum management & governance
-│   │   ├── README.md
-│   │   ├── project-plan.md            # [PA2/PA3] 5-Sprint Project Plan & Risk Matrix
-│   │   ├── team-contract.md           # [PA1] Working Agreements & Code of Conduct
-│   │   ├── video-demo-script.md       # [PA3] Video Demonstration Narration Script
-│   │   └── weekly-reports.md          # [PA1-PA5] Scrum Meeting Minutes & AI Logs
-│   ├── analysis-and-design/           # Architecture diagrams, C4 models, ERDs
-│   └── test/                          # Test plans, test cases, and QA reports
-├── specs/                             # [PA3] Active Spec Kit Implementation Specifications
-│   ├── 001-authentication/            # FG1: Spec, Plan, Data Model, OpenAPI, Tasks, Checklist
-│   └── 002-allergy-profile/           # FG2: Spec, Plan, Data Model, OpenAPI, Tasks, Checklist
-├── src/                               # Application source code & assignment artifacts
-│   ├── backend/                       # Python WSGI Microservice & SQLite database
-│   │   ├── wsgi_app.py                # Production Cloud WSGI app (ngobinh2006.pythonanywhere.com)
-│   │   ├── server.py                  # Local development REST API
-│   │   └── database.py                # Database connection & schema migration engine
-│   ├── mobile/                        # Flutter Android mobile client
-│   │   ├── lib/screens/               # Login, Register, Verify, Settings, Home, Profile, Community
-│   │   └── lib/services/              # AuthService, ProfileService, API bridges
-│   ├── speckit/                       # GitHub Spec Kit governance templates & training logs
-│   │   ├── README.md
-│   │   └── training-log.md            # Member training completion evidence
+NutriViet_CNPM/
+├── .github/skills/                    # Spec-Driven Development (Spec Kit) agent skills
+├── .specify/                          # GitHub Spec Kit configuration, templates & scripts
+├── docs/                              # Course documentation across all milestones
+│   ├── assets/                        # Setup evidence, Trello boards & market survey screenshots
+│   ├── analysis-and-design/           # Architecture & design documentation
+│   ├── management/                    # Project Plan, Team Contract, Weekly Reports, Demo Script
+│   ├── requirements/                  # Vision Document, Use-Case Specs & 17 UI Prototypes
+│   └── test/                          # Test plans & automated test suite index
+├── prototype/                         # Interactive HTML/CSS UI prototype
+├── specs/                             # Active Spec Kit feature specifications
+│   ├── 001-authentication/            # FG1: Authentication & Session Management
+│   ├── 002-allergy-profile/           # FG2: Allergy Profile, Chronics & Body Metrics
+│   └── 003-community-guest-rbac/      # Guest Mode, Community Feed & Admin RBAC Moderation
+├── src/                               # Application source code
+│   ├── cloudflare-worker/             # Production Serverless Backend (TypeScript / Hono / D1)
+│   ├── mobile/                        # Flutter Android Mobile Client (Dart 3 + Kotlin native)
+│   ├── backend/                       # Local Python Reference Backend, FoodOn SQLite & Benchmarks
+│   ├── speckit/                       # Spec Kit governance templates & training log
 │   └── constitution.md                # Ratified NutriViet Project Constitution
-├── Changes.md                         # [PA3] Traceable changes log across PA2 -> PA3
-├── proposal.md                        # [PA1] Master Project Proposal & App Survey
-├── README.md                          # Repository overview & milestone navigator
-└── .gitignore                         # Environment & build ignore patterns
+├── foodon_en_for_kaggle.csv           # 33,688 official FoodOn concepts export for NLP/translation
+├── Changes.md                         # Traceable changes log (PA2 -> PA3)
+├── proposal.md                        # Master Project Proposal & App Survey
+└── README.md                          # Project overview & quick start
 ```
 
 ---
 
-## 📚 Deliverables & Documentation Index
+## Technology Stack & Architecture
 
-### 🔹 Project Assignment 1 (PA1-2026) — *Completed*
-* [Project Proposal (`proposal.md`)](./proposal.md): Comprehensive functional groups (FG1–FG8), system actors, AI feature proposal (Fuzzy Matching + FoodOn Ontology).
-* [Existing App Survey](./proposal.md#c---existing-app-survey): Empirical analysis of Yuko and Soosee market applications.
-* [Team Contract (`docs/management/team-contract.md`)](./docs/management/team-contract.md): 8 working agreements, communication policies, and peer review rules.
-* [Setup Evidence](./proposal.md#e---development-environment--scrum-setup-evidence): Git repository, Trello Kanban board, and AI tooling disclosures.
-
-### 🔹 Project Assignment 2 (PA2-2026) — *Completed*
-* [Vision Document (`docs/requirements/vision.md`)](./docs/requirements/vision.md): Problem Statement, Product Position Statement, personas, competitor matrix, and NFRs.
-* [Project Plan (`docs/management/project-plan.md`)](./docs/management/project-plan.md): 5-Sprint Scrum roadmap, risk management matrix, and team assignments.
-* [Spec Kit Initialization & Constitution (`src/constitution.md`)](./src/constitution.md): Project constitution and training logs.
-* [Weekly Scrum Reports (`docs/management/weekly-reports.md`)](./docs/management/weekly-reports.md): Sprint 2 minutes and AI interaction logs.
-
-### 🔹 Project Assignment 3 (PA3-2026) — *Delivered Milestone*
-* **Section A:** [Revised Project Plan (`docs/management/project-plan.md`)](./docs/management/project-plan.md) + [Changes Log (`Changes.md`)](./Changes.md)
-* **Section B:** [Detailed Vision Document (`docs/requirements/vision.md`)](./docs/requirements/vision.md) + [Changes Log (`Changes.md`)](./Changes.md)
-* **Section C:** [Use-Case Model with Mermaid Diagrams (`docs/requirements/use-cases.md`)](./docs/requirements/use-cases.md)
-* **Section D:** [Use-Case Specifications & 17 High-Fidelity UI Prototypes (`docs/requirements/use-cases.md`)](./docs/requirements/use-cases.md)
-* **Section E:** Full-Stack Implementation using Spec Kit:
-  * [FG1 Spec Kit Directory (`specs/001-authentication/`)](./specs/001-authentication/) & [FG2 Spec Kit Directory (`specs/002-allergy-profile/`)](./specs/002-allergy-profile/)
-  * [Flutter Mobile Client (`src/mobile/`)](./src/mobile/) & [Python Cloud Backend (`src/backend/wsgi_app.py`)](./src/backend/wsgi_app.py)
-  * [Video Demo Narration Script (`docs/management/video-demo-script.md`)](./docs/management/video-demo-script.md)
-  * 🎬 **Video Demonstration Link:** [YouTube Video Demonstration (Full-Stack Live Software Demo)](https://www.youtube.com/watch?v=-LUs4PHV20Q)
-* **Section F:** [Weekly Scrum Reports & Generative AI Disclosures (`docs/management/weekly-reports.md`)](./docs/management/weekly-reports.md)
+| Layer | Technology | Role & Design Rationale |
+| :--- | :--- | :--- |
+| **Mobile Client** | **Flutter (Dart 3.x)** + **Kotlin Native** | Liquid Glass UI, strict monolingual **VI / EN** toggle (`AppLocale`), full-screen **CameraX** viewfinder, native Android EXIF-aware JPEG compressor (`MainActivity.kt` shrinks photos to `<= 110 KB` in ~35 ms), and local-first **Guest Mode** (`LocalGuestStore` via `SharedPreferences`). |
+| **Vision OCR** | **PaddleOCR-VL-1.6** via **Cloudflare Edge Proxy** | Mobile uploads compressed packaging photos to `/api/v1/ocr/jobs`; Cloudflare Worker authenticates upstream using an encrypted Worker Secret (`PADDLEOCR_VL_TOKEN`) and cleans Markdown/HTML tables on the edge — zero API keys in the APK or repository. |
+| **Cloud Backend** | **Cloudflare Workers** + **Hono** (TypeScript) | Serverless REST API with Smart Placement in APAC, Web Crypto PBKDF2-HMAC-SHA256 authentication, strict server-side Admin RBAC, and ready-to-plug HTTP email dispatch (Resend / Brevo). |
+| **Cloud Databases** | **Cloudflare D1 (SQLite — APAC)** | Two dedicated D1 databases: `nutriviet-app` (users, profiles, scan history, community posts/media, static web UI) and `nutriviet-foodon` (33,688 FoodOn concepts, 53,242 lexical bridge terms, 742 E-codes, 8 B-tree indexes). |
+| **Semantic Engine** | **FoodOn Ontology** + **Fuzzy Matching** | 4-stage ingredient recognition (exact match, E-code/INS lookup, stem/token match, typo-tolerant fuzzy match) with ancestor-chain inference from everyday foods (e.g., *butter*, *casein*, *whey*) to allergen families. |
+| **Local Reference** | **Python 3.13 Stdlib WSGI** (`src/backend/`) | Zero-dependency local development mirror (`foodon_ui_server.py`), FoodOn accuracy benchmark (`evaluate_hybrid.py`), and unit test suite. |
 
 ---
 
-## 💻 Technology Stack & Architecture
+## Quick Start & Commands
 
-| Tier | Technologies & Frameworks | Description |
-|:---|:---|:---|
-| **Mobile Client** | **Flutter (Dart 3.x)** | Android native deployment (min SDK 26), Clean Architecture with BLoC state management. |
-| **On-Device Vision** | **Google ML Kit Text Recognition** | Real-time camera OCR with local image contrast and adaptive threshold preprocessing. |
-| **Backend Services** | **Python 3.12 / FastAPI** | High-performance asynchronous RESTful APIs, OpenAPI/Swagger contracts, containerized with Docker. |
-| **AI & Knowledge** | **Levenshtein Fuzzy Matching & FoodOn** | Typo-tolerant text matching against Vietnamese dictionaries; semantic allergen ontology derivation. |
-| **Data Persistence** | **PostgreSQL & SQLite/Hive** | Relational cloud storage for catalog/profiles; encrypted local SQLite for offline emergency fallback. |
-| **Engineering Rigor** | **GitHub Spec Kit & GitHub Actions** | Spec-Driven Development (SDD), automated CI/CD linting, testing, and branch protection. |
+### 1. Flutter Mobile App (`src/mobile/`)
+Works out-of-the-box against the live Cloudflare Workers backend (no local server or API key required):
+```bash
+cd src/mobile
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --release
+```
+See [src/mobile/README.md](./src/mobile/README.md) for emulator setup, physical device deployment, and custom backend overrides.
+
+### 2. Cloudflare Workers Production Backend (`src/cloudflare-worker/`)
+```bash
+cd src/cloudflare-worker
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+See [src/cloudflare-worker/README.md](./src/cloudflare-worker/README.md) for D1 database IDs, API routes, and secret management.
+
+### 3. Local Python Reference Backend & Benchmarks (`src/backend/`)
+```bash
+cd src/backend
+python -B -m unittest test_wsgi_pythonanywhere.py test_community_rbac.py test_foodon_graph.py -v
+python -B foodon_ui_server.py   # Serves http://127.0.0.1:8050/foodon-graph
+```
+See [src/backend/README.md](./src/backend/README.md) for details.
 
 ---
 
-## ⚙️ Development & Contribution Workflow
+## Automated Verification Summary
 
-The team strictly follows Agile/Scrum and Spec-Driven Development standards:
-1. **Branching Strategy:** Direct commits to `main` are restricted. All development occurs on feature branches (`feat/`, `fix/`, `docs/`) and merges require at least 1 approving peer review.
-2. **Task Rule:** Every task is assigned to **1 Performer** and verified by **1 Reviewer** on Trello.
-3. **Commit Discipline:** Conventional Commits standard (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`).
-4. **Header Attribution:** Every documentation section includes:
+| Module | Command | Suite Coverage |
+| :--- | :--- | :--- |
+| **Flutter Mobile** | `cd src/mobile && flutter analyze && flutter test` | **22 tests** — UI/Glass widgets, VI/EN localization, Guest Mode & scan delete/clear, RBAC gates, Cloudflare OCR Proxy pipeline & retries |
+| **Cloudflare Worker** | `cd src/cloudflare-worker && npm run typecheck && npm test` | **4 tests** — PBKDF2 parity, ingredient splitting, OCR Markdown/HTML cleaning |
+| **Python Reference** | `cd src/backend && python -B -m unittest ...` | **17 tests** — FoodOn ontology inference & graph traversal, profile/scan isolation, Community & Admin RBAC |
+
+---
+
+## Deliverables & Documentation Index
+
+- **PA1-2026:** [Project Proposal](./proposal.md) · [Team Contract](./docs/management/team-contract.md)
+- **PA2-2026:** [Vision Document](./docs/requirements/vision.md) · [Project Plan](./docs/management/project-plan.md) · [Constitution](./src/constitution.md) · [Weekly Reports](./docs/management/weekly-reports.md)
+- **PA3-2026:** [Use-Case Model & 18 Specs](./docs/requirements/use-cases.md) · [Changes Log](./Changes.md) · [Video Demo Script](./docs/management/video-demo-script.md) · [Spec Kit Artifacts](./src/speckit/README.md)
+- **Active Specs:** [FG1 Auth](./specs/001-authentication/) · [FG2 Allergy Profile](./specs/002-allergy-profile/) · [Guest & Community RBAC](./specs/003-community-guest-rbac/spec.md)
+
+---
+
+## Development & Contribution Workflow
+
+1. **Branching Strategy:** Work on feature branches (`feat/`, `fix/`, `docs/`, `refactor/`) and merge into `main` via Pull Request after verification.
+2. **Commit Standard:** Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`).
+3. **Security Hygiene:** Never commit API tokens, `.env` files, build outputs, or local SQLite databases. Secrets belong exclusively in Cloudflare Worker Secrets.
+4. **Documentation Attribution:** Milestone documentation includes:
    > `*Performed by: [Name] | Reviewed by: [Name] | Edited by: [Name]*`
