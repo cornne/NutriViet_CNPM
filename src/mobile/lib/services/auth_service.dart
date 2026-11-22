@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_locale.dart';
 
 class AuthService {
-  // Production Cloud Backend API root (PythonAnywhere; override via --dart-define=NUTRIVIET_API_ROOT=...)
+  // Production Cloud Backend API root (Cloudflare Workers + D1; override via --dart-define=NUTRIVIET_API_ROOT=...)
   static const String apiRoot = String.fromEnvironment(
     'NUTRIVIET_API_ROOT',
-    defaultValue: 'https://ngobinh2006.pythonanywhere.com/api/v1',
+    defaultValue: 'https://nutriviet.nutriviet-api.workers.dev/api/v1',
   );
   static const String baseUrl = '$apiRoot/auth';
 
