@@ -44,3 +44,10 @@ src/backend/data/o_v3.zip
 src/backend/data/av_v3.db
 src/backend/data/va_v3.db
 src/backend/data/foodon/
+
+# Python Bytecode & Local Dev Databases
+__pycache__/
+*.py[cod]
+src/backend/nutriviet.db
+src/backend/nutriviet_auth.db
+foodon_vi_translated.csv
