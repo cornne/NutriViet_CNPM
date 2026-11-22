@@ -124,13 +124,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return AppLocale.t('Khách', 'Guest');
     }
     final trimmed = _userName.trim();
-    if (trimmed.isEmpty) return 'Bình';
+    if (trimmed.isEmpty) return AppLocale.t('Tôi', 'Me');
     final parts = trimmed.split(RegExp(r'\s+'));
-    for (final p in parts) {
-      if (p.toLowerCase() == 'bình' || p.toLowerCase() == 'binh') {
-        return 'Bình';
-      }
-    }
     final target = parts.length > 3 ? parts.first : parts.last;
     return target[0].toUpperCase() + (target.length > 1 ? target.substring(1) : '');
   }
