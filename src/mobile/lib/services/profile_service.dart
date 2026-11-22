@@ -7,7 +7,7 @@ import '../l10n/app_locale.dart';
 class ProfileService {
   static const String cloudApiRoot = String.fromEnvironment(
     'NUTRIVIET_API_ROOT',
-    defaultValue: 'https://ngobinh2006.pythonanywhere.com/api/v1',
+    defaultValue: 'https://nutriviet.nutriviet-api.workers.dev/api/v1',
   );
   static const String _loopbackRoot = 'http://127.0.0.1:8050/api/v1';
   static const String _emulatorRoot = 'http://10.0.2.2:8050/api/v1';
@@ -17,7 +17,7 @@ class ProfileService {
   static String? _cachedWorkingRoot;
 
   /// Resolves backend API roots in priority order.
-  /// Release builds prioritize PythonAnywhere HTTPS first and never probe dead
+  /// Release builds prioritize Cloudflare Workers HTTPS first and never probe dead
   /// developer LAN/emulator IPs; debug builds check `127.0.0.1:8050` first.
   @visibleForTesting
   static List<String> buildApiRoots({
@@ -188,6 +188,64 @@ class ProfileService {
       return bestResponse;
     }
     return {'_ok': false, 'success': false, 'message': lastError};
+  }
+
+  static Future<Map<String, dynamic>> _deleteJson(String subPath) async {
+    String lastError = AppLocale.t(
+      'Không thể kết nối tới máy chủ.',
+      'Unable to connect to the server.',
+    );
+    int? lastStatusCode;
+    for (final root in _apiRoots) {
+      final url = Uri.parse('$root$subPath');
+      try {
+        final response = await _client
+            .delete(url, headers: {'Content-Type': 'application/json'})
+            .timeout(_timeoutForRoot(root));
+        lastStatusCode = response.statusCode;
+        if (response.statusCode == 200) {
+          final data = await _decodeJsonBytes(response.bodyBytes);
+          if (data is Map<String, dynamic>) {
+            _cachedWorkingRoot = root;
+            return {'_ok': true, ...data};
+          }
+        } else if (response.statusCode == 404 || response.statusCode == 405) {
+          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
+          try {
+            final errData = await _decodeJsonBytes(response.bodyBytes);
+            if (errData is Map && errData['message'] != null) {
+              lastError = errData['message'].toString();
+            }
+          } catch (_) {}
+        } else {
+          try {
+            final errData = await _decodeJsonBytes(response.bodyBytes);
+            lastError = errData['message'] ??
+                AppLocale.t(
+                  'Lỗi máy chủ (${response.statusCode})',
+                  'Server error (${response.statusCode})',
+                );
+          } catch (_) {
+            lastError = AppLocale.t(
+              'Lỗi máy chủ (${response.statusCode})',
+              'Server error (${response.statusCode})',
+            );
+          }
+        }
+      } catch (e) {
+        if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
+        lastError = AppLocale.t(
+          'Không thể kết nối máy chủ ($e)',
+          'Unable to connect to server ($e)',
+        );
+      }
+    }
+    return {
+      '_ok': false,
+      'success': false,
+      'status_code': lastStatusCode,
+      'message': lastError,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -535,6 +593,70 @@ class ProfileService {
           AppLocale.t(
             'Không thể phân tích nhãn bao bì.',
             'Unable to analyze packaging label.',
+          ),
+    };
+  }
+
+  static Future<Map<String, dynamic>> deleteScan({
+    required int userId,
+    required int scanId,
+  }) async {
+    var res = await _deleteJson('/scans/$scanId?user_id=$userId');
+    if (res['_ok'] != true && res['status_code'] == 405) {
+      res = await _postJson('/scans', {
+        'user_id': userId,
+        'action': 'delete',
+        'scan_id': scanId,
+      });
+    }
+    if (res['_ok'] == true) {
+      return {
+        'success': true,
+        'deleted_id': res['deleted_id'] ?? scanId,
+        'scans': res['scans'] ?? [],
+        'total_scans': res['total_scans'] ?? 0,
+        'warning_scans': res['warning_scans'] ?? 0,
+        'monthly_scans': res['monthly_scans'] ?? 0,
+        'monthly_warnings': res['monthly_warnings'] ?? 0,
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể xóa bản ghi lịch sử quét trên máy chủ.',
+            'Unable to delete scan history entry on server.',
+          ),
+    };
+  }
+
+  static Future<Map<String, dynamic>> clearScans({
+    required int userId,
+  }) async {
+    var res = await _deleteJson('/scans?user_id=$userId');
+    if (res['_ok'] != true && res['status_code'] == 405) {
+      res = await _postJson('/scans', {
+        'user_id': userId,
+        'action': 'clear',
+      });
+    }
+    if (res['_ok'] == true) {
+      return {
+        'success': true,
+        'deleted_count': res['deleted_count'] ?? 0,
+        'scans': res['scans'] ?? [],
+        'total_scans': res['total_scans'] ?? 0,
+        'warning_scans': res['warning_scans'] ?? 0,
+        'monthly_scans': res['monthly_scans'] ?? 0,
+        'monthly_warnings': res['monthly_warnings'] ?? 0,
+      };
+    }
+    return {
+      'success': false,
+      'message': res['message'] ??
+          AppLocale.t(
+            'Không thể xóa toàn bộ lịch sử quét trên máy chủ.',
+            'Unable to clear scan history on server.',
           ),
     };
   }
