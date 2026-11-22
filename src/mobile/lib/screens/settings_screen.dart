@@ -104,11 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final trimmed = _currentName.trim();
     if (trimmed.isEmpty) return AppLocale.t('Tôi', 'Me');
     final parts = trimmed.split(RegExp(r'\s+'));
-    for (final p in parts) {
-      if (p.toLowerCase() == 'bình' || p.toLowerCase() == 'binh') {
-        return 'Bình';
-      }
-    }
     final target = parts.length > 3 ? parts.first : parts.last;
     return target[0].toUpperCase() + (target.length > 1 ? target.substring(1) : '');
   }
