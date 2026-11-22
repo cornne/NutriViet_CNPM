@@ -17,8 +17,8 @@ class ProfileService {
   static String? _cachedWorkingRoot;
 
   /// Resolves backend API roots in priority order.
-  /// Release builds prioritize Cloudflare Workers HTTPS first and never probe dead
-  /// developer LAN/emulator IPs; debug builds check `127.0.0.1:8050` first.
+  /// Release builds target Cloudflare Workers HTTPS exclusively (zero localhost
+  /// fallback probes); debug builds check `127.0.0.1:8050` first.
   @visibleForTesting
   static List<String> buildApiRoots({
     required bool isReleaseMode,
@@ -28,7 +28,7 @@ class ProfileService {
   }) {
     final List<String> base;
     if (isReleaseMode) {
-      base = <String>[cloudApiRoot, _loopbackRoot];
+      base = <String>[cloudApiRoot];
     } else if (!isWeb && platform == TargetPlatform.android) {
       base = <String>[_loopbackRoot, cloudApiRoot, _emulatorRoot];
     } else {
@@ -601,14 +601,7 @@ class ProfileService {
     required int userId,
     required int scanId,
   }) async {
-    var res = await _deleteJson('/scans/$scanId?user_id=$userId');
-    if (res['_ok'] != true && res['status_code'] == 405) {
-      res = await _postJson('/scans', {
-        'user_id': userId,
-        'action': 'delete',
-        'scan_id': scanId,
-      });
-    }
+    final res = await _deleteJson('/scans/$scanId?user_id=$userId');
     if (res['_ok'] == true) {
       return {
         'success': true,
@@ -633,13 +626,7 @@ class ProfileService {
   static Future<Map<String, dynamic>> clearScans({
     required int userId,
   }) async {
-    var res = await _deleteJson('/scans?user_id=$userId');
-    if (res['_ok'] != true && res['status_code'] == 405) {
-      res = await _postJson('/scans', {
-        'user_id': userId,
-        'action': 'clear',
-      });
-    }
+    final res = await _deleteJson('/scans?user_id=$userId');
     if (res['_ok'] == true) {
       return {
         'success': true,
