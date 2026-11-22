@@ -1,10 +1,8 @@
 # Management Documents
 
-This directory contains project management documents, Scrum meeting minutes, weekly reports, and project tracking materials for the NutriViet project.
+This directory contains project management documents, Scrum meeting minutes, weekly reports, and governance materials for **NutriViet**.
 
-- **Weekly Scrum Reports & Meeting Minutes:** [weekly-reports.md](./weekly-reports.md)
-  - Process Methodology & 4-meeting cadence
-  - Weekly Scrum Meeting Minutes (answering the 3 mandatory questions)
-  - Sprint Planning & Sprint Retrospective Minutes
-- **Team Contract:** [team-contract.md](./team-contract.md)
-  - 8 core working agreements, communication plan, and governance rules
+- **Project Plan (5 Sprints & Risk Matrix):** [project-plan.md](./project-plan.md)
+- **Team Contract:** [team-contract.md](./team-contract.md) — 8 core working agreements, communication plan, and peer review rules
+- **Weekly Scrum Reports & Meeting Minutes:** [weekly-reports.md](./weekly-reports.md) — Sprint planning, meeting cadence, retrospectives, and AI disclosures
+- **Video Demo Narration Script:** [video-demo-script.md](./video-demo-script.md)
