@@ -376,13 +376,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('ProfileService prioritizes Cloudflare Workers HTTPS in release mode without LAN probes', () {
+  test('ProfileService targets Cloudflare Workers HTTPS exclusively in release mode', () {
     final releaseRoots = ProfileService.buildApiRoots(
       isReleaseMode: true,
       platform: TargetPlatform.android,
       isWeb: false,
     );
-    expect(releaseRoots.first, ProfileService.cloudApiRoot);
+    expect(releaseRoots, [ProfileService.cloudApiRoot]);
+    expect(releaseRoots, isNot(contains('http://127.0.0.1:8050/api/v1')));
     expect(releaseRoots, isNot(contains('http://192.168.1.15:8050/api/v1')));
     expect(releaseRoots, isNot(contains('http://10.0.2.2:8050/api/v1')));
 
@@ -415,6 +416,10 @@ void main() {
       memberName: 'Bé An',
       relationship: 'Con',
     );
+    final emptyMetrics = await LocalGuestStore.getMetrics();
+    expect(emptyMetrics['has_metrics'], isFalse);
+    expect(emptyMetrics['metrics'], isNull);
+
     await LocalGuestStore.saveMetrics(
       age: 26,
       gender: 'female',
