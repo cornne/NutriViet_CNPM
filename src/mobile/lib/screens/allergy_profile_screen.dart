@@ -8,6 +8,7 @@ import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
+import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'home_screen.dart';
@@ -514,17 +515,14 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
 
     await _autoSaveAllergens();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocale.t(
-            'Đã bật cảnh báo đỏ cho "$foodEn" (nhóm $famEn).',
-            'Enabled RED alert for "$foodEn" ($famEn family).',
-          ),
-        ),
-        backgroundColor: const Color(0xFFDC2626),
-        duration: const Duration(seconds: 2),
+    showNutriVietNotice(
+      context,
+      AppLocale.t(
+        'Đã bật cảnh báo đỏ cho "$foodEn" (nhóm $famEn).',
+        'Enabled RED alert for "$foodEn" ($famEn family).',
       ),
+      tone: NutriVietNoticeTone.warning,
+      duration: const Duration(seconds: 2),
     );
   }
 
@@ -656,16 +654,13 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     setState(() => _isSaving = false);
 
     if (res['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocale.t(
-              'Đã lưu hồ sơ sức khỏe (${selectedAllergens.length} nhóm dị ứng).',
-              'Health profile saved (${selectedAllergens.length} allergen groups).',
-            ),
-          ),
-          backgroundColor: const Color(0xFF14803C),
+      showNutriVietNotice(
+        context,
+        AppLocale.t(
+          'Đã lưu hồ sơ sức khỏe (${selectedAllergens.length} nhóm dị ứng).',
+          'Health profile saved (${selectedAllergens.length} allergen groups).',
         ),
+        tone: NutriVietNoticeTone.success,
       );
       final finalName =
           _displayName.isNotEmpty ? _displayName : widget.userName;
