@@ -9,16 +9,14 @@ class ProfileService {
     'NUTRIVIET_API_ROOT',
     defaultValue: 'https://nutriviet.nutriviet-api.workers.dev/api/v1',
   );
-  static const String _loopbackRoot = 'http://127.0.0.1:8050/api/v1';
-  static const String _emulatorRoot = 'http://10.0.2.2:8050/api/v1';
 
   // Persistent HTTP client for TCP/keep-alive reuse across tabs and API calls.
   static final http.Client _client = http.Client();
   static String? _cachedWorkingRoot;
 
-  /// Resolves backend API roots in priority order.
-  /// Release builds target Cloudflare Workers HTTPS exclusively (zero localhost
-  /// fallback probes); debug builds check `127.0.0.1:8050` first.
+  /// Resolves backend API roots.
+  /// All build modes target Cloudflare Workers HTTPS exclusively (configurable
+  /// via `--dart-define=NUTRIVIET_API_ROOT=...`), with zero localhost probes.
   @visibleForTesting
   static List<String> buildApiRoots({
     required bool isReleaseMode,
@@ -26,23 +24,7 @@ class ProfileService {
     required bool isWeb,
     String? cachedWorkingRoot,
   }) {
-    final List<String> base;
-    if (isReleaseMode) {
-      base = <String>[cloudApiRoot];
-    } else if (!isWeb && platform == TargetPlatform.android) {
-      base = <String>[_loopbackRoot, cloudApiRoot, _emulatorRoot];
-    } else {
-      base = <String>[_loopbackRoot, cloudApiRoot];
-    }
-    if (cachedWorkingRoot != null &&
-        base.contains(cachedWorkingRoot) &&
-        base.first != cachedWorkingRoot) {
-      return <String>[
-        cachedWorkingRoot,
-        ...base.where((r) => r != cachedWorkingRoot),
-      ];
-    }
-    return base;
+    return <String>[cloudApiRoot];
   }
 
   static List<String> get _apiRoots => buildApiRoots(
@@ -54,15 +36,7 @@ class ProfileService {
 
   static List<String> get apiRoots => _apiRoots;
 
-  static Duration _timeoutForRoot(String root) {
-    if (root.contains('127.0.0.1')) {
-      return const Duration(milliseconds: 1500);
-    }
-    if (root.contains('10.0.2.2')) {
-      return const Duration(milliseconds: 900);
-    }
-    return const Duration(seconds: 10);
-  }
+  static Duration _timeoutForRoot(String root) => const Duration(seconds: 12);
 
   static Future<dynamic> _decodeJsonBytes(Uint8List bytes) {
     // Offload large JSON payloads (e.g., FoodOn/additive lists) off the 120Hz UI isolate.
