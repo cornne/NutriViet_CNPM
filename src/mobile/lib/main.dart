@@ -60,6 +60,14 @@ class NutriVietApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
+            snackBarTheme: SnackBarThemeData(
+              behavior: SnackBarBehavior.floating,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: const Color(0xE8FFFFFF),
