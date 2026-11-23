@@ -376,7 +376,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('ProfileService targets Cloudflare Workers HTTPS exclusively in release mode', () {
+  test('ProfileService targets Cloudflare Workers HTTPS exclusively without localhost probes', () {
     final releaseRoots = ProfileService.buildApiRoots(
       isReleaseMode: true,
       platform: TargetPlatform.android,
@@ -392,8 +392,7 @@ void main() {
       platform: TargetPlatform.android,
       isWeb: false,
     );
-    expect(debugRoots.first, 'http://127.0.0.1:8050/api/v1');
-    expect(debugRoots[1], ProfileService.cloudApiRoot);
+    expect(debugRoots, [ProfileService.cloudApiRoot]);
   });
 
   test('LocalGuestStore persists locally and survives AuthService.logout until cleared', () async {
