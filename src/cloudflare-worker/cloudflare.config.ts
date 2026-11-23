@@ -25,7 +25,8 @@ export default {
   ],
   vars: {
     PUBLIC_BASE_URL: "https://nutriviet.nutriviet-api.workers.dev",
-    AUTO_VERIFY_EMAIL: "true",
+    AUTO_VERIFY_EMAIL: "false",
+    EMAIL_FROM: "NutriViet <trienchill@mondk.com>",
   },
 };
 
