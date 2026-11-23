@@ -78,13 +78,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (result['success'] == true) {
       final userEmail = _emailController.text.trim();
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VerifyEmailScreen(email: userEmail),
-        ),
-        (route) => false,
-      );
+      final requiresVerification = result['requires_verification'] != false;
+      if (!requiresVerification) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocale.t(
+                'Tạo tài khoản thành công! Bạn có thể đăng nhập ngay.',
+                'Account created! You can sign in now.',
+              ),
+            ),
+            backgroundColor: const Color(0xFF14803C),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyEmailScreen(email: userEmail),
+          ),
+          (route) => false,
+        );
+      }
     } else {
       setState(() {
         final err = result['error'];
@@ -179,16 +195,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   Text(
                                     AppLocale.t('Họ và tên', 'Full Name'),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF334155),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _nameController,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       color: Color(0xFF0F172A),
                                     ),
                                     decoration: InputDecoration(
@@ -206,22 +222,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           )
                                         : null,
                                   ),
-                                  const SizedBox(height: 14),
+                                  const SizedBox(height: 16),
 
                                   Text(
                                     AppLocale.t('Địa chỉ Email', 'Email Address'),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF334155),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _emailController,
                                     keyboardType: TextInputType.emailAddress,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       color: Color(0xFF0F172A),
                                     ),
                                     decoration: const InputDecoration(
@@ -249,7 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: 14),
+                                  const SizedBox(height: 16),
 
                                   Text(
                                     AppLocale.t(
@@ -257,17 +273,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       'Password (at least 8 characters)',
                                     ),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF334155),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _passwordController,
                                     obscureText: _obscurePassword,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       color: Color(0xFF0F172A),
                                     ),
                                     onChanged: (val) => setState(() {}),
@@ -310,65 +326,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: 8),
-
-                                  Row(
-                                    children: [
-                                      AnimatedContainer(
-                                        duration: const Duration(milliseconds: 220),
-                                        height: 5,
-                                        width: strength >= 3
-                                            ? 90
-                                            : (strength >= 2 ? 60 : 32),
-                                        decoration: BoxDecoration(
-                                          color: strength >= 3
-                                              ? const Color(0xFF14803C)
-                                              : (strength >= 2
-                                                  ? const Color(0xFFF59E0B)
-                                                  : const Color(0xFFEF4444)),
-                                          borderRadius: BorderRadius.circular(3),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          strength >= 3
-                                              ? AppLocale.t('Độ mạnh: Rất mạnh', 'Strength: Strong')
-                                              : (strength >= 2
-                                                  ? AppLocale.t(
-                                                      'Độ mạnh: Trung bình',
-                                                      'Strength: Medium',
-                                                    )
-                                                  : AppLocale.t('Độ mạnh: Yếu', 'Strength: Weak')),
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
+                                  if (_passwordController.text.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 220),
+                                          height: 5,
+                                          width: strength >= 3
+                                              ? 90
+                                              : (strength >= 2 ? 60 : 32),
+                                          decoration: BoxDecoration(
                                             color: strength >= 3
                                                 ? const Color(0xFF14803C)
                                                 : (strength >= 2
-                                                    ? const Color(0xFFD97706)
-                                                    : const Color(0xFFDC2626)),
+                                                    ? const Color(0xFFF59E0B)
+                                                    : const Color(0xFFEF4444)),
+                                            borderRadius: BorderRadius.circular(3),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            strength >= 3
+                                                ? AppLocale.t('Độ mạnh: Rất mạnh', 'Strength: Strong')
+                                                : (strength >= 2
+                                                    ? AppLocale.t(
+                                                        'Độ mạnh: Trung bình',
+                                                        'Strength: Medium',
+                                                      )
+                                                    : AppLocale.t('Độ mạnh: Yếu', 'Strength: Weak')),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: strength >= 3
+                                                  ? const Color(0xFF14803C)
+                                                  : (strength >= 2
+                                                      ? const Color(0xFFD97706)
+                                                      : const Color(0xFFDC2626)),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  const SizedBox(height: 16),
 
                                   Text(
                                     AppLocale.t('Xác nhận mật khẩu', 'Confirm Password'),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF334155),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _confirmPasswordController,
                                     obscureText: _obscureConfirmPassword,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       color: Color(0xFF0F172A),
                                     ),
                                     decoration: InputDecoration(
@@ -446,48 +463,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             NutriVietGlassActionButton(
                               label: AppLocale.t(
-                                'Hoàn tất & Cài đặt Hồ sơ',
-                                'Complete & Set Up Profile',
+                                'Tạo tài khoản',
+                                'Create account',
                               ),
-                              icon: PhosphorIconsDuotone.userPlus,
+                              icon: PhosphorIconsBold.userPlus,
+                              height: 54,
                               isLoading: _isLoading,
                               onPressed: _handleRegister,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 18),
 
-                            NutriVietGlassCard(
-                              cornerRadius: 18,
-                              elevated: false,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              onTap: () => Navigator.pop(context),
-                              child: Wrap(
-                                alignment: WrapAlignment.center,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 4,
-                                runSpacing: 2,
-                                children: [
-                                  Text(
-                                    AppLocale.t(
-                                      'Đã có tài khoản? ',
-                                      'Already have an account? ',
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF475569),
-                                    ),
+                            Center(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => Navigator.pop(context),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
                                   ),
-                                  Text(
-                                    AppLocale.t('Đăng nhập ngay', 'Sign in now'),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF14803C),
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                  child: Wrap(
+                                    alignment: WrapAlignment.center,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    spacing: 4,
+                                    children: [
+                                      Text(
+                                        AppLocale.t(
+                                          'Đã có tài khoản?',
+                                          'Already have an account?',
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          color: Color(0xFF475569),
+                                        ),
+                                      ),
+                                      Text(
+                                        AppLocale.t(
+                                          'Đăng nhập',
+                                          'Sign in',
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          color: Color(0xFF14803C),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ],
