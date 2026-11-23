@@ -75,6 +75,7 @@ Secrets are stored encrypted in Cloudflare Workers (never committed to Git or bu
 | :--- | :--- | :--- | :--- |
 | `PADDLEOCR_VL_TOKEN` | Secret | Configured | Baidu AI Studio access token for `/api/v1/ocr/jobs` (can be overridden per request via `X-PaddleOCR-Token`) |
 | `PUBLIC_BASE_URL` | Plain Text | `https://nutriviet.nutriviet-api.workers.dev` | Base URL for email verification links |
-| `AUTO_VERIFY_EMAIL` | Plain Text | `"true"` | Automatically activates newly registered accounts while no email API key is attached |
-| `RESEND_API_KEY` | Secret | Optional | Enable real verification/reset emails via Resend (set `EMAIL_FROM` and `AUTO_VERIFY_EMAIL="false"`) |
-| `BREVO_API_KEY` | Secret | Optional | Alternative transactional HTTP email provider (300 emails/day free tier) |
+| `EMAIL_FROM` | Plain Text | `NutriViet <trienchill@mondk.com>` | Verified transactional sender address |
+| `AUTO_VERIFY_EMAIL` | Plain Text | `"false"` | Requires real email verification link click before first sign-in |
+| `BREVO_API_KEY` | Secret | Configured | Brevo transactional HTTP API key (300 free emails/day) for account verification & password recovery |
+| `RESEND_API_KEY` | Secret | Optional | Optional alternative transactional HTTP email provider (takes precedence if configured) |
