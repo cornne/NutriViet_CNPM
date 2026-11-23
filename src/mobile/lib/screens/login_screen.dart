@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/local_guest_store.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
+import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
@@ -290,16 +291,13 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocale.t(
-              'Đăng nhập thành công! Xin chào ${user['full_name']}',
-              'Signed in successfully! Welcome ${user['full_name']}',
-            ),
-          ),
-          backgroundColor: const Color(0xFF14803C),
+      showNutriVietNotice(
+        context,
+        AppLocale.t(
+          'Đăng nhập thành công! Xin chào ${user['full_name']}',
+          'Signed in successfully! Welcome ${user['full_name']}',
         ),
+        tone: NutriVietNoticeTone.success,
       );
 
       Navigator.pushAndRemoveUntil(
