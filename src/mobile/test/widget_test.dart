@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nutriviet_mobile/l10n/app_locale.dart';
 import 'package:nutriviet_mobile/main.dart';
+import 'package:nutriviet_mobile/screens/allergy_profile_screen.dart';
 import 'package:nutriviet_mobile/screens/community_feed_screen.dart';
 import 'package:nutriviet_mobile/screens/home_screen.dart';
 import 'package:nutriviet_mobile/screens/login_screen.dart';
@@ -135,6 +136,7 @@ void main() {
 
     expect(find.text('Chào mừng trở lại'), findsOneWidget);
     expect(find.text('Tiếng Việt'), findsOneWidget);
+    expect(find.text('Ghi nhớ đăng nhập'), findsNothing);
     expect(find.text('Welcome back'), findsNothing);
 
     await tester.tap(find.text('Tiếng Việt'));
@@ -142,7 +144,44 @@ void main() {
 
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
+    expect(find.text('Remember me'), findsNothing);
     expect(find.text('Chào mừng trở lại'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AllergyProfileScreen focuses on allergies and health without body metrics clutter', (
+    WidgetTester tester,
+  ) async {
+    await AppLocale.setLanguage('vi');
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AllergyProfileScreen(
+          userId: 0,
+          userName: 'Khách',
+          isGuest: true,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Hồ Sơ Dị Ứng & Sức Khỏe'), findsOneWidget);
+    expect(find.text('Nhóm dị ứng thực phẩm'), findsOneWidget);
+    expect(find.text('Đậu phộng'), findsOneWidget);
+    expect(find.text('Sữa & Chế phẩm'), findsOneWidget);
+    expect(find.text('Tình trạng sức khỏe'), findsOneWidget);
+
+    // Must NOT contain gender, height, weight, age, or BMI form clutter
+    expect(find.text('Giới tính'), findsNothing);
+    expect(find.text('Chiều cao'), findsNothing);
+    expect(find.text('Cân nặng'), findsNothing);
+    expect(find.text('Tuổi'), findsNothing);
+    expect(find.textContaining('BMI'), findsNothing);
+
+    // Tapping an allergen card activates it and shows severity pill
+    await tester.tap(find.text('Đậu phộng'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Sốc phản vệ'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
