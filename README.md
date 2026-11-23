@@ -119,7 +119,7 @@ See [src/cloudflare-worker/README.md](./src/cloudflare-worker/README.md) for D1 
 
 | Module | Command | Suite Coverage |
 | :--- | :--- | :--- |
-| **Flutter Mobile** | `cd src/mobile && flutter analyze && flutter test` | **22 tests** — UI/Glass widgets, VI/EN localization, Guest Mode & scan delete/clear, RBAC gates, Cloudflare OCR Proxy pipeline & retries |
+| **Flutter Mobile** | `cd src/mobile && flutter analyze && flutter test` | **23 tests** — UI/Glass widgets, VI/EN localization, Allergy & Health Profile, Guest Mode & scan delete/clear, RBAC gates, Cloudflare OCR Proxy pipeline & retries |
 | **Cloudflare Worker** | `cd src/cloudflare-worker && npm run typecheck && npm test` | **4 tests** — PBKDF2 parity, ingredient splitting, OCR Markdown/HTML cleaning, WHO/VN BMI & TDEE calculation |
 
 ---
