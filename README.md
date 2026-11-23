@@ -66,9 +66,8 @@ NutriViet_CNPM/
 │   ├── 002-allergy-profile/           # FG2: Allergy Profile, Chronics & Body Metrics
 │   └── 003-community-guest-rbac/      # Guest Mode, Community Feed & Admin RBAC Moderation
 ├── src/                               # Application source code
-│   ├── cloudflare-worker/             # Production Serverless Backend (TypeScript / Hono / D1)
+│   ├── cloudflare-worker/             # Production Serverless Backend (TypeScript / Hono / D1 + FoodOn Graph HTML)
 │   ├── mobile/                        # Flutter Android Mobile Client (Dart 3 + Kotlin native)
-│   ├── backend/                       # Local Python Reference Backend, FoodOn SQLite & Benchmarks
 │   ├── speckit/                       # Spec Kit governance templates & training log
 │   └── constitution.md                # Ratified NutriViet Project Constitution
 ├── foodon_en_for_kaggle.csv           # 33,688 official FoodOn concepts export for NLP/translation
@@ -88,7 +87,6 @@ NutriViet_CNPM/
 | **Cloud Backend** | **Cloudflare Workers** + **Hono** (TypeScript) | Serverless REST API with Smart Placement in APAC, Web Crypto PBKDF2-HMAC-SHA256 authentication, strict server-side Admin RBAC, and ready-to-plug HTTP email dispatch (Resend / Brevo). |
 | **Cloud Databases** | **Cloudflare D1 (SQLite — APAC)** | Two dedicated D1 databases: `nutriviet-app` (users, profiles, scan history, community posts/media, static web UI) and `nutriviet-foodon` (33,688 FoodOn concepts, 53,242 lexical bridge terms, 742 E-codes, 8 B-tree indexes). |
 | **Semantic Engine** | **FoodOn Ontology** + **Fuzzy Matching** | 4-stage ingredient recognition (exact match, E-code/INS lookup, stem/token match, typo-tolerant fuzzy match) with ancestor-chain inference from everyday foods (e.g., *butter*, *casein*, *whey*) to allergen families. |
-| **Local Reference** | **Python 3.13 Stdlib WSGI** (`src/backend/`) | Zero-dependency local development mirror (`foodon_ui_server.py`), FoodOn accuracy benchmark (`evaluate_hybrid.py`), and unit test suite. |
 
 ---
 
@@ -115,14 +113,6 @@ npm run build
 ```
 See [src/cloudflare-worker/README.md](./src/cloudflare-worker/README.md) for D1 database IDs, API routes, and secret management.
 
-### 3. Local Python Reference Backend & Benchmarks (`src/backend/`)
-```bash
-cd src/backend
-python -B -m unittest test_wsgi_pythonanywhere.py test_community_rbac.py test_foodon_graph.py -v
-python -B foodon_ui_server.py   # Serves http://127.0.0.1:8050/foodon-graph
-```
-See [src/backend/README.md](./src/backend/README.md) for details.
-
 ---
 
 ## Automated Verification Summary
@@ -130,8 +120,7 @@ See [src/backend/README.md](./src/backend/README.md) for details.
 | Module | Command | Suite Coverage |
 | :--- | :--- | :--- |
 | **Flutter Mobile** | `cd src/mobile && flutter analyze && flutter test` | **22 tests** — UI/Glass widgets, VI/EN localization, Guest Mode & scan delete/clear, RBAC gates, Cloudflare OCR Proxy pipeline & retries |
-| **Cloudflare Worker** | `cd src/cloudflare-worker && npm run typecheck && npm test` | **4 tests** — PBKDF2 parity, ingredient splitting, OCR Markdown/HTML cleaning |
-| **Python Reference** | `cd src/backend && python -B -m unittest ...` | **17 tests** — FoodOn ontology inference & graph traversal, profile/scan isolation, Community & Admin RBAC |
+| **Cloudflare Worker** | `cd src/cloudflare-worker && npm run typecheck && npm test` | **4 tests** — PBKDF2 parity, ingredient splitting, OCR Markdown/HTML cleaning, WHO/VN BMI & TDEE calculation |
 
 ---
 

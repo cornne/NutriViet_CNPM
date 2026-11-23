@@ -50,9 +50,7 @@ class CommunityService {
     for (final root in _roots) {
       final uri = Uri.parse('$root$subPath');
       try {
-        final timeout = root.contains('127.0.0.1') || root.contains('10.0.2.2')
-            ? const Duration(milliseconds: 1800)
-            : const Duration(seconds: 12);
+        const timeout = Duration(seconds: 12);
         final http.Response response;
         if (method == 'GET') {
           response = await _client.get(uri, headers: _headers(token)).timeout(timeout);

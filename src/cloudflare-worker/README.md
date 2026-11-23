@@ -48,6 +48,8 @@ src/cloudflare-worker/
 │   ├── crypto.ts           # Web Crypto PBKDF2-HMAC-SHA256 (compatible with Python hashlib)
 │   ├── email.ts            # HTTP Email dispatcher (Resend / Brevo / auto-verify fallback)
 │   └── types.ts            # Cloudflare Env bindings & typed D1 row interfaces
+├── static/
+│   └── foodon_graph.html   # Interactive FoodOn Ontology Graph HTML source (seeded into D1 static_pages)
 └── test/
     └── worker.test.ts      # Vitest unit tests
 ```
