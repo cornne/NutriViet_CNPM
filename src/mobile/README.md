@@ -7,7 +7,7 @@ Android-first mobile client for **NutriViet**, built with **Flutter (Dart 3.x)**
 ## Key Capabilities
 
 - **Live CameraX Packaging Scanner + Edge OCR:** Full-screen camera viewfinder with flash, focus, gallery picker, native Android EXIF-aware JPEG compression (`MainActivity.kt` `com.nutriviet/image_opt` down to `<= 110 KB`), and **PaddleOCR-VL-1.6** via Cloudflare Edge Proxy (`/api/v1/ocr/jobs`).
-- **Personalized FoodOn Allergen & Chronic Alerts:** Instant **RED / YELLOW / GREEN** label evaluation backed by 33,688 FoodOn ontology concepts, dynamic everyday trigger food lookup, and body metrics (BMI/TDEE).
+- **Personalized FoodOn Allergen & Chronic Alerts:** Instant **RED / YELLOW / GREEN** label evaluation backed by 33,688 FoodOn ontology concepts, dynamic everyday trigger food lookup, and a focused Allergy & Health Profile UI.
 - **Local-First Guest Mode + Cloud Sync:** Guests can configure allergens, chronics, family members, and scan labels locally (`LocalGuestStore`), then seamlessly sync everything to a cloud account upon sign-in.
 - **Scan History Management:** View detailed allergen/additive breakdowns, swipe or tap to delete individual scans, or clear full history (both Cloud & Guest).
 - **Community Feed & Admin Moderation (RBAC):** Authenticated users share product reviews with photos stored on Cloudflare D1; `admin` accounts unlock hidden moderation controls.
@@ -54,7 +54,7 @@ cd src/mobile
 # 1. Install dependencies
 flutter pub get
 
-# 2. Static analysis & unit/widget tests (22 tests)
+# 2. Static analysis & unit/widget tests (23 tests)
 flutter analyze
 flutter test
 
