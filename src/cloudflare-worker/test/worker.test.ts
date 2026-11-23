@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { calculateMetricsInfo } from "../src/auth_profile";
 import { hashPassword, verifyPassword } from "../src/crypto";
+import { parseFromAddress, sendVerificationEmail } from "../src/email";
 import { formatCleanEnglishTitle, normalizeEnKey, splitRawIngredients } from "../src/foodon";
 import { extractCleanOcrText } from "../src/ocr_proxy";
+import type { Env } from "../src/types";
 
 describe("NutriViet Cloudflare Worker core utilities", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("PBKDF2-HMAC-SHA256 matches Python hashlib.pbkdf2_hmac 100k iterations byte-for-byte", async () => {
     const { hash, salt } = await hashPassword("NutriPass123!", "0123456789abcdef0123456789abcdef");
     expect(salt).toBe("0123456789abcdef0123456789abcdef");
@@ -40,6 +46,57 @@ Bột mì (48%), sữa bột nguyên kem (6%), chất nhũ hóa (INS 322(i) / E3
     expect(info.bmi).toBe(21.5);
     expect(info.bmi_status).toContain("Cân đối");
     expect(info.tdee).toBeGreaterThan(2000);
+  });
+
+  it("parseFromAddress extracts display name and email cleanly", () => {
+    expect(parseFromAddress("NutriViet <sender@example.com>")).toEqual({
+      name: "NutriViet",
+      email: "sender@example.com",
+    });
+    expect(parseFromAddress("sender@example.com")).toEqual({
+      name: "NutriViet",
+      email: "sender@example.com",
+    });
+  });
+
+  it("sendVerificationEmail dispatches via Brevo with HTML + plain text and surfaces HTTP errors", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ messageId: "<abc@brevo>" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response('{"code":"unauthorized","message":"unrecognised IP"}', { status: 401 }));
+
+    const env = {
+      BREVO_API_KEY: "xkeysib-test-key",
+      EMAIL_FROM: "NutriViet <sender@example.com>",
+    } as unknown as Env;
+
+    const ok = await sendVerificationEmail(
+      env,
+      "user@example.com",
+      "Nguyen An",
+      "tok123",
+      "https://nutriviet.nutriviet-api.workers.dev"
+    );
+    expect(ok).toEqual({ sent: true, provider: "brevo" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(init?.body));
+    expect(body.sender).toEqual({ name: "NutriViet", email: "sender@example.com" });
+    expect(body.to).toEqual([{ email: "user@example.com" }]);
+    expect(body.htmlContent).toContain("/verify-email?token=tok123");
+    expect(body.textContent).toContain("/verify-email?token=tok123");
+
+    const fail = await sendVerificationEmail(
+      env,
+      "user@example.com",
+      "Nguyen An",
+      "tok123",
+      "https://nutriviet.nutriviet-api.workers.dev"
+    );
+    expect(fail.sent).toBe(false);
+    expect(fail.provider).toBe("brevo");
+    expect(fail.error).toContain("HTTP 401");
+    expect(fail.error).toContain("unrecognised IP");
   });
 });
 
