@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/community_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
+import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'admin_moderation_screen.dart';
@@ -799,18 +800,16 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 reason: reason,
               );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    res['success'] == true
-                        ? AppLocale.t(
-                            'Đã gửi báo cáo tới quản trị viên.',
-                            'Report submitted to administrators.',
-                          )
-                        : (res['message']?.toString() ?? 'Error'),
-                  ),
-                  backgroundColor: res['success'] == true ? _brandGreen : _dangerRed,
-                ),
+              final ok = res['success'] == true;
+              showNutriVietNotice(
+                context,
+                ok
+                    ? AppLocale.t(
+                        'Đã gửi báo cáo tới quản trị viên.',
+                        'Report submitted to administrators.',
+                      )
+                    : (res['message']?.toString() ?? 'Error'),
+                tone: ok ? NutriVietNoticeTone.success : NutriVietNoticeTone.error,
               );
             },
           ),
@@ -839,11 +838,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     if (res['success'] == true) {
       await _loadPosts();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(res['message']?.toString() ?? 'Error'),
-          backgroundColor: _dangerRed,
-        ),
+      showNutriVietNotice(
+        context,
+        res['message']?.toString() ?? 'Error',
+        tone: NutriVietNoticeTone.error,
       );
     }
   }

@@ -528,41 +528,30 @@ class NutriVietAllergyProfileSkeleton extends StatelessWidget {
               ),
             ),
             SizedBox(height: 18),
-            NutriVietShimmerBox(width: 160, height: 16, borderRadius: 8),
-            SizedBox(height: 10),
-            NutriVietGlassCard(
-              cornerRadius: 22,
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: NutriVietShimmerBox(
-                          height: 62,
-                          borderRadius: 14,
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: NutriVietShimmerBox(
-                          height: 62,
-                          borderRadius: 14,
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: NutriVietShimmerBox(
-                          height: 62,
-                          borderRadius: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 14),
-                  NutriVietShimmerBox(height: 54, borderRadius: 14),
-                ],
-              ),
+            NutriVietShimmerBox(width: 170, height: 16, borderRadius: 8),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: NutriVietShimmerBox(height: 112, borderRadius: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: NutriVietShimmerBox(height: 112, borderRadius: 20),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: NutriVietShimmerBox(height: 112, borderRadius: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: NutriVietShimmerBox(height: 112, borderRadius: 20),
+                ),
+              ],
             ),
           ],
         ),

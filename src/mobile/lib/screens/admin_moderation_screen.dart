@@ -4,6 +4,7 @@ import '../l10n/app_locale.dart';
 import '../services/community_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
+import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
 
 /// Hidden Admin Moderation & User Management Console.
@@ -91,11 +92,10 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: isError ? _dangerRed : _brandGreen,
-      ),
+    showNutriVietNotice(
+      context,
+      msg,
+      tone: isError ? NutriVietNoticeTone.error : NutriVietNoticeTone.success,
     );
   }
 

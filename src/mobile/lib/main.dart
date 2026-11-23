@@ -60,40 +60,48 @@ class NutriVietApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
+            snackBarTheme: SnackBarThemeData(
+              behavior: SnackBarBehavior.floating,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: const Color(0xD8FFFFFF),
+              fillColor: const Color(0xE8FFFFFF),
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide:
-                    const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    const BorderSide(color: Color(0xFFDDE5DF), width: 1.2),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide:
-                    const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    const BorderSide(color: Color(0xFFDDE5DF), width: 1.2),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide:
-                    const BorderSide(color: Color(0xFF10B981), width: 1.8),
+                    const BorderSide(color: Color(0xFF14803C), width: 1.8),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide:
-                    const BorderSide(color: Color(0xFFEF4444), width: 1),
+                    const BorderSide(color: Color(0xFFEF4444), width: 1.2),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide:
                     const BorderSide(color: Color(0xFFEF4444), width: 1.8),
               ),
               labelStyle:
-                  const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                  const TextStyle(fontSize: 14.5, color: Color(0xFF64748B)),
               hintStyle:
-                  const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                  const TextStyle(fontSize: 14.5, color: Color(0xFF94A3B8)),
             ),
           ),
           home: initialUser != null

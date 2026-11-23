@@ -47,30 +47,50 @@ class PaddleOcrVlService {
       String.fromEnvironment('PADDLEOCR_VL_TOKEN');
   static const MethodChannel _imageOptChannel =
       MethodChannel('com.nutriviet/image_opt');
+  // Reused keep-alive client avoids repeated TLS handshakes across OCR jobs.
+  static final http.Client _sharedClient = http.Client();
 
   static Map<dynamic, dynamic>? _asMap(dynamic value) =>
       value is Map ? value : null;
 
-  /// Compresses large camera JPEGs (~1.5-3MB) on Android natively down to
-  /// <= 110KB (maxSide=1080) in ~35ms for instant edge uploads.
+  /// Crops (when [normalizedCropRect] is given) and compresses camera/gallery
+  /// JPEGs natively on Android (~30ms off main thread) to <= 180KB while
+  /// keeping small ingredient lettering crisp for PaddleOCR-VL-1.6.
   static Future<Uint8List> optimizeBytesForUpload(
     Uint8List rawBytes, {
-    int maxSide = 1080,
-    int targetMaxBytes = 110 * 1024,
+    int maxSide = 1280,
+    int targetMaxBytes = 180 * 1024,
+    Rect? normalizedCropRect,
   }) async {
-    if (kIsWeb ||
-        defaultTargetPlatform != TargetPlatform.android ||
-        rawBytes.length <= targetMaxBytes) {
+    final hasCrop = normalizedCropRect != null &&
+        normalizedCropRect.width > 0.05 &&
+        normalizedCropRect.height > 0.05 &&
+        (normalizedCropRect.left > 0.005 ||
+            normalizedCropRect.top > 0.005 ||
+            normalizedCropRect.width < 0.995 ||
+            normalizedCropRect.height < 0.995);
+
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return rawBytes;
+    }
+    if (!hasCrop && rawBytes.length <= targetMaxBytes) {
       return rawBytes;
     }
     try {
+      final args = <String, dynamic>{
+        'bytes': rawBytes,
+        'maxSide': hasCrop ? 1120 : maxSide,
+        'targetMaxBytes': targetMaxBytes,
+      };
+      if (hasCrop) {
+        args['cropLeft'] = normalizedCropRect.left.clamp(0.0, 0.95);
+        args['cropTop'] = normalizedCropRect.top.clamp(0.0, 0.95);
+        args['cropWidth'] = normalizedCropRect.width.clamp(0.05, 1.0);
+        args['cropHeight'] = normalizedCropRect.height.clamp(0.05, 1.0);
+      }
       final optimized = await _imageOptChannel.invokeMethod<Uint8List>(
         'compressForOcr',
-        {
-          'bytes': rawBytes,
-          'maxSide': maxSide,
-          'targetMaxBytes': targetMaxBytes,
-        },
+        args,
       );
       if (optimized != null && optimized.isNotEmpty) {
         return optimized;
@@ -118,9 +138,11 @@ class PaddleOcrVlService {
     String? endpointOverride,
     bool useDocOrientationClassify = true,
     bool useDocUnwarping = false,
+    Rect? normalizedCropRect,
+    bool skipOptimize = false,
     Duration submitTimeout = const Duration(seconds: 45),
     Duration pollTimeout = const Duration(seconds: 25),
-    Duration pollInterval = const Duration(milliseconds: 1400),
+    Duration pollInterval = const Duration(milliseconds: 900),
     Duration maxWait = const Duration(seconds: 120),
     int maxSubmitAttempts = 2,
     int maxConsecutivePollErrors = 3,
@@ -143,8 +165,7 @@ class PaddleOcrVlService {
     }
 
     final sw = Stopwatch()..start();
-    final httpClient = client ?? http.Client();
-    final shouldCloseClient = client == null;
+    final httpClient = client ?? _sharedClient;
     final resolvedName = _resolveFilename(fileName ?? imagePath);
     final payloadJson = jsonEncode({
       'useDocOrientationClassify': useDocOrientationClassify,
@@ -165,8 +186,11 @@ class PaddleOcrVlService {
 
     try {
       Uint8List? uploadBytes = imageBytes;
-      if (uploadBytes != null && uploadBytes.isNotEmpty) {
-        uploadBytes = await optimizeBytesForUpload(uploadBytes);
+      if (!skipOptimize && uploadBytes != null && uploadBytes.isNotEmpty) {
+        uploadBytes = await optimizeBytesForUpload(
+          uploadBytes,
+          normalizedCropRect: normalizedCropRect,
+        );
       }
       final sizeKbLabel = uploadBytes != null
           ? ' (${(uploadBytes.length / 1024).round()} KB)'
@@ -287,10 +311,16 @@ class PaddleOcrVlService {
       }
 
       // -----------------------------------------------------------------------
-      // Stage 2: Poll async job status (Worker parses JSONL on Cloudflare Edge)
+      // Stage 2: Poll async job status (Worker parses + extracts Ingredients on Edge)
       // -----------------------------------------------------------------------
       String? directText;
       String? directRawMarkdown;
+      String? directRawText;
+      bool? hasIngredientsFlag;
+      bool nutritionDetected = false;
+      String? matchedHeader;
+      double fuzzyScore = 0.0;
+      String reason = 'OK';
       int pollCount = 0;
       int consecutivePollErrors = 0;
       final pollUri = Uri.parse('$endpoint/$jobId');
@@ -298,6 +328,13 @@ class PaddleOcrVlService {
         'Connection': 'keep-alive',
         if (optionalToken.isNotEmpty) 'X-PaddleOCR-Token': optionalToken,
       };
+
+      // Brief settle delay before poll #1 in real production runs to avoid a
+      // wasted immediate `pending` round-trip (skipped in fast unit tests).
+      if (pollInterval.inMilliseconds >= 300 &&
+          cancelToken?.isCancelled != true) {
+        await Future<void>.delayed(const Duration(milliseconds: 650));
+      }
 
       while (sw.elapsed < maxWait) {
         if (cancelToken?.isCancelled == true) return _cancelledResult();
@@ -366,10 +403,18 @@ class PaddleOcrVlService {
         if (state == 'done') {
           directText = (pollJson?['text'] ?? '').toString();
           directRawMarkdown = (pollJson?['raw_markdown'] ?? '').toString();
+          directRawText = (pollJson?['raw_text'] ?? '').toString();
+          if (pollJson?.containsKey('has_ingredients') == true) {
+            hasIngredientsFlag = pollJson?['has_ingredients'] == true;
+          }
+          nutritionDetected = pollJson?['nutrition_detected'] == true;
+          matchedHeader = pollJson?['matched_header']?.toString();
+          fuzzyScore = (pollJson?['fuzzy_score'] as num?)?.toDouble() ?? 0.0;
+          reason = (pollJson?['reason'] ?? 'OK').toString();
           emit(
             PaddleOcrStage.parsing,
-            'Đang tổng hợp danh sách thành phần...',
-            'Finalizing extracted ingredient text...',
+            'Đang lọc mục Thành phần...',
+            'Filtering Ingredients section...',
             pollCount: pollCount,
           );
           break;
@@ -404,7 +449,11 @@ class PaddleOcrVlService {
           );
         }
 
-        await Future<void>.delayed(pollInterval);
+        // Adaptive backoff: brisk polling early, gentler interval on longer jobs
+        final stepDelay = pollCount <= 5 || pollInterval.inMilliseconds < 300
+            ? pollInterval
+            : Duration(milliseconds: (pollInterval.inMilliseconds * 1.35).round());
+        await Future<void>.delayed(stepDelay);
       }
 
       if (cancelToken?.isCancelled == true) return _cancelledResult();
@@ -420,6 +469,8 @@ class PaddleOcrVlService {
       }
 
       final cleaned = directText.trim();
+      final resolvedHasIngredients =
+          hasIngredientsFlag ?? cleaned.isNotEmpty;
       final nonEmptyLines = cleaned
           .split('\n')
           .map((e) => e.trim())
@@ -427,9 +478,18 @@ class PaddleOcrVlService {
           .toList();
       return {
         'success': true,
-        'text': cleaned,
+        'has_ingredients': resolvedHasIngredients && cleaned.isNotEmpty,
+        'text': resolvedHasIngredients ? cleaned : '',
+        'raw_text': directRawText ?? '',
         'raw_markdown': directRawMarkdown ?? '',
-        'line_count': nonEmptyLines.length,
+        'matched_header': matchedHeader,
+        'fuzzy_score': fuzzyScore,
+        'nutrition_detected': nutritionDetected,
+        'reason': resolvedHasIngredients && cleaned.isNotEmpty
+            ? 'OK'
+            : (reason == 'OK' ? 'NO_INGREDIENTS_FOUND' : reason),
+        'line_count': resolvedHasIngredients ? nonEmptyLines.length : 0,
+        'upload_kb': uploadBytes != null ? (uploadBytes.length / 1024).round() : 0,
         'total_ms': sw.elapsedMilliseconds,
         'job_id': jobId,
         'engine': modelName,
@@ -443,10 +503,6 @@ class PaddleOcrVlService {
           'Unable to reach PaddleOCR-VL-1.6. Check your internet connection and retry.',
         ),
       };
-    } finally {
-      if (shouldCloseClient) {
-        httpClient.close();
-      }
     }
   }
 

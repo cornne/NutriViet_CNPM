@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { registerAuthAndProfileRoutes } from "./auth_profile";
 import { registerCommunityAndAdminRoutes } from "./community";
+import { isEmailProviderConfigured } from "./email";
 import { D1FoodOnEngine, splitRawIngredients } from "./foodon";
 import { registerOcrRoutes } from "./ocr_proxy";
 import type { Env } from "./types";
@@ -27,6 +28,9 @@ app.get("/health", async (c) => {
     version: "2.0.0",
     foodon_hybrid: true,
     ocr_proxy: Boolean(c.env.PADDLEOCR_VL_TOKEN?.trim()),
+    email_verification:
+      isEmailProviderConfigured(c.env) &&
+      String(c.env.AUTO_VERIFY_EMAIL || "").toLowerCase() !== "true",
   });
 });
 

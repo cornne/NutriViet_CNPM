@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { extractIngredientsSection } from "./ingredient_extractor";
 import type { Env } from "./types";
 
 const AI_STUDIO_JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs";
@@ -285,16 +286,26 @@ export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
     }
 
     const rawMarkdown = mdChunks.join("\n\n").trim();
-    const cleaned = extractCleanOcrText(rawMarkdown);
-    const lines = cleaned.split("\n").map((l) => l.trim()).filter(Boolean);
+    const fullCleanText = extractCleanOcrText(rawMarkdown);
+    const extracted = extractIngredientsSection(fullCleanText);
+    const lines = extracted.ingredients_text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
 
     return c.json({
       success: true,
       state: "done",
       job_id: jobId,
       engine: OCR_MODEL,
-      text: cleaned,
+      has_ingredients: extracted.has_ingredients,
+      text: extracted.ingredients_text,
+      raw_text: fullCleanText,
       raw_markdown: rawMarkdown,
+      matched_header: extracted.matched_header,
+      fuzzy_score: extracted.fuzzy_score,
+      nutrition_detected: extracted.nutrition_detected,
+      reason: extracted.reason,
       line_count: lines.length,
     });
   });

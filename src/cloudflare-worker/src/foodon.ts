@@ -173,6 +173,38 @@ function compareEcodes(a: string, b: string): number {
   return ta[3].localeCompare(tb[3]);
 }
 
+export function repairOcrEcodes(text: string): string {
+  // Repair frequent PaddleOCR digit/letter confusions inside E-numbers / INS codes:
+  // e.g. "E62l" -> "E621", "E1O2" -> "E102", "IN5 322(I)" -> "INS322(i)"
+  return (text || "").replace(
+    /\b(e|ins|in5)\s*([0-9oOlIiS]{3,4})([a-z]?)(?:\(([ivx1lI]+)\))?(?![A-Za-z0-9])/gi,
+    (_, p, digits, suf, roman) => {
+      const cleanPrefix = String(p).toLowerCase() === "in5" ? "INS" : String(p).toUpperCase();
+      const cleanDigits = String(digits)
+        .replace(/[oO]/g, "0")
+        .replace(/[lIi]/g, "1")
+        .replace(/S/g, "5");
+      if (!/^\d{3,4}$/.test(cleanDigits)) return _;
+      const cleanRoman = roman ? `(${String(roman).replace(/[1l]/g, "i").toLowerCase()})` : "";
+      return `${cleanPrefix}${cleanDigits}${suf || ""}${cleanRoman}`;
+    }
+  );
+}
+
+export function repairOcrWordHomoglyphs(text: string): string {
+  // Repair visual OCR homoglyphs inside alphabetic ingredient words (e.g. "rnilk" -> "milk", "s0y" -> "soy")
+  return (text || "")
+    .replace(/\b(?=[a-z0-9]*[a-z])[a-z0-9]+\b/gi, (word) => {
+      // Leave E-codes / INS codes untouched
+      if (/^(?:e|ins)\d{3,4}/i.test(word)) return word;
+      return word
+        .replace(/rn/gi, "m")
+        .replace(/0/g, "o")
+        .replace(/5/g, "s")
+        .replace(/1/g, "l");
+    });
+}
+
 export function splitRawIngredients(rawText: string): string[] {
   const cleaned = (rawText || "").replace(/^(?:thành phần|ingredients)\s*[:\-]\s*/i, "");
   return cleaned
@@ -397,7 +429,8 @@ export class D1FoodOnEngine {
   }
 
   private async lookupAsciiOrFuzzy(rawToken: string, threshold = 0.82): Promise<{ curie: string; term: string; matchType: string; confidence: number } | null> {
-    const tNorm = normalizeEnKey(rawToken);
+    const repaired = repairOcrWordHomoglyphs(rawToken);
+    const tNorm = normalizeEnKey(repaired);
     const tAscii = removeAccents(tNorm);
     if (tAscii.length < 3) return null;
 
@@ -423,33 +456,56 @@ export class D1FoodOnEngine {
       };
     }
 
+    const scoreRows = (
+      rows: Array<{ term_norm: string; term_ascii: string; lang: string; curie: string; confidence_tier: number }>
+    ) => {
+      let bestMatch: { curie: string; term: string; matchType: string; confidence: number } | null = null;
+      let bestSim = threshold;
+      for (const c of rows) {
+        if (Math.abs(c.term_ascii.length - tAscii.length) > 2) continue;
+        const simAscii = similarityRatio(tAscii, c.term_ascii);
+        if (simAscii < 0.74) continue;
+        const simAcc = similarityRatio(tNorm, c.term_norm);
+        const weighted = 0.6 * simAcc + 0.4 * simAscii;
+        const effective = weighted - (c.confidence_tier - 1) * 0.02;
+        if (effective >= bestSim) {
+          bestSim = effective;
+          bestMatch = {
+            curie: c.curie,
+            term: c.term_norm,
+            matchType: `fuzzy_${c.lang}`,
+            confidence: Math.round(weighted * 1000) / 1000,
+          };
+        }
+      }
+      return bestMatch;
+    };
+
     // Indexed 3-char prefix candidate lookup for OCR typos (avoids scanning 53k rows)
-    const prefix = tAscii.slice(0, 3);
-    const candRes = await this.db
+    const prefix3 = tAscii.slice(0, 3);
+    const cand3 = await this.db
       .prepare("SELECT term_norm, term_ascii, lang, curie, confidence_tier FROM lexical_bridge WHERE term_ascii >= ? AND term_ascii < ? LIMIT 80")
-      .bind(prefix, prefix.slice(0, 2) + String.fromCharCode(prefix.charCodeAt(2) + 1))
+      .bind(prefix3, prefix3.slice(0, 2) + String.fromCharCode(prefix3.charCodeAt(2) + 1))
       .all<{ term_norm: string; term_ascii: string; lang: string; curie: string; confidence_tier: number }>();
 
-    let bestMatch: { curie: string; term: string; matchType: string; confidence: number } | null = null;
-    let bestSim = threshold;
-    for (const c of candRes.results) {
-      if (Math.abs(c.term_ascii.length - tAscii.length) > 2) continue;
-      const simAscii = similarityRatio(tAscii, c.term_ascii);
-      if (simAscii < 0.74) continue;
-      const simAcc = similarityRatio(tNorm, c.term_norm);
-      const weighted = 0.6 * simAcc + 0.4 * simAscii;
-      const effective = weighted - (c.confidence_tier - 1) * 0.02;
-      if (effective >= bestSim) {
-        bestSim = effective;
-        bestMatch = {
-          curie: c.curie,
-          term: c.term_norm,
-          matchType: `fuzzy_${c.lang}`,
-          confidence: Math.round(weighted * 1000) / 1000,
-        };
-      }
+    const hit3 = scoreRows(cand3.results);
+    if (hit3) return hit3;
+
+    // Indexed 2-char prefix fallback when PaddleOCR corrupts char #2 or #3 (e.g. "pcanut", "whcat")
+    if (tAscii.length >= 5) {
+      const prefix2 = tAscii.slice(0, 2);
+      const minLen = Math.max(3, tAscii.length - 2);
+      const maxLen = tAscii.length + 2;
+      const cand2 = await this.db
+        .prepare(
+          "SELECT term_norm, term_ascii, lang, curie, confidence_tier FROM lexical_bridge WHERE term_ascii >= ? AND term_ascii < ? AND LENGTH(term_ascii) BETWEEN ? AND ? LIMIT 100"
+        )
+        .bind(prefix2, prefix2.slice(0, 1) + String.fromCharCode(prefix2.charCodeAt(1) + 1), minLen, maxLen)
+        .all<{ term_norm: string; term_ascii: string; lang: string; curie: string; confidence_tier: number }>();
+      return scoreRows(cand2.results);
     }
-    return bestMatch;
+
+    return null;
   }
 
   async recognizeIngredient(rawToken: string): Promise<Record<string, unknown>> {
@@ -488,10 +544,11 @@ export class D1FoodOnEngine {
       });
     };
 
-    // Stage 1: E-numbers / INS codes
+    // Stage 1: E-numbers / INS codes (with OCR digit/letter homoglyph repair, e.g. E62l -> E621)
+    const eClean = repairOcrEcodes(cleanToken);
     const eRegex = /\b(e|ins)\s*(\d{3,4}[a-z]?(?:\([ivx]+\))?)\b/gi;
     const eHits: Array<{ raw: string; cands: string[] }> = [];
-    for (const m of cleanToken.matchAll(eRegex)) {
+    for (const m of eClean.matchAll(eRegex)) {
       const prefix = m[1].toLowerCase();
       const numPart = m[2].toLowerCase();
       const baseNum = numPart.replace(/\(.*?\)/g, "");
@@ -613,12 +670,25 @@ export class D1FoodOnEngine {
       }
     }
 
-    // Stage 4: Fuzzy fallback for OCR typos
+    // Stage 4: Fuzzy fallback for OCR typos (whole part + meaningful single words)
     if (matchedRecords.length === 0) {
       for (const pNorm of unmatchedParts) {
-        const fz = await this.lookupAsciiOrFuzzy(pNorm, 0.82);
+        const fz = await this.lookupAsciiOrFuzzy(pNorm, 0.8);
         if (fz) {
           await addMatch(fz.curie, fz.term, fz.matchType, fz.confidence);
+          continue;
+        }
+        const words = normalizeEnKey(repairOcrWordHomoglyphs(pNorm)).split(" ").filter(Boolean);
+        if (words.length >= 2) {
+          for (const w of words) {
+            if (w.length < 4 || STOPWORDS.has(w)) continue;
+            if (w === "milk" && isPlantMilk) continue;
+            if (w === "butter" && isPlantButter) continue;
+            const wFz = await this.lookupAsciiOrFuzzy(w, 0.82);
+            if (wFz) {
+              await addMatch(wFz.curie, wFz.term, wFz.matchType, wFz.confidence);
+            }
+          }
         }
       }
     }

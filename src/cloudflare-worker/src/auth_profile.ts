@@ -220,7 +220,20 @@ export function registerAuthAndProfileRoutes(app: Hono<{ Bindings: Env }>) {
 
     if (hasMailProvider && !autoVerify) {
       const origin = c.env.PUBLIC_BASE_URL || new URL(c.req.url).origin;
-      await sendVerificationEmail(c.env, email, fullName, verifyToken, origin);
+      const mailRes = await sendVerificationEmail(c.env, email, fullName, verifyToken, origin);
+      if (!mailRes.sent) {
+        await c.env.APP_DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+        return c.json(
+          {
+            success: false,
+            code: "EMAIL_DISPATCH_FAILED",
+            message: "Không thể gửi email xác thực lúc này. Vui lòng thử lại sau.",
+            provider: mailRes.provider,
+            detail: mailRes.error,
+          },
+          502
+        );
+      }
     }
 
     return c.json(
@@ -316,7 +329,19 @@ export function registerAuthAndProfileRoutes(app: Hono<{ Bindings: Env }>) {
       .bind(newToken, user.id)
       .run();
     const origin = c.env.PUBLIC_BASE_URL || new URL(c.req.url).origin;
-    await sendVerificationEmail(c.env, user.email, user.full_name, newToken, origin);
+    const mailRes = await sendVerificationEmail(c.env, user.email, user.full_name, newToken, origin);
+    if (!mailRes.sent) {
+      return c.json(
+        {
+          success: false,
+          code: "EMAIL_DISPATCH_FAILED",
+          message: "Không thể gửi lại email kích hoạt lúc này. Vui lòng thử lại sau.",
+          provider: mailRes.provider,
+          detail: mailRes.error,
+        },
+        502
+      );
+    }
     return c.json({ success: true, message: "Đã gửi lại email kích hoạt vào hộp thư của bạn." });
   });
 

@@ -7,6 +7,7 @@ import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
+import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'admin_moderation_screen.dart';
@@ -295,17 +296,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         await _loadData();
                         widget.onProfileUpdated?.call();
                       } else if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              res['message'] ??
+                        showNutriVietNotice(
+                          context,
+                          (res['message'] ??
                                   AppLocale.t(
                                     'Không thể lưu tình trạng sức khỏe.',
                                     'Unable to save health conditions.',
-                                  ),
-                            ),
-                            backgroundColor: const Color(0xFFDC2626),
-                          ),
+                                  ))
+                              .toString(),
+                          tone: NutriVietNoticeTone.error,
                         );
                       }
                     },
@@ -525,17 +524,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (res['success'] == true) {
                       Navigator.pop(ctx);
                       if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            res['message'] ??
+                      showNutriVietNotice(
+                        context,
+                        (res['message'] ??
                                 AppLocale.t(
                                   'Đổi mật khẩu thành công!',
                                   'Password changed successfully!',
-                                ),
-                          ),
-                          backgroundColor: _brandGreen,
-                        ),
+                                ))
+                            .toString(),
+                        tone: NutriVietNoticeTone.success,
                       );
                     } else {
                       setModalState(() {

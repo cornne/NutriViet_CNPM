@@ -10,13 +10,31 @@ export function isEmailProviderConfigured(env: Env): boolean {
   return Boolean(env.RESEND_API_KEY?.trim() || env.BREVO_API_KEY?.trim());
 }
 
+export function parseFromAddress(rawFrom?: string): { name: string; email: string } {
+  const cleaned = (rawFrom || "").trim();
+  if (!cleaned) {
+    return { name: "NutriViet", email: "onboarding@resend.dev" };
+  }
+  const match = cleaned.match(/^(.+?)\s*<([^>]+)>$/);
+  if (match) {
+    return {
+      name: match[1].trim().replace(/^["']|["']$/g, "") || "NutriViet",
+      email: match[2].trim(),
+    };
+  }
+  return { name: "NutriViet", email: cleaned };
+}
+
 export async function sendEmail(
   env: Env,
   toEmail: string,
   subject: string,
-  html: string
+  html: string,
+  text?: string
 ): Promise<EmailDispatchResult> {
-  const fromAddress = env.EMAIL_FROM?.trim() || "NutriViet <onboarding@resend.dev>";
+  const parsedFrom = parseFromAddress(env.EMAIL_FROM);
+  const formattedFrom = `${parsedFrom.name} <${parsedFrom.email}>`;
+  const plainText = (text || html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).trim();
 
   // Provider 1: Resend HTTP API (3,000 free emails/month)
   const resendKey = env.RESEND_API_KEY?.trim();
@@ -29,16 +47,18 @@ export async function sendEmail(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: fromAddress,
+          from: formattedFrom,
           to: [toEmail],
           subject,
           html,
+          text: plainText,
         }),
       });
       if (resp.ok) {
         return { sent: true, provider: "resend" };
       }
-      return { sent: false, provider: "resend", error: `HTTP ${resp.status}` };
+      const errBody = (await resp.text().catch(() => "")).slice(0, 220);
+      return { sent: false, provider: "resend", error: `HTTP ${resp.status}${errBody ? `: ${errBody}` : ""}` };
     } catch (e) {
       return { sent: false, provider: "resend", error: String(e) };
     }
@@ -48,26 +68,26 @@ export async function sendEmail(
   const brevoKey = env.BREVO_API_KEY?.trim();
   if (brevoKey) {
     try {
-      const senderEmail = fromAddress.includes("<")
-        ? fromAddress.split("<")[1].replace(">", "").trim()
-        : fromAddress;
       const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
           "api-key": brevoKey,
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
-          sender: { name: "NutriViet", email: senderEmail },
+          sender: { name: parsedFrom.name, email: parsedFrom.email },
           to: [{ email: toEmail }],
           subject,
           htmlContent: html,
+          textContent: plainText,
         }),
       });
       if (resp.ok) {
         return { sent: true, provider: "brevo" };
       }
-      return { sent: false, provider: "brevo", error: `HTTP ${resp.status}` };
+      const errBody = (await resp.text().catch(() => "")).slice(0, 220);
+      return { sent: false, provider: "brevo", error: `HTTP ${resp.status}${errBody ? `: ${errBody}` : ""}` };
     } catch (e) {
       return { sent: false, provider: "brevo", error: String(e) };
     }
@@ -85,6 +105,7 @@ export async function sendVerificationEmail(
   publicBaseUrl: string
 ): Promise<EmailDispatchResult> {
   const verifyUrl = `${publicBaseUrl.replace(/\/+$/, "")}/verify-email?token=${encodeURIComponent(token)}`;
+  const text = `Xin chao ${fullName},\n\nVui long mo lien ket sau de xac thuc email va kich hoat tai khoan NutriViet cua ban:\n${verifyUrl}\n\nNeu ban khong thuc hien dang ky nay, vui long bo qua email nay.`;
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,sans-serif;background:#f8fafc;margin:0;padding:24px;">
@@ -99,7 +120,7 @@ export async function sendVerificationEmail(
     <p style="font-size:12px;color:#94A3B8;word-break:break-all;">Hoặc truy cập: ${verifyUrl}</p>
   </div>
 </body></html>`;
-  return sendEmail(env, toEmail, "[NutriViet] Xác thực địa chỉ email tài khoản", html);
+  return sendEmail(env, toEmail, "[NutriViet] Xác thực địa chỉ email tài khoản", html, text);
 }
 
 export async function sendPasswordResetEmail(
@@ -108,6 +129,7 @@ export async function sendPasswordResetEmail(
   fullName: string,
   tempPassword: string
 ): Promise<EmailDispatchResult> {
+  const text = `Xin chao ${fullName},\n\nMat khau tam thoi cua tai khoan NutriViet la: ${tempPassword}\nVui long dang nhap va doi mat khau moi trong Cai dat.`;
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,sans-serif;background:#f8fafc;margin:0;padding:24px;">
@@ -120,7 +142,7 @@ export async function sendPasswordResetEmail(
     <p style="color:#475569;font-size:13px;">Vui lòng đăng nhập và đổi mật khẩu mới trong Cài đặt.</p>
   </div>
 </body></html>`;
-  return sendEmail(env, toEmail, "[NutriViet] Khôi phục mật khẩu tài khoản", html);
+  return sendEmail(env, toEmail, "[NutriViet] Khôi phục mật khẩu tài khoản", html, text);
 }
 
 function escapeHtml(s: string): string {
