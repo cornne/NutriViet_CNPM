@@ -70,8 +70,7 @@ flutter build apk --release
 
 ## Backend URL Configuration
 
-- **Release builds (`kReleaseMode == true`)** call `https://nutriviet.nutriviet-api.workers.dev/api/v1` exclusively (zero localhost probes).
-- **Debug builds** check `http://127.0.0.1:8050/api/v1` first (for local testing with `src/backend/foodon_ui_server.py` + `adb reverse tcp:8050 tcp:8050`) and fall back to Cloudflare automatically.
+- **All builds (debug & release)** call `https://nutriviet.nutriviet-api.workers.dev/api/v1` directly (zero localhost or emulator IP fallbacks).
 - **Custom backend override:**
   ```bash
   flutter build apk --release --dart-define=NUTRIVIET_API_ROOT=https://your-worker.workers.dev/api/v1
