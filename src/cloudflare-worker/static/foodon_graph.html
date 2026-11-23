@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoodOn Ontology Graph Explorer — NutriViet</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='800' font-size='14'%3EFO%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --dot: #cbd5e1;
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-solid: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #64748b;
+      --accent: #0f766e;
+      --accent-soft: #ccfbf1;
+      --edge: rgba(100, 116, 139, 0.34);
+      --edge-hi: #0f766e;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+      --focus: #0f766e;
+      --ancestor: #0284c7;
+      --allergen: #dc2626;
+      --chronic: #d97706;
+      --ecode: #4f46e5;
+      --standard: #475569;
+      --sibling: #64748b;
+      --path: #059669;
+      --label-bg: rgba(255, 255, 255, 0.88);
+    }
+
+    body.dark {
+      --bg: #0b1120;
+      --dot: #1e293b;
+      --surface: rgba(15, 23, 42, 0.90);
+      --surface-solid: #0f172a;
+      --surface-subtle: #1e293b;
+      --border: #1e293b;
+      --border-strong: #334155;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      --accent: #14b8a6;
+      --accent-soft: rgba(20, 184, 166, 0.16);
+      --edge: rgba(148, 163, 184, 0.25);
+      --edge-hi: #2dd4bf;
+      --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+      --focus: #14b8a6;
+      --ancestor: #38bdf8;
+      --allergen: #f87171;
+      --chronic: #fbbf24;
+      --ecode: #818cf8;
+      --standard: #94a3b8;
+      --sibling: #64748b;
+      --path: #34d399;
+      --label-bg: rgba(15, 23, 42, 0.86);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Header */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--surface);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      z-index: 30;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0f766e, #15803d);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 15px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+
+    .brand-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    /* Search */
+    .search-wrap {
+      position: relative;
+      flex: 1 1 320px;
+      max-width: 520px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 0 12px;
+      height: 38px;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+
+    .search-box:focus-within {
+      background: var(--surface-solid);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 13.5px;
+      min-width: 0;
+    }
+
+    .search-box input::placeholder { color: var(--text-faint); }
+
+    .kbd {
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      color: var(--text-faint);
+      border: 1px solid var(--border-strong);
+      border-radius: 5px;
+      padding: 1px 5px;
+    }
+
+    .search-results {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      max-height: 410px;
+      overflow-y: auto;
+      display: none;
+      z-index: 60;
+    }
+
+    .search-results.open { display: block; }
+
+    .sr-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      transition: background 0.1s;
+    }
+
+    .sr-item:last-child { border-bottom: none; }
+    .sr-item:hover, .sr-item.active { background: var(--surface-subtle); }
+
+    .sr-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .sr-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: ui-monospace, monospace;
+    }
+
+    .sr-badges {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+
+    .seg {
+      display: inline-flex;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2px;
+    }
+
+    .seg button {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .seg button.active {
+      background: var(--surface-solid);
+      color: var(--accent);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn:hover { border-color: var(--border-strong); background: var(--surface-subtle); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { filter: brightness(1.06); }
+    .btn.active-toggle { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+    select.ctrl-select {
+      height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 0 8px;
+      cursor: pointer;
+    }
+
+    /* Main Stage */
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg);
+      background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+
+    canvas#graphCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
+    canvas#graphCanvas.dragging { cursor: grabbing; }
+    canvas#graphCanvas.pointer { cursor: pointer; }
+
+    /* Quick Domain Bar */
+    .quick-bar {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 370px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .chip {
+      pointer-events: auto;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.14s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .chip .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+    /* Path Finder Panel */
+    .path-panel {
+      position: absolute;
+      top: 56px;
+      left: 14px;
+      width: 370px;
+      max-width: calc(100vw - 28px);
+      background: var(--surface);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      z-index: 25;
+      display: none;
+    }
+
+    .path-panel.open { display: block; }
+    .path-panel h3 { font-size: 13.5px; font-weight: 800; margin-bottom: 4px; }
+    .path-panel p { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+
+    .path-inputs { display: grid; gap: 8px; margin-bottom: 10px; }
+    .path-inputs input {
+      width: 100%;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .path-result {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Right Inspector Drawer */
+    .inspector {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      bottom: 14px;
+      width: 344px;
+      max-width: calc(100vw - 28px);
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 20;
+      transition: transform 0.2s ease;
+    }
+
+    .inspector.collapsed { transform: translateX(calc(100% + 20px)); }
+
+    .insp-head {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .curie-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: ui-monospace, monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 7px;
+      background: var(--surface-subtle);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .insp-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-top: 7px;
+      line-height: 1.28;
+      word-break: break-word;
+    }
+
+    .insp-body {
+      padding: 14px 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .insp-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .sec-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-faint);
+      margin-bottom: 6px;
+    }
+
+    .def-box {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      background: var(--surface-subtle);
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    .tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+
+    .tag.allergen { background: rgba(220, 38, 38, 0.12); color: var(--allergen); border-color: rgba(220, 38, 38, 0.25); }
+    .tag.chronic { background: rgba(217, 119, 6, 0.12); color: var(--chronic); border-color: rgba(217, 119, 6, 0.25); }
+    .tag.ecode { background: rgba(79, 70, 229, 0.12); color: var(--ecode); border-color: rgba(79, 70, 229, 0.25); font-family: ui-monospace, monospace; }
+    .tag.syn { background: var(--surface-subtle); color: var(--text-muted); border-color: var(--border); font-weight: 500; }
+
+    .lineage-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .lineage-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.12s;
+    }
+
+    .lineage-step:hover { background: var(--surface-subtle); border-color: var(--border); }
+    .lineage-step.current { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+    .lineage-step code { font-size: 10.5px; color: var(--text-faint); margin-left: auto; }
+
+    .child-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .child-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: border-color 0.12s;
+    }
+
+    .child-row:hover { border-color: var(--accent); }
+    .child-cnt {
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      color: var(--text-faint);
+      background: var(--surface-subtle);
+      padding: 1px 6px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    /* Bottom-left Legend & Zoom HUD */
+    .hud-bottom {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    .legend {
+      pointer-events: auto;
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .leg-item { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+    .leg-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+    .zoom-controls {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .zoom-controls button {
+      width: 34px;
+      height: 32px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .zoom-controls button:last-child { border-bottom: none; font-size: 11px; }
+    .zoom-controls button:hover { background: var(--surface-subtle); color: var(--accent); }
+
+    /* Hover Tooltip */
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: var(--surface-solid);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      padding: 8px 10px;
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      max-width: 280px;
+      z-index: 40;
+      display: none;
+    }
+
+    .tooltip .tt-label { font-weight: 800; color: var(--text); margin-bottom: 2px; }
+    .tooltip .tt-curie { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent); }
+    .tooltip .tt-hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+
+    /* Toast */
+    .toast {
+      position: absolute;
+      bottom: 64px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 50;
+    }
+
+    .toast.show { opacity: 1; }
+
+    .reopen-insp {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      z-index: 18;
+      display: none;
+    }
+
+    .reopen-insp.visible { display: inline-flex; }
+
+    @media (max-width: 900px) {
+      .quick-bar { right: 14px; }
+      .inspector {
+        top: auto;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        width: auto;
+        height: 44vh;
+      }
+      .inspector.collapsed { transform: translateY(calc(100% + 20px)); }
+      .hud-bottom { bottom: auto; top: 56px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">FO</div>
+        <div>
+          <div class="brand-title">FoodOn Ontology Graph</div>
+          <div class="brand-sub" id="dbStatsLabel">Loading FoodOn graph...</div>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <div class="search-box">
+          <span aria-hidden="true" style="color:var(--text-faint);font-size:14px;">&#128269;</span>
+          <input
+            id="searchInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Search FoodOn node, synonym, CURIE (FOODON:00001256), or E-code (E621)..."
+            aria-label="Search FoodOn ontology nodes"
+          />
+          <span class="kbd">/</span>
+        </div>
+        <div class="search-results" id="searchResults" role="listbox"></div>
+      </div>
+
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Graph layout">
+          <button id="btnLayoutForce" class="active" type="button">Force Graph</button>
+          <button id="btnLayoutTree" type="button">Hierarchy Tree</button>
+        </div>
+
+        <select id="depthSelect" class="ctrl-select" title="Descendant depth">
+          <option value="1">Depth: 1 hop</option>
+          <option value="2" selected>Depth: 2 hops</option>
+        </select>
+
+        <select id="limitSelect" class="ctrl-select" title="Max direct children">
+          <option value="14">Children: 14</option>
+          <option value="24" selected>Children: 24</option>
+          <option value="45">Children: 45</option>
+        </select>
+
+        <button id="btnPathToggle" class="btn" type="button">Find Path</button>
+        <button id="btnTheme" class="btn" type="button" title="Toggle light/dark canvas">Dark</button>
+      </div>
+    </header>
+
+    <main class="stage" id="stage">
+      <canvas id="graphCanvas"></canvas>
+
+      <div class="quick-bar" id="quickBar">
+        <button class="chip active" data-curie="FOODON:00001002">food product</button>
+        <button class="chip" data-curie="FOODON:03412972"><span class="dot" style="background:var(--ecode)"></span>food additive</button>
+        <button class="chip" data-allergen="milk"><span class="dot" style="background:var(--allergen)"></span>milk</button>
+        <button class="chip" data-allergen="peanuts"><span class="dot" style="background:var(--allergen)"></span>peanuts</button>
+        <button class="chip" data-allergen="seafood"><span class="dot" style="background:var(--allergen)"></span>seafood</button>
+        <button class="chip" data-allergen="gluten"><span class="dot" style="background:var(--allergen)"></span>gluten</button>
+        <button class="chip" data-allergen="soy"><span class="dot" style="background:var(--allergen)"></span>soy</button>
+        <button class="chip" data-allergen="tree_nuts"><span class="dot" style="background:var(--allergen)"></span>tree nuts</button>
+        <button class="chip" data-allergen="diabetes"><span class="dot" style="background:var(--chronic)"></span>sugar / diabetes</button>
+        <button class="chip" data-allergen="hypertension"><span class="dot" style="background:var(--chronic)"></span>sodium / salt</button>
+      </div>
+
+      <section class="path-panel" id="pathPanel" aria-label="Ontology Path Finder">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <h3>Find Connection Between 2 Nodes</h3>
+          <button id="btnClosePath" class="btn" style="height:26px;padding:0 8px;font-size:11px;" type="button">Close</button>
+        </div>
+        <p>Trace the exact FoodOn <code>subClassOf</code> path through their Lowest Common Ancestor (LCA).</p>
+        <div class="path-inputs">
+          <input id="pathFrom" type="text" value="butter" placeholder="Start node (e.g. butter, E621, FOODON:03310351)" />
+          <input id="pathTo" type="text" value="whey protein" placeholder="Target node (e.g. whey protein, salt, shrimp)" />
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="btnRunPath" class="btn primary" style="flex:1;justify-content:center;" type="button">Trace Connection</button>
+          <button id="btnExamplePath" class="btn" type="button" title="Try E621 to salt">E621 ↔ Salt</button>
+        </div>
+        <div class="path-result" id="pathResult"></div>
+      </section>
+
+      <button class="btn reopen-insp" id="btnReopenInsp" type="button">Inspector</button>
+
+      <aside class="inspector" id="inspector" aria-label="Node inspector">
+        <div class="insp-head">
+          <div style="min-width:0;flex:1;">
+            <span class="curie-pill" id="inspCurie" title="Click to copy CURIE">—</span>
+            <h2 class="insp-title" id="inspTitle">Select a FoodOn node</h2>
+          </div>
+          <button id="btnCloseInsp" class="btn" style="height:28px;padding:0 9px;font-size:12px;" type="button">✕</button>
+        </div>
+        <div class="insp-body" id="inspBody">
+          <div class="insp-actions">
+            <button id="btnFocusNode" class="btn primary" style="justify-content:center;" type="button">Focus Branch</button>
+            <button id="btnExpandNode" class="btn" style="justify-content:center;" type="button">Expand Children</button>
+          </div>
+          <div>
+            <div class="sec-label">Official FoodOn Definition</div>
+            <div class="def-box" id="inspDef">—</div>
+          </div>
+          <div id="inspTagsWrap" style="display:none;">
+            <div class="sec-label">Ontology Classifications &amp; Codes</div>
+            <div class="tags" id="inspTags"></div>
+          </div>
+          <div id="inspSynWrap" style="display:none;">
+            <div class="sec-label">Official English Synonyms</div>
+            <div class="tags" id="inspSyns"></div>
+          </div>
+          <div>
+            <div class="sec-label">Ancestor Lineage (Root → Node)</div>
+            <div class="lineage-list" id="inspLineage"></div>
+          </div>
+          <div>
+            <div class="sec-label" id="inspChildrenLabel">Direct Subclasses</div>
+            <div class="child-list" id="inspChildren"></div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="hud-bottom">
+        <div class="zoom-controls" aria-label="Zoom controls">
+          <button id="btnZoomIn" type="button" title="Zoom in">+</button>
+          <button id="btnZoomOut" type="button" title="Zoom out">−</button>
+          <button id="btnFit" type="button" title="Fit graph to view">Fit</button>
+        </div>
+        <div class="legend">
+          <span class="leg-item"><span class="leg-dot" style="background:var(--focus)"></span>Focus</span>
+          <span class="leg-item"><span class="leg-dot" style="background:var(--ancestor)"></span>Ancestor</span>
+          <span class="leg-item"><span class="leg-dot" style="background:var(--allergen)"></span>Allergen</span>
+          <span class="leg-item"><span class="leg-dot" style="background:var(--chronic)"></span>Chronic</span>
+          <span class="leg-item"><span class="leg-dot" style="background:var(--ecode)"></span>E-Code</span>
+          <span class="leg-item"><span class="leg-dot" style="background:var(--standard)"></span>Concept</span>
+          <span style="border-left:1px solid var(--border-strong);padding-left:10px;font-family:ui-monospace,monospace;" id="graphCounter">0 nodes · 0 edges</span>
+        </div>
+      </div>
+
+      <div class="tooltip" id="tooltip">
+        <div class="tt-label" id="ttLabel"></div>
+        <div class="tt-curie" id="ttCurie"></div>
+        <div class="tt-hint" id="ttHint">Click to inspect · Double-click to expand</div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('graphCanvas');
+      const ctx = canvas.getContext('2d');
+      const stage = document.getElementById('stage');
+
+      // Graph state
+      const state = {
+        nodes: [],
+        nodesMap: new Map(),
+        edges: [],
+        edgeSet: new Set(),
+        focusId: 'FOODON:00001002',
+        selectedId: null,
+        hoveredId: null,
+        layout: 'force', // 'force' | 'tree'
+        pathNodeIds: new Set(),
+        pathEdgeKeys: new Set(),
+        expandOffsets: new Map(),
+        // Camera
+        camX: 0,
+        camY: 0,
+        zoom: 1,
+        targetCamX: 0,
+        targetCamY: 0,
+        targetZoom: 1,
+        // Pointer interaction
+        isPanning: false,
+        dragNode: null,
+        pointerDownPos: null,
+        lastPointerPos: null,
+        movedSinceDown: false,
+        alpha: 1.0,
+        lastClickTime: 0,
+        lastClickNodeId: null,
+        width: 1200,
+        height: 800,
+      };
+
+      const cssVar = (name) => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+      }
+
+      function nodeColor(n) {
+        if (state.pathNodeIds.size > 0 && state.pathNodeIds.has(n.id)) return cssVar('--path');
+        if (n.id === state.focusId || n.role === 'focus') return cssVar('--focus');
+        if (n.allergens && n.allergens.length) return cssVar('--allergen');
+        if (n.chronics && n.chronics.length) return cssVar('--chronic');
+        if (n.ecodes && n.ecodes.length) return cssVar('--ecode');
+        if (n.role === 'ancestor') return cssVar('--ancestor');
+        if (n.role === 'sibling') return cssVar('--sibling');
+        return cssVar('--standard');
+      }
+
+      function nodeRadius(n) {
+        if (n.id === state.focusId) return 15;
+        if (n.role === 'ancestor') return 11;
+        const boost = Math.min(7, Math.sqrt(n.child_count || 0) * 0.9);
+        return Math.round(7.5 + boost);
+      }
+
+      function screenToWorld(sx, sy) {
+        return {
+          x: (sx - state.width / 2) / state.zoom + state.camX,
+          y: (sy - state.height / 2) / state.zoom + state.camY,
+        };
+      }
+
+      function worldToScreen(wx, wy) {
+        return {
+          x: (wx - state.camX) * state.zoom + state.width / 2,
+          y: (wy - state.camY) * state.zoom + state.height / 2,
+        };
+      }
+
+      function resizeCanvas() {
+        const rect = stage.getBoundingClientRect();
+        state.width = Math.max(300, rect.width);
+        state.height = Math.max(300, rect.height);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(state.width * dpr);
+        canvas.height = Math.round(state.height * dpr);
+        canvas.style.width = state.width + 'px';
+        canvas.style.height = state.height + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function updateCounters() {
+        document.getElementById('graphCounter').textContent =
+          `${state.nodes.length} nodes · ${state.edges.length} edges`;
+      }
+
+      // Compute clean layered hierarchy positions (root on top -> ancestors -> focus -> children -> grandchildren)
+      function computeTreeLayout() {
+        const layers = new Map();
+        // Assign layer by walking parent links from roots inside current subgraph
+        const depthMemo = new Map();
+        const visiting = new Set();
+
+        function getDepth(id) {
+          if (depthMemo.has(id)) return depthMemo.get(id);
+          if (visiting.has(id)) return 0;
+          visiting.add(id);
+          const n = state.nodesMap.get(id);
+          let d = 0;
+          if (n && n.parent_id && state.nodesMap.has(n.parent_id) && n.parent_id !== id) {
+            d = getDepth(n.parent_id) + 1;
+          }
+          visiting.delete(id);
+          depthMemo.set(id, d);
+          return d;
+        }
+
+        for (const n of state.nodes) {
+          const d = getDepth(n.id);
+          n.treeLayer = d;
+          if (!layers.has(d)) layers.set(d, []);
+          layers.get(d).push(n);
+        }
+
+        const sortedLayers = Array.from(layers.keys()).sort((a, b) => a - b);
+        const layerHeight = 132;
+        const totalH = (sortedLayers.length - 1) * layerHeight;
+
+        sortedLayers.forEach((layerIdx, rowIdx) => {
+          const arr = layers.get(layerIdx);
+          // Group by parent x position so edges cross minimally
+          arr.sort((a, b) => {
+            const pa = state.nodesMap.get(a.parent_id);
+            const pb = state.nodesMap.get(b.parent_id);
+            const pax = pa ? pa.tx : 0;
+            const pbx = pb ? pb.tx : 0;
+            if (pax !== pbx) return pax - pbx;
+            if (a.id === state.focusId) return -1;
+            if (b.id === state.focusId) return 1;
+            return (b.child_count || 0) - (a.child_count || 0);
+          });
+          const spacing = Math.max(128, Math.min(190, 1450 / Math.max(1, arr.length)));
+          const totalW = (arr.length - 1) * spacing;
+          arr.forEach((n, i) => {
+            n.tx = -totalW / 2 + i * spacing;
+            n.ty = -totalH / 2 + rowIdx * layerHeight;
+          });
+        });
+      }
+
+      function initPositionsForNewGraph() {
+        computeTreeLayout();
+        if (state.layout === 'tree') {
+          for (const n of state.nodes) {
+            n.x = n.tx;
+            n.y = n.ty;
+            n.vx = 0;
+            n.vy = 0;
+          }
+        } else {
+          // Concentric radial seed around focus node so Force Graph opens crisp & balanced on frame 1
+          const focus = state.nodesMap.get(state.focusId);
+          const ancestors = state.nodes.filter((n) => n.role === 'ancestor').sort((a, b) => b.depth - a.depth);
+          const children = state.nodes.filter((n) => n.role === 'child');
+          const siblings = state.nodes.filter((n) => n.role === 'sibling');
+          const grandchildren = state.nodes.filter((n) => n.role === 'grandchild');
+          const others = state.nodes.filter((n) => !['focus', 'ancestor', 'child', 'sibling', 'grandchild'].includes(n.role));
+
+          if (focus) { focus.x = 0; focus.y = 0; }
+          ancestors.forEach((n, idx) => {
+            n.x = (idx % 2 === 0 ? -1 : 1) * Math.min(28, idx * 8);
+            n.y = -(idx + 1) * 125;
+          });
+          const r1 = Math.max(175, Math.min(270, children.length * 10));
+          children.forEach((n, idx) => {
+            const ang = (idx / Math.max(1, children.length)) * Math.PI * 2 + 0.35;
+            n.x = Math.cos(ang) * r1;
+            n.y = Math.sin(ang) * r1 + 35;
+          });
+          siblings.forEach((n, idx) => {
+            const side = idx % 2 === 0 ? -1 : 1;
+            n.x = side * (170 + Math.floor(idx / 2) * 75);
+            n.y = -115 - (idx % 2) * 28;
+          });
+          const byParent = new Map();
+          grandchildren.forEach((n) => {
+            if (!byParent.has(n.parent_id)) byParent.set(n.parent_id, []);
+            byParent.get(n.parent_id).push(n);
+          });
+          byParent.forEach((arr, pid) => {
+            const p = state.nodesMap.get(pid) || { x: 0, y: 120 };
+            const baseAng = Math.atan2(p.y, p.x);
+            arr.forEach((n, i) => {
+              const spread = (i - (arr.length - 1) / 2) * 0.34;
+              const dist = 135;
+              n.x = p.x + Math.cos(baseAng + spread) * dist;
+              n.y = p.y + Math.sin(baseAng + spread) * dist;
+            });
+          });
+          others.forEach((n, idx) => {
+            const ang = (idx / Math.max(1, others.length)) * Math.PI * 2;
+            n.x = Math.cos(ang) * 240;
+            n.y = Math.sin(ang) * 240;
+          });
+          for (const n of state.nodes) { n.vx = 0; n.vy = 0; }
+        }
+        state.alpha = 0.65;
+        fitToView(true);
+      }
+
+      function fitToView(immediate = false) {
+        if (!state.nodes.length) return;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const n of state.nodes) {
+          const x = state.layout === 'tree' ? n.tx : n.x;
+          const y = state.layout === 'tree' ? n.ty : n.y;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+        const inspOpen = !document.getElementById('inspector').classList.contains('collapsed') && state.width > 900;
+        const rightMargin = inspOpen ? 370 : 60;
+        const availW = Math.max(260, state.width - rightMargin - 60);
+        const availH = Math.max(240, state.height - 150);
+        const spanW = Math.max(240, maxX - minX + 180);
+        const spanH = Math.max(200, maxY - minY + 160);
+        const z = Math.max(0.28, Math.min(1.18, Math.min(availW / spanW, availH / spanH)));
+        const cx = (minX + maxX) / 2 + (inspOpen ? 165 / z : 0);
+        const cy = (minY + maxY) / 2;
+
+        state.targetZoom = z;
+        state.targetCamX = cx;
+        state.targetCamY = cy;
+        if (immediate) {
+          state.zoom = z;
+          state.camX = cx;
+          state.camY = cy;
+        }
+      }
+
+      // Physics step for Force Graph & smooth easing for Tree DAG
+      function stepSimulation() {
+        // Smooth camera interpolation
+        state.camX += (state.targetCamX - state.camX) * 0.14;
+        state.camY += (state.targetCamY - state.camY) * 0.14;
+        state.zoom += (state.targetZoom - state.zoom) * 0.14;
+
+        if (state.layout === 'tree') {
+          for (const n of state.nodes) {
+            if (n === state.dragNode) continue;
+            n.x += (n.tx - n.x) * 0.16;
+            n.y += (n.ty - n.y) * 0.16;
+          }
+          return;
+        }
+
+        if (state.alpha < 0.008 && !state.dragNode) return;
+        const nodes = state.nodes;
+        const count = nodes.length;
+        const repulsion = count > 80 ? 3200 : 4800;
+        const springLen = count > 80 ? 105 : 128;
+        const springK = 0.045;
+
+        // Pairwise repulsion
+        for (let i = 0; i < count; i++) {
+          const a = nodes[i];
+          for (let j = i + 1; j < count; j++) {
+            const b = nodes[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let distSq = dx * dx + dy * dy + 0.01;
+            if (distSq > 160000) continue;
+            const dist = Math.sqrt(distSq);
+            const f = (repulsion / distSq) * state.alpha;
+            const fx = (dx / dist) * f;
+            const fy = (dy / dist) * f;
+            a.vx -= fx; a.vy -= fy;
+            b.vx += fx; b.vy += fy;
+          }
+        }
+
+        // Spring attraction along edges + gentle hierarchical vertical cue
+        for (const e of state.edges) {
+          const s = state.nodesMap.get(e.source);
+          const t = state.nodesMap.get(e.target);
+          if (!s || !t) continue;
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const force = (dist - springLen) * springK * state.alpha;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          s.vx += fx; s.vy += fy;
+          t.vx -= fx; t.vy -= fy;
+          // Mild bias: parent slightly above child so ontology direction feels natural
+          s.vy += 0.22 * state.alpha;
+          t.vy -= 0.22 * state.alpha;
+        }
+
+        // Gentle centering gravity
+        for (const n of nodes) {
+          if (n === state.dragNode) {
+            n.vx = 0; n.vy = 0;
+            continue;
+          }
+          n.vx += (0 - n.x) * 0.0028 * state.alpha;
+          n.vy += (0 - n.y) * 0.0028 * state.alpha;
+          n.vx *= 0.80;
+          n.vy *= 0.80;
+          n.x += Math.max(-24, Math.min(24, n.vx));
+          n.y += Math.max(-24, Math.min(24, n.vy));
+        }
+
+        state.alpha *= 0.985;
+      }
+
+      function getConnectedSet(nodeId) {
+        const set = new Set();
+        if (!nodeId) return set;
+        set.add(nodeId);
+        // Highlight full ancestor chain and direct children inside graph
+        let curr = nodeId;
+        const guard = new Set();
+        while (curr && !guard.has(curr)) {
+          guard.add(curr);
+          set.add(curr);
+          const n = state.nodesMap.get(curr);
+          curr = n && n.parent_id && state.nodesMap.has(n.parent_id) ? n.parent_id : null;
+        }
+        for (const e of state.edges) {
+          if (e.target === nodeId) set.add(e.source);
+          if (e.source === nodeId) set.add(e.target);
+        }
+        return set;
+      }
+
+      function drawArrowHead(x, y, angle, size, color) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-size, -size * 0.52);
+        ctx.lineTo(-size, size * 0.52);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function render() {
+        stepSimulation();
+        ctx.clearRect(0, 0, state.width, state.height);
+
+        const activeId = state.hoveredId;
+        const connected = activeId ? getConnectedSet(activeId) : null;
+        const hasPath = state.pathNodeIds.size > 0;
+        const edgeDefault = cssVar('--edge');
+        const edgeHi = cssVar('--edge-hi');
+        const pathColor = cssVar('--path');
+        const labelBg = cssVar('--label-bg');
+        const textColor = cssVar('--text');
+        const mutedColor = cssVar('--text-muted');
+
+        ctx.save();
+        ctx.translate(state.width / 2, state.height / 2);
+        ctx.scale(state.zoom, state.zoom);
+        ctx.translate(-state.camX, -state.camY);
+
+        // 1. Draw Edges (child -> parent subClassOf)
+        for (const e of state.edges) {
+          const s = state.nodesMap.get(e.source);
+          const t = state.nodesMap.get(e.target);
+          if (!s || !t) continue;
+          const ek = `${e.source}->${e.target}`;
+          const isPathEdge = hasPath && state.pathEdgeKeys.has(ek);
+          const isHi = !hasPath && connected && connected.has(e.source) && connected.has(e.target);
+          const dimmed = (hasPath && !isPathEdge) || (!hasPath && connected && !isHi);
+
+          ctx.beginPath();
+          const tr = nodeRadius(t) + 3;
+          const sr = nodeRadius(s) + 2;
+          let arrowAngle;
+          let ax, ay;
+
+          if (state.layout === 'tree') {
+            const midY = (s.y + t.y) / 2;
+            const dx = t.x - s.x;
+            const dy = t.y - s.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const sy = s.y - Math.sign(s.y - t.y || 1) * sr;
+            const ty = t.y + Math.sign(s.y - t.y || 1) * tr;
+            ctx.moveTo(s.x, sy);
+            ctx.bezierCurveTo(s.x, midY, t.x, midY, t.x, ty);
+            ax = t.x;
+            ay = ty;
+            arrowAngle = Math.atan2(ty - midY, 0.001);
+          } else {
+            const dx = t.x - s.x;
+            const dy = t.y - s.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            const sx = s.x + (dx / dist) * sr;
+            const sy = s.y + (dy / dist) * sr;
+            const tx = t.x - (dx / dist) * tr;
+            const ty = t.y - (dy / dist) * tr;
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(tx, ty);
+            ax = tx;
+            ay = ty;
+            arrowAngle = Math.atan2(dy, dx);
+          }
+
+          ctx.strokeStyle = isPathEdge
+            ? pathColor
+            : isHi
+              ? edgeHi
+              : edgeDefault;
+          ctx.lineWidth = isPathEdge ? 3.2 : isHi ? 2.1 : 1.15;
+          ctx.globalAlpha = dimmed ? 0.18 : 1;
+          ctx.stroke();
+
+          if (state.zoom > 0.42 || isPathEdge || isHi) {
+            drawArrowHead(ax, ay, arrowAngle, isPathEdge ? 8.5 : 6.2, ctx.strokeStyle);
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        // 2. Draw Nodes
+        for (const n of state.nodes) {
+          const r = nodeRadius(n);
+          const col = nodeColor(n);
+          const isFocus = n.id === state.focusId;
+          const isSel = n.id === state.selectedId;
+          const isHov = n.id === state.hoveredId;
+          const isPathNode = hasPath && state.pathNodeIds.has(n.id);
+          const dimmed = (hasPath && !isPathNode) || (!hasPath && connected && !connected.has(n.id));
+
+          ctx.globalAlpha = dimmed ? 0.24 : 1;
+
+          // Outer glow ring for focus / selected / path
+          if (isFocus || isSel || isHov || isPathNode) {
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r + (isFocus ? 6.5 : 4.5), 0, Math.PI * 2);
+            ctx.fillStyle = col;
+            ctx.globalAlpha = dimmed ? 0.1 : 0.18;
+            ctx.fill();
+            ctx.globalAlpha = dimmed ? 0.24 : 1;
+          }
+
+          // Node body
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = col;
+          ctx.fill();
+          ctx.lineWidth = isSel || isFocus ? 2.6 : 1.6;
+          ctx.strokeStyle = document.body.classList.contains('dark') ? '#0f172a' : '#ffffff';
+          ctx.stroke();
+
+          // Tiny "+" indicator if node has unexpanded children
+          if ((n.child_count || 0) > 0 && r >= 8.5) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `700 ${Math.max(8, Math.round(r * 0.72))}px ui-monospace, monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const badge = n.child_count > 99 ? '99+' : String(n.child_count);
+            ctx.fillText(badge, n.x, n.y + 0.5);
+          }
+
+          // Label rendering (always show for focus/ancestors/selected/hovered/path or when zoomed in)
+          const showLabel =
+            isFocus || isSel || isHov || isPathNode || n.role === 'ancestor' ||
+            state.zoom >= 0.62 || state.nodes.length <= 36;
+
+          if (showLabel) {
+            const raw = n.label.length > 30 ? n.label.slice(0, 29) + '…' : n.label;
+            const fontSize = isFocus ? 12.5 : n.role === 'ancestor' ? 11.5 : 10.8;
+            ctx.font = `${isFocus || isSel || isPathNode ? 700 : 600} ${fontSize}px Inter, system-ui, sans-serif`;
+            const tw = ctx.measureText(raw).width;
+            const padX = 5;
+            const boxH = fontSize + 6;
+            const lx = n.x - tw / 2 - padX;
+            const ly = n.y + r + 5;
+
+            ctx.fillStyle = labelBg;
+            ctx.beginPath();
+            ctx.roundRect(lx, ly, tw + padX * 2, boxH, 5);
+            ctx.fill();
+
+            ctx.fillStyle = isFocus || isSel || isHov || isPathNode ? textColor : mutedColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(raw, n.x, ly + boxH / 2 + 0.5);
+          }
+
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.restore();
+        requestAnimationFrame(render);
+      }
+
+      // Hit-test node at screen coordinates
+      function findNodeAt(sx, sy) {
+        const w = screenToWorld(sx, sy);
+        for (let i = state.nodes.length - 1; i >= 0; i--) {
+          const n = state.nodes[i];
+          const r = nodeRadius(n) + 5 / state.zoom;
+          if (Math.hypot(w.x - n.x, w.y - n.y) <= r) return n;
+        }
+        return null;
+      }
+
+      // Data Loading
+      async function loadNeighborhood({ curie = '', allergen = '' } = {}) {
+        const depth = document.getElementById('depthSelect').value;
+        const limit = document.getElementById('limitSelect').value;
+        const qs = new URLSearchParams({ child_depth: depth, max_children: limit, ancestor_hops: '10' });
+        if (curie) qs.set('curie', curie);
+        if (allergen) qs.set('allergen', allergen);
+
+        const res = await fetch('/api/v1/foodon/graph?' + qs.toString());
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.message || 'Could not load FoodOn node');
+          return;
+        }
+
+        state.pathNodeIds.clear();
+        state.pathEdgeKeys.clear();
+        state.expandOffsets.clear();
+        state.nodes = data.nodes.map((n) => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }));
+        state.nodesMap = new Map(state.nodes.map((n) => [n.id, n]));
+        state.edges = data.edges;
+        state.edgeSet = new Set(data.edges.map((e) => `${e.source}->${e.target}`));
+        state.focusId = data.focus.id;
+        state.selectedId = data.focus.id;
+
+        if (data.db_stats) {
+          document.getElementById('dbStatsLabel').textContent =
+            `${data.db_stats.total_concepts.toLocaleString()} nodes · ${data.db_stats.total_edges.toLocaleString()} edges · Pure FoodOn EN`;
+        }
+
+        updateCounters();
+        initPositionsForNewGraph();
+        renderInspector(data.focus, data.lineage, data.children_preview);
+      }
+
+      async function expandNodeInGraph(curie) {
+        const prevOffset = state.expandOffsets.get(curie) || 0;
+        const res = await fetch(`/api/v1/foodon/graph/expand?curie=${encodeURIComponent(curie)}&limit=20&offset=${prevOffset}`);
+        const data = await res.json();
+        if (!data.success) return;
+
+        const anchor = state.nodesMap.get(curie) || { x: 0, y: 0 };
+        let addedCount = 0;
+
+        for (const raw of data.nodes) {
+          if (!state.nodesMap.has(raw.id)) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 110 + Math.random() * 60;
+            const nodeObj = {
+              ...raw,
+              x: anchor.x + Math.cos(angle) * dist,
+              y: anchor.y + Math.sin(angle) * dist,
+              vx: 0, vy: 0, tx: anchor.x, ty: anchor.y,
+            };
+            state.nodes.push(nodeObj);
+            state.nodesMap.set(raw.id, nodeObj);
+            addedCount++;
+          }
+        }
+
+        for (const e of data.edges) {
+          const k = `${e.source}->${e.target}`;
+          if (!state.edgeSet.has(k) && state.nodesMap.has(e.source) && state.nodesMap.has(e.target)) {
+            state.edgeSet.add(k);
+            state.edges.push(e);
+          }
+        }
+
+        state.expandOffsets.set(curie, prevOffset + data.children.length);
+        computeTreeLayout();
+        state.alpha = 0.85;
+        updateCounters();
+
+        if (addedCount > 0) {
+          showToast(`Expanded +${addedCount} connected nodes for ${data.node.label}`);
+        } else if (data.total_children === 0) {
+          showToast(`"${data.node.label}" is a leaf node (0 subclasses)`);
+        } else {
+          showToast(`All ${data.total_children} subclasses of "${data.node.label}" are already visible`);
+        }
+      }
+
+      async function runPathFinder(fromRef, toRef) {
+        const resEl = document.getElementById('pathResult');
+        resEl.textContent = 'Tracing FoodOn ontology path...';
+        const res = await fetch(`/api/v1/foodon/graph/path?from=${encodeURIComponent(fromRef)}&to=${encodeURIComponent(toRef)}`);
+        const data = await res.json();
+        if (!data.success) {
+          resEl.innerHTML = `<span style="color:var(--allergen);font-weight:700;">${escapeHtml(data.message || 'Node not found')}</span>`;
+          return;
+        }
+        if (!data.connected) {
+          resEl.innerHTML = `<span style="color:var(--chronic);font-weight:700;">Not connected in the FoodOn parent hierarchy.</span><br>${escapeHtml(data.message || '')}`;
+          return;
+        }
+
+        // Render the connected path right on the graph!
+        state.nodes = data.path_nodes.map((n) => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }));
+        state.nodesMap = new Map(state.nodes.map((n) => [n.id, n]));
+        state.edges = data.edges;
+        state.edgeSet = new Set(data.edges.map((e) => `${e.source}->${e.target}`));
+        state.focusId = data.lca_id;
+        state.selectedId = data.lca_id;
+        state.pathNodeIds = new Set(data.path_nodes.map((n) => n.id));
+        state.pathEdgeKeys = new Set(data.edges.map((e) => `${e.source}->${e.target}`));
+
+        updateCounters();
+        initPositionsForNewGraph();
+
+        resEl.innerHTML = `
+          <div style="color:var(--path);font-weight:800;margin-bottom:4px;">Connected in ${data.hops} hops!</div>
+          <div><strong>Lowest Common Ancestor:</strong> <code>${escapeHtml(data.lca_id)}</code> (${escapeHtml(data.lca_label)})</div>
+          <div style="margin-top:4px;">${data.path_nodes.map((n) => `<strong>${escapeHtml(n.label)}</strong>`).join(' ↔ ')}</div>
+        `;
+        inspectNodeById(data.lca_id);
+      }
+
+      async function inspectNodeById(curie) {
+        state.selectedId = curie;
+        const n = state.nodesMap.get(curie);
+        if (!n) return;
+        document.getElementById('inspector').classList.remove('collapsed');
+        document.getElementById('btnReopenInsp').classList.remove('visible');
+
+        // Fetch full lineage & children preview without resetting the canvas
+        const res = await fetch(`/api/v1/foodon/graph?curie=${encodeURIComponent(curie)}&child_depth=1&max_children=1&siblings=0`);
+        const data = await res.json();
+        if (data.success) {
+          renderInspector(data.focus, data.lineage, data.children_preview);
+        } else {
+          renderInspector(n, [], []);
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderInspector(node, lineage, childrenPreview) {
+        document.getElementById('inspCurie').textContent = node.id;
+        document.getElementById('inspTitle').textContent = node.label;
+        document.getElementById('inspDef').textContent = node.definition
+          ? node.definition
+          : 'No official IAO_0000115 definition text in FoodOn OWL for this concept.';
+
+        // Tags
+        const tagsEl = document.getElementById('inspTags');
+        tagsEl.innerHTML = '';
+        const addTag = (txt, cls) => {
+          const sp = document.createElement('span');
+          sp.className = 'tag ' + cls;
+          sp.textContent = txt;
+          tagsEl.appendChild(sp);
+        };
+        (node.ecodes || []).forEach((e) => addTag(e, 'ecode'));
+        (node.allergens || []).forEach((a) => addTag('Allergen: ' + a, 'allergen'));
+        (node.chronics || []).forEach((c) => addTag('Chronic: ' + c, 'chronic'));
+        if (node.food_type) addTag(node.food_type, 'syn');
+        document.getElementById('inspTagsWrap').style.display = tagsEl.children.length ? 'block' : 'none';
+
+        // Synonyms
+        const synsEl = document.getElementById('inspSyns');
+        synsEl.innerHTML = '';
+        (node.synonyms || []).forEach((s) => {
+          const sp = document.createElement('span');
+          sp.className = 'tag syn';
+          sp.textContent = s;
+          synsEl.appendChild(sp);
+        });
+        document.getElementById('inspSynWrap').style.display = synsEl.children.length ? 'block' : 'none';
+
+        // Ancestor Lineage
+        const linEl = document.getElementById('inspLineage');
+        linEl.innerHTML = '';
+        (lineage || []).forEach((step, idx) => {
+          const div = document.createElement('div');
+          div.className = 'lineage-step' + (step.id === node.id ? ' current' : '');
+          div.style.paddingLeft = (9 + Math.min(idx, 6) * 10) + 'px';
+          div.innerHTML = `<span>${idx === 0 ? '●' : '↳'} ${escapeHtml(step.label)}</span><code>${escapeHtml(step.id)}</code>`;
+          div.onclick = () => loadNeighborhood({ curie: step.id });
+          linEl.appendChild(div);
+        });
+
+        // Children list
+        const chLabel = document.getElementById('inspChildrenLabel');
+        chLabel.textContent = `Direct Subclasses (${node.child_count || 0})`;
+        const chEl = document.getElementById('inspChildren');
+        chEl.innerHTML = '';
+        if (!childrenPreview || !childrenPreview.length) {
+          chEl.innerHTML = '<div style="font-size:12px;color:var(--text-faint);">Leaf concept (no direct subclasses).</div>';
+        } else {
+          childrenPreview.forEach((ch) => {
+            const row = document.createElement('div');
+            row.className = 'child-row';
+            row.innerHTML = `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ch.label)}</span><span class="child-cnt">${ch.child_count}</span>`;
+            row.onclick = () => loadNeighborhood({ curie: ch.id });
+            chEl.appendChild(row);
+          });
+        }
+      }
+
+      // Search with debounce & keyboard navigation
+      const searchInput = document.getElementById('searchInput');
+      const searchResults = document.getElementById('searchResults');
+      let searchTimer = null;
+      let currentResults = [];
+      let activeResultIdx = -1;
+
+      function closeSearch() {
+        searchResults.classList.remove('open');
+        activeResultIdx = -1;
+      }
+
+      async function doSearch(q) {
+        const clean = q.trim();
+        if (!clean) {
+          closeSearch();
+          return;
+        }
+        const res = await fetch(`/api/v1/foodon/search?q=${encodeURIComponent(clean)}&limit=14`);
+        const data = await res.json();
+        currentResults = data.results || [];
+        activeResultIdx = currentResults.length ? 0 : -1;
+
+        if (!currentResults.length) {
+          searchResults.innerHTML = `<div class="sr-item"><div class="sr-meta">No FoodOn node matching "${escapeHtml(clean)}"</div></div>`;
+          searchResults.classList.add('open');
+          return;
+        }
+
+        searchResults.innerHTML = currentResults.map((r, i) => {
+          const badges = [
+            ...(r.ecodes || []).slice(0, 2).map((e) => `<span class="tag ecode">${escapeHtml(e.toUpperCase())}</span>`),
+            ...(r.allergens || []).slice(0, 2).map((a) => `<span class="tag allergen">${escapeHtml(a)}</span>`),
+            ...(r.chronics || []).slice(0, 1).map((c) => `<span class="tag chronic">${escapeHtml(c)}</span>`),
+          ].join('');
+          return `
+            <div class="sr-item ${i === 0 ? 'active' : ''}" data-idx="${i}" role="option">
+              <div style="min-width:0;">
+                <div class="sr-title">${escapeHtml(r.label_en)}</div>
+                <div class="sr-meta">${escapeHtml(r.curie)}${r.matched_term && r.matched_term.toLowerCase() !== r.label_en.toLowerCase() ? ' · matched: ' + escapeHtml(r.matched_term) : ''}</div>
+              </div>
+              <div class="sr-badges">${badges}</div>
+            </div>
+          `;
+        }).join('');
+
+        searchResults.querySelectorAll('.sr-item').forEach((el) => {
+          el.addEventListener('click', () => {
+            const idx = Number(el.dataset.idx);
+            const item = currentResults[idx];
+            if (item) {
+              searchInput.value = item.label_en;
+              closeSearch();
+              clearActiveQuickChips();
+              loadNeighborhood({ curie: item.curie });
+            }
+          });
+        });
+
+        searchResults.classList.add('open');
+      }
+
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => doSearch(e.target.value), 160);
+      });
+
+      searchInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' && !searchResults.classList.contains('open')) {
+          e.preventDefault();
+          clearTimeout(searchTimer);
+          await doSearch(searchInput.value);
+          if (currentResults[0]) {
+            searchInput.value = currentResults[0].label_en;
+            closeSearch();
+            clearActiveQuickChips();
+            loadNeighborhood({ curie: currentResults[0].curie });
+          }
+          return;
+        }
+        if (!searchResults.classList.contains('open')) return;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeResultIdx = Math.min(currentResults.length - 1, activeResultIdx + 1);
+          highlightSearchIdx();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeResultIdx = Math.max(0, activeResultIdx - 1);
+          highlightSearchIdx();
+        } else if (e.key === 'Enter' && activeResultIdx >= 0 && currentResults[activeResultIdx]) {
+          e.preventDefault();
+          const item = currentResults[activeResultIdx];
+          searchInput.value = item.label_en;
+          closeSearch();
+          clearActiveQuickChips();
+          loadNeighborhood({ curie: item.curie });
+        } else if (e.key === 'Escape') {
+          closeSearch();
+        }
+      });
+
+      function highlightSearchIdx() {
+        searchResults.querySelectorAll('.sr-item').forEach((el, i) => {
+          el.classList.toggle('active', i === activeResultIdx);
+          if (i === activeResultIdx) el.scrollIntoView({ block: 'nearest' });
+        });
+      }
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-wrap')) closeSearch();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+        }
+      });
+
+      // Canvas Pointer & Wheel Events
+      const tooltip = document.getElementById('tooltip');
+
+      canvas.addEventListener('pointerdown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        state.pointerDownPos = { x: sx, y: sy };
+        state.lastPointerPos = { x: sx, y: sy };
+        state.movedSinceDown = false;
+
+        const hit = findNodeAt(sx, sy);
+        if (hit) {
+          state.dragNode = hit;
+          state.alpha = Math.max(state.alpha, 0.35);
+        } else {
+          state.isPanning = true;
+        }
+        canvas.classList.add('dragging');
+        canvas.setPointerCapture(e.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+
+        if (state.dragNode) {
+          const w = screenToWorld(sx, sy);
+          state.dragNode.x = w.x;
+          state.dragNode.y = w.y;
+          state.dragNode.tx = w.x;
+          state.dragNode.ty = w.y;
+          state.movedSinceDown = true;
+          tooltip.style.display = 'none';
+          return;
+        }
+
+        if (state.isPanning && state.lastPointerPos) {
+          const dx = (sx - state.lastPointerPos.x) / state.zoom;
+          const dy = (sy - state.lastPointerPos.y) / state.zoom;
+          state.camX -= dx;
+          state.camY -= dy;
+          state.targetCamX = state.camX;
+          state.targetCamY = state.camY;
+          state.lastPointerPos = { x: sx, y: sy };
+          if (Math.hypot(sx - state.pointerDownPos.x, sy - state.pointerDownPos.y) > 4) {
+            state.movedSinceDown = true;
+          }
+          tooltip.style.display = 'none';
+          return;
+        }
+
+        const hit = findNodeAt(sx, sy);
+        state.hoveredId = hit ? hit.id : null;
+        canvas.classList.toggle('pointer', Boolean(hit));
+        if (hit) {
+          document.getElementById('ttLabel').textContent = hit.label;
+          document.getElementById('ttCurie').textContent =
+            `${hit.id} · ${hit.child_count || 0} subclasses` + (hit.ecodes && hit.ecodes.length ? ` · ${hit.ecodes[0]}` : '');
+          tooltip.style.display = 'block';
+          tooltip.style.left = Math.min(state.width - 290, sx + 16) + 'px';
+          tooltip.style.top = Math.min(state.height - 95, sy + 14) + 'px';
+        } else {
+          tooltip.style.display = 'none';
+        }
+      });
+
+      canvas.addEventListener('pointerup', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const wasClick = !state.movedSinceDown;
+        const hit = findNodeAt(sx, sy);
+
+        state.isPanning = false;
+        state.dragNode = null;
+        canvas.classList.remove('dragging');
+        if (canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+
+        if (wasClick && hit) {
+          const now = Date.now();
+          if (state.lastClickNodeId === hit.id && now - state.lastClickTime < 340) {
+            expandNodeInGraph(hit.id);
+            state.lastClickNodeId = null;
+          } else {
+            state.lastClickNodeId = hit.id;
+            state.lastClickTime = now;
+            inspectNodeById(hit.id);
+          }
+        }
+      });
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.15 : 0.87;
+        state.targetZoom = Math.max(0.22, Math.min(2.8, state.targetZoom * factor));
+      }, { passive: false });
+
+      // Toolbar & Buttons
+      function clearActiveQuickChips() {
+        document.querySelectorAll('#quickBar .chip').forEach((c) => c.classList.remove('active'));
+      }
+
+      document.querySelectorAll('#quickBar .chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          clearActiveQuickChips();
+          chip.classList.add('active');
+          if (chip.dataset.curie) {
+            loadNeighborhood({ curie: chip.dataset.curie });
+          } else if (chip.dataset.allergen) {
+            loadNeighborhood({ allergen: chip.dataset.allergen });
+          }
+        });
+      });
+
+      document.getElementById('btnLayoutForce').addEventListener('click', () => {
+        state.layout = 'force';
+        state.alpha = 0.85;
+        document.getElementById('btnLayoutForce').classList.add('active');
+        document.getElementById('btnLayoutTree').classList.remove('active');
+      });
+
+      document.getElementById('btnLayoutTree').addEventListener('click', () => {
+        state.layout = 'tree';
+        computeTreeLayout();
+        fitToView(false);
+        document.getElementById('btnLayoutTree').classList.add('active');
+        document.getElementById('btnLayoutForce').classList.remove('active');
+      });
+
+      document.getElementById('depthSelect').addEventListener('change', () => {
+        loadNeighborhood({ curie: state.focusId });
+      });
+
+      document.getElementById('limitSelect').addEventListener('change', () => {
+        loadNeighborhood({ curie: state.focusId });
+      });
+
+      document.getElementById('btnTheme').addEventListener('click', (e) => {
+        const dark = document.body.classList.toggle('dark');
+        e.target.textContent = dark ? 'Light' : 'Dark';
+      });
+
+      document.getElementById('btnZoomIn').addEventListener('click', () => {
+        state.targetZoom = Math.min(2.8, state.targetZoom * 1.25);
+      });
+      document.getElementById('btnZoomOut').addEventListener('click', () => {
+        state.targetZoom = Math.max(0.22, state.targetZoom * 0.8);
+      });
+      document.getElementById('btnFit').addEventListener('click', () => fitToView(false));
+
+      document.getElementById('btnFocusNode').addEventListener('click', () => {
+        if (state.selectedId) loadNeighborhood({ curie: state.selectedId });
+      });
+      document.getElementById('btnExpandNode').addEventListener('click', () => {
+        if (state.selectedId) expandNodeInGraph(state.selectedId);
+      });
+
+      document.getElementById('inspCurie').addEventListener('click', () => {
+        const curie = document.getElementById('inspCurie').textContent;
+        if (curie && curie !== '—' && navigator.clipboard) {
+          navigator.clipboard.writeText(curie);
+          showToast('Copied ' + curie);
+        }
+      });
+
+      document.getElementById('btnCloseInsp').addEventListener('click', () => {
+        document.getElementById('inspector').classList.add('collapsed');
+        document.getElementById('btnReopenInsp').classList.add('visible');
+      });
+      document.getElementById('btnReopenInsp').addEventListener('click', () => {
+        document.getElementById('inspector').classList.remove('collapsed');
+        document.getElementById('btnReopenInsp').classList.remove('visible');
+      });
+
+      // Path Finder Controls
+      const pathPanel = document.getElementById('pathPanel');
+      const btnPathToggle = document.getElementById('btnPathToggle');
+      btnPathToggle.addEventListener('click', () => {
+        const open = pathPanel.classList.toggle('open');
+        btnPathToggle.classList.toggle('active-toggle', open);
+      });
+      document.getElementById('btnClosePath').addEventListener('click', () => {
+        pathPanel.classList.remove('open');
+        btnPathToggle.classList.remove('active-toggle');
+      });
+      document.getElementById('btnRunPath').addEventListener('click', () => {
+        runPathFinder(document.getElementById('pathFrom').value, document.getElementById('pathTo').value);
+      });
+      document.getElementById('btnExamplePath').addEventListener('click', () => {
+        document.getElementById('pathFrom').value = 'E621';
+        document.getElementById('pathTo').value = 'salt';
+        runPathFinder('E621', 'salt');
+      });
+
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        fitToView(false);
+      });
+
+      resizeCanvas();
+      requestAnimationFrame(render);
+      loadNeighborhood({ curie: 'FOODON:00001002' });
+    })();
+  </script>
+</body>
+</html>
