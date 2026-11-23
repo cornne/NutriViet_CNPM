@@ -4,6 +4,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'verify_email_screen.dart';
 
@@ -80,16 +81,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final userEmail = _emailController.text.trim();
       final requiresVerification = result['requires_verification'] != false;
       if (!requiresVerification) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocale.t(
-                'Tạo tài khoản thành công! Bạn có thể đăng nhập ngay.',
-                'Account created! You can sign in now.',
-              ),
-            ),
-            backgroundColor: const Color(0xFF14803C),
+        showNutriVietNotice(
+          context,
+          AppLocale.t(
+            'Tạo tài khoản thành công! Bạn có thể đăng nhập ngay.',
+            'Account created! You can sign in now.',
           ),
+          tone: NutriVietNoticeTone.success,
         );
         Navigator.pop(context);
       } else {
