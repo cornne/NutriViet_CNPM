@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nutriviet_mobile/l10n/app_locale.dart';
+import 'package:nutriviet_mobile/screens/packaging_scanner_screen.dart';
 import 'package:nutriviet_mobile/services/paddle_ocr_vl_service.dart';
 import 'package:nutriviet_mobile/services/profile_service.dart';
 
@@ -207,5 +209,115 @@ Cảnh báo dị ứng: Chứa lúa mì, sữa, đậu phộng.
     await PaddleOcrVlService.saveToken('');
     expect(await PaddleOcrVlService.resolveToken(), isEmpty);
     expect(await PaddleOcrVlService.hasToken(), isTrue);
+  });
+
+  test('recognizeImage propagates has_ingredients=false when only Nutrition Facts detected', () async {
+    final mockClient = MockClient((http.Request req) async {
+      if (req.method == 'POST') {
+        return http.Response(jsonEncode({'success': true, 'jobId': 'job-nut-only'}), 200);
+      }
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'success': true,
+            'state': 'done',
+            'has_ingredients': false,
+            'text': '',
+            'raw_text': 'Nutrition Facts\nCalories 200 kcal\nSodium 120mg',
+            'nutrition_detected': true,
+            'reason': 'NO_INGREDIENTS_FOUND',
+            'line_count': 0,
+          }),
+        ),
+        200,
+      );
+    });
+
+    final res = await PaddleOcrVlService.recognizeImage(
+      imageBytes: Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xD9]),
+      tokenOverride: '',
+      pollInterval: const Duration(milliseconds: 5),
+      client: mockClient,
+    );
+
+    expect(res['success'], isTrue);
+    expect(res['has_ingredients'], isFalse);
+    expect(res['nutrition_detected'], isTrue);
+    expect(res['text'], isEmpty);
+    expect(res['reason'], 'NO_INGREDIENTS_FOUND');
+  });
+
+  test('PackagingScannerMath maps BoxFit.cover camera cutout and BoxFit.contain bounds accurately', () {
+    // Modern tall phone (1096x2560) with 3:4 portrait camera preview
+    final coverNorm = PackagingScannerMath.mapCoverFrameToImageNormRect(
+      viewportSize: const Size(1096, 2560),
+      previewImageAspect: 0.75,
+      frameRect: const Rect.fromLTWH(20, 900, 1056, 600),
+    );
+    // Horizontally centered inside renderedW=1920 -> dx=412 -> left=(20+412)/1920=0.225
+    expect(coverNorm.left, closeTo(0.225, 0.005));
+    expect(coverNorm.right, closeTo(0.775, 0.005));
+    expect(coverNorm.top, closeTo(900 / 2560, 0.005));
+    expect(coverNorm.bottom, closeTo(1500 / 2560, 0.005));
+
+    // Wide 2:1 landscape image inside 300x500 container must fit horizontally without overflow
+    final containRect = PackagingScannerMath.computeContainImageRect(
+      containerSize: const Size(300, 500),
+      imageAspect: 2.0,
+    );
+    expect(containRect.width, closeTo(300, 0.5));
+    expect(containRect.height, closeTo(150, 0.5));
+    expect(containRect.left, closeTo(0, 0.5));
+    expect(containRect.top, closeTo(175, 0.5));
+  });
+
+  testWidgets('PackagingScannerScreen toggles live framing mode and bounded gallery crop without overflow', (tester) async {
+    // 1x1 valid transparent PNG bytes for gallery crop review test
+    final png1x1 = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: PackagingScannerScreen(
+          userId: 0,
+          memberName: 'Khách',
+          isGuest: true,
+          skipCameraInitForTest: true,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Trong khung'), findsOneWidget);
+    expect(find.text('Toàn màn hình'), findsOneWidget);
+    expect(find.textContaining('Chỉ quét trong khung'), findsOneWidget);
+
+    await tester.tap(find.text('Toàn màn hình'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Quét toàn màn hình'), findsOneWidget);
+
+    // Switch to gallery crop review stage and verify bounded toggle without overflow
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackagingScannerScreen(
+          key: const ValueKey('gallery-crop-review-test'),
+          userId: 0,
+          memberName: 'Khách',
+          isGuest: true,
+          skipCameraInitForTest: true,
+          initialGalleryBytesForTest: png1x1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quét toàn ảnh'), findsOneWidget);
+    expect(find.text('Cắt vùng Thành phần'), findsOneWidget);
+    expect(find.text('Nhận dạng Thành phần'), findsOneWidget);
+
+    await tester.tap(find.text('Cắt vùng Thành phần'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quét vùng đã cắt'), findsOneWidget);
   });
 }
