@@ -34,15 +34,27 @@ class MainActivity : FlutterActivity() {
                     return@setMethodCallHandler
                 }
                 val rawBytes = call.argument<ByteArray>("bytes")
-                val maxSide = call.argument<Int>("maxSide") ?: 1080
-                val targetMaxBytes = call.argument<Int>("targetMaxBytes") ?: 110 * 1024
+                val maxSide = call.argument<Int>("maxSide") ?: 1280
+                val targetMaxBytes = call.argument<Int>("targetMaxBytes") ?: 180 * 1024
+                val cropLeft = call.argument<Double>("cropLeft")
+                val cropTop = call.argument<Double>("cropTop")
+                val cropWidth = call.argument<Double>("cropWidth")
+                val cropHeight = call.argument<Double>("cropHeight")
                 if (rawBytes == null || rawBytes.isEmpty()) {
                     result.error("INVALID_ARGS", "Empty image bytes", null)
                     return@setMethodCallHandler
                 }
                 imageExecutor.execute {
                     try {
-                        val compressed = compressJpegForOcr(rawBytes, maxSide, targetMaxBytes)
+                        val compressed = compressJpegForOcr(
+                            rawBytes = rawBytes,
+                            maxSide = maxSide,
+                            targetMaxBytes = targetMaxBytes,
+                            cropLeft = cropLeft,
+                            cropTop = cropTop,
+                            cropWidth = cropWidth,
+                            cropHeight = cropHeight
+                        )
                         mainHandler.post { result.success(compressed) }
                     } catch (e: Throwable) {
                         mainHandler.post {
@@ -59,13 +71,18 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Fast native EXIF-aware downscale + adaptive JPEG compression so camera
-     * captures (~1.5-3MB) shrink to <= 110KB in ~35ms before cross-border OCR upload.
+     * Fast native EXIF-aware crop + downscale + adaptive JPEG compression off the
+     * main thread (~25-45ms) so camera/gallery captures stay crisp for PaddleOCR
+     * while cropping strictly to the user's selected frame.
      */
     private fun compressJpegForOcr(
         rawBytes: ByteArray,
         maxSide: Int,
-        targetMaxBytes: Int
+        targetMaxBytes: Int,
+        cropLeft: Double? = null,
+        cropTop: Double? = null,
+        cropWidth: Double? = null,
+        cropHeight: Double? = null
     ): ByteArray {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, bounds)
@@ -73,13 +90,29 @@ class MainActivity : FlutterActivity() {
         val rawH = bounds.outHeight
         if (rawW <= 0 || rawH <= 0) return rawBytes
 
+        val hasCrop = cropLeft != null &&
+            cropTop != null &&
+            cropWidth != null &&
+            cropHeight != null &&
+            cropWidth > 0.05 &&
+            cropHeight > 0.05 &&
+            (cropWidth < 0.995 || cropHeight < 0.995 || cropLeft > 0.005 || cropTop > 0.005)
+
+        // Preserve full native sharpness inside cropped strip before downscaling
+        val minCropFraction = if (hasCrop) {
+            max(0.25, kotlin.math.min(cropWidth!!, cropHeight!!))
+        } else {
+            1.0
+        }
+        val decodeTargetSide = (maxSide / minCropFraction).toInt().coerceAtMost(2800)
+
         var sample = 1
-        while (max(rawW / sample, rawH / sample) > maxSide * 2) {
+        while (max(rawW / sample, rawH / sample) > decodeTargetSide * 2) {
             sample *= 2
         }
         val decodeOpts = BitmapFactory.Options().apply {
             inSampleSize = sample
-            inPreferredConfig = Bitmap.Config.RGB_565
+            inPreferredConfig = Bitmap.Config.ARGB_8888
         }
         var bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, decodeOpts)
             ?: return rawBytes
@@ -100,24 +133,49 @@ class MainActivity : FlutterActivity() {
             0f
         }
 
-        val scale = if (max(bmp.width, bmp.height) > maxSide) {
-            maxSide.toFloat() / max(bmp.width, bmp.height).toFloat()
-        } else {
-            1f
+        // Step 1: Rotate to upright display orientation BEFORE cropping
+        if (rotation != 0f) {
+            val matrix = Matrix().apply { postRotate(rotation) }
+            val rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+            if (rotated !== bmp) bmp.recycle()
+            bmp = rotated
         }
 
-        if (rotation != 0f || scale < 0.99f) {
-            val matrix = Matrix().apply {
-                if (scale < 0.99f) postScale(scale, scale)
-                if (rotation != 0f) postRotate(rotation)
+        // Step 2: Apply exact normalized crop rectangle in upright coordinates
+        if (hasCrop) {
+            val l = cropLeft!!.coerceIn(0.0, 0.95)
+            val t = cropTop!!.coerceIn(0.0, 0.95)
+            val wFrac = cropWidth!!.coerceIn(0.05, 1.0 - l)
+            val hFrac = cropHeight!!.coerceIn(0.05, 1.0 - t)
+
+            val cx = (l * bmp.width).toInt().coerceIn(0, bmp.width - 1)
+            val cy = (t * bmp.height).toInt().coerceIn(0, bmp.height - 1)
+            val cw = (wFrac * bmp.width).toInt().coerceIn(1, bmp.width - cx)
+            val ch = (hFrac * bmp.height).toInt().coerceIn(1, bmp.height - cy)
+
+            if (cw < bmp.width || ch < bmp.height) {
+                val cropped = Bitmap.createBitmap(bmp, cx, cy, cw, ch)
+                if (cropped !== bmp) bmp.recycle()
+                bmp = cropped
             }
-            val transformed = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
-            if (transformed !== bmp) bmp.recycle()
-            bmp = transformed
+        }
+
+        // Step 3: Downscale cleanly if longer side exceeds maxSide
+        val longest = max(bmp.width, bmp.height)
+        if (longest > maxSide) {
+            val scale = maxSide.toFloat() / longest.toFloat()
+            val scaled = Bitmap.createScaledBitmap(
+                bmp,
+                max(1, (bmp.width * scale).toInt()),
+                max(1, (bmp.height * scale).toInt()),
+                true
+            )
+            if (scaled !== bmp) bmp.recycle()
+            bmp = scaled
         }
 
         try {
-            val qualities = intArrayOf(72, 62, 52, 42)
+            val qualities = intArrayOf(82, 74, 66, 58)
             var best = rawBytes
             for (q in qualities) {
                 val baos = ByteArrayOutputStream()
@@ -127,9 +185,8 @@ class MainActivity : FlutterActivity() {
                     return best
                 }
             }
-            // If still over budget (very busy background), scale down once more to 840px
-            if (best.size > targetMaxBytes && max(bmp.width, bmp.height) > 840) {
-                val s2 = 840f / max(bmp.width, bmp.height).toFloat()
+            if (best.size > targetMaxBytes && max(bmp.width, bmp.height) > 960) {
+                val s2 = 960f / max(bmp.width, bmp.height).toFloat()
                 val smaller = Bitmap.createScaledBitmap(
                     bmp,
                     max(1, (bmp.width * s2).toInt()),
@@ -138,7 +195,7 @@ class MainActivity : FlutterActivity() {
                 )
                 try {
                     val baos = ByteArrayOutputStream()
-                    smaller.compress(Bitmap.CompressFormat.JPEG, 58, baos)
+                    smaller.compress(Bitmap.CompressFormat.JPEG, 66, baos)
                     return baos.toByteArray()
                 } finally {
                     if (smaller !== bmp) smaller.recycle()
