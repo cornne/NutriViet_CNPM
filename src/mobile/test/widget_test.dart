@@ -15,6 +15,7 @@ import 'package:nutriviet_mobile/services/local_guest_store.dart';
 import 'package:nutriviet_mobile/services/profile_service.dart';
 import 'package:nutriviet_mobile/theme/nutriviet_glass.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_glass_modal.dart';
+import 'package:nutriviet_mobile/widgets/nutriviet_notice.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_shimmer.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_ui.dart';
 
@@ -684,6 +685,40 @@ void main() {
 
     expect(find.text('Cộng đồng'), findsWidgets);
     expect(find.text('Phụ gia'), findsNothing);
+    expect(find.textContaining('miễn phí'), findsNothing);
+    expect(find.textContaining('free scan'), findsNothing);
+    expect(find.byIcon(PhosphorIconsDuotone.chatsCircle), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('showNutriVietNotice renders floating frosted pill toast cleanly', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) => ElevatedButton(
+              onPressed: () => showNutriVietNotice(
+                ctx,
+                'Đã lưu hồ sơ sức khỏe thành công.',
+                tone: NutriVietNoticeTone.success,
+              ),
+              child: const Text('Trigger'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Trigger'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đã lưu hồ sơ sức khỏe thành công.'), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsFill.checkCircle), findsOneWidget);
+    final snack = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(snack.behavior, SnackBarBehavior.floating);
+    expect(snack.backgroundColor, Colors.transparent);
     expect(tester.takeException(), isNull);
   });
 }
