@@ -38,16 +38,7 @@ src/mobile/android/.kotlin/
 Thumbs.db
 *.swp
 
-# Raw Dictionary Archives & Unfiltered Databases (Too large for GitHub)
-o_v3
-src/backend/data/o_v3.zip
-src/backend/data/av_v3.db
-src/backend/data/va_v3.db
-src/backend/data/foodon/
-
-# Python Bytecode & Local Dev Databases
+# Python Bytecode & Unverified Translation Exports
 __pycache__/
 *.py[cod]
-src/backend/nutriviet.db
-src/backend/nutriviet_auth.db
 foodon_vi_translated.csv
