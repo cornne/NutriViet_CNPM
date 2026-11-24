@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../theme/nutriviet_glass.dart';
@@ -135,9 +134,9 @@ class NutriVietGlassIconTile extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: tint.withValues(alpha: 0.14),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: tint.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -402,6 +401,7 @@ class NutriVietEntranceMotion extends StatelessWidget {
       duration: Duration(milliseconds: totalMs),
       curve: Interval(delayFrac, 1.0, curve: Curves.easeOutCubic),
       builder: (context, t, child) {
+        if (t >= 0.999) return child!;
         return Opacity(
           opacity: t.clamp(0.0, 1.0),
           child: Transform.translate(
@@ -636,9 +636,9 @@ class _ScannerReticlePainter extends CustomPainter {
       oldDelegate.progress != progress || oldDelegate.isScanning != isScanning;
 }
 
-/// Interactive Liquid Glass CTA pill built over [LiquidGlassButton] with
-/// soft-body finger flex ([LiquidGlassTouch.flexing]) and a frosted pearl
-/// shimmer sweep during async operations instead of a bare spinner.
+/// Interactive Frosted Glass CTA pill with tactile spring press feedback
+/// ([NutriVietPressScale]), top specular catchlight, and shimmer loading state.
+/// Engineered with zero live backdrop shader readbacks for locked 120 Hz UI.
 class NutriVietGlassActionButton extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -648,7 +648,6 @@ class NutriVietGlassActionButton extends StatelessWidget {
   final bool isDanger;
   final double height;
   final double? width;
-  final LiquidGlassStyle? style;
   final Color? foregroundColor;
 
   const NutriVietGlassActionButton({
@@ -661,108 +660,629 @@ class NutriVietGlassActionButton extends StatelessWidget {
     this.isDanger = false,
     this.height = 50,
     this.width,
-    this.style,
     this.foregroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveStyle = style ??
-        (isDanger
-            ? NutriVietGlass.dangerButton
-            : (isPrimary
-                ? NutriVietGlass.emeraldButton
-                : NutriVietGlass.neutralButton));
-    final fg = foregroundColor ??
+    final bool disabled = onPressed == null || isLoading;
+    final Color fg = foregroundColor ??
         (isPrimary || isDanger ? Colors.white : NutriVietGlass.inkPrimary);
+    final BorderRadius radius = BorderRadius.circular(height / 2);
 
-    return LiquidGlassButton(
-      width: width,
-      height: height,
-      style: effectiveStyle,
-      touch: NutriVietGlass.touchHorizontalCapsule,
-      foregroundColor: fg,
-      onPressed: isLoading ? null : onPressed,
-      child: isLoading
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                NutriVietShimmerBox.circle(
-                  size: 16,
-                  baseColor: fg.withValues(alpha: 0.28),
-                  highlightColor: Colors.white,
-                ),
-                const SizedBox(width: 10),
-                NutriVietShimmerBox(
-                  width: 88,
-                  height: 12,
-                  borderRadius: 6,
-                  baseColor: fg.withValues(alpha: 0.30),
-                  highlightColor: Colors.white,
-                ),
+    final List<Color> gradientColors;
+    final Color borderColor;
+    final Color shadowColor;
+    if (isDanger) {
+      gradientColors = const [
+        Color(0xFFF66969),
+        Color(0xFFEF4444),
+        Color(0xFFDC2626),
+      ];
+      borderColor = const Color(0x70FFFFFF);
+      shadowColor = const Color(0x30DC2626);
+    } else if (isPrimary) {
+      gradientColors = const [
+        Color(0xFF2B9C56),
+        Color(0xFF16833F),
+        Color(0xFF106A31),
+      ];
+      borderColor = const Color(0x6EFFFFFF);
+      shadowColor = const Color(0x3214803C);
+    } else {
+      gradientColors = const [
+        Color(0xF6FFFFFF),
+        Color(0xEEF2F7F4),
+        Color(0xE8E7EFEA),
+      ];
+      borderColor = const Color(0xFFD5E0DA);
+      shadowColor = const Color(0x140F172A);
+    }
+
+    final Widget inner = isLoading
+        ? Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NutriVietShimmerBox.circle(
+                size: 16,
+                baseColor: fg.withValues(alpha: 0.28),
+                highlightColor: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              NutriVietShimmerBox(
+                width: 88,
+                height: 12,
+                borderRadius: 6,
+                baseColor: fg.withValues(alpha: 0.30),
+                highlightColor: Colors.white,
+              ),
+            ],
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                PhosphorIcon(icon!, size: 19, color: fg),
+                const SizedBox(width: 8),
               ],
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  PhosphorIcon(icon!, size: 19, color: fg),
-                  const SizedBox(width: 8),
-                ],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: fg,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                    ),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
+                ),
+              ),
+            ],
+          );
+
+    return NutriVietPressScale(
+      pressedScale: 0.97,
+      enableHaptic: !disabled,
+      enabled: !disabled,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: disabled ? null : onPressed,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: disabled ? 0.65 : 1.0,
+          child: Container(
+            width: width,
+            height: height,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: gradientColors,
+                stops: const [0.0, 0.45, 1.0],
+              ),
+              border: Border.all(color: borderColor, width: 1.15),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
+            child: Center(child: inner),
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// Morphing Liquid Glass surface powered by [LiquidGlassMorph] — smoothly
-/// stretches and reforms its glass capsule whenever its keyed child state flips
-/// (e.g. collapsed summary ↔ expanded detail card).
-class NutriVietGlassMorphCard extends StatelessWidget {
-  final Widget child;
-  final LiquidGlassMorphMotion motion;
-  final LiquidGlassStyle? style;
-  final Alignment alignment;
-  final double smoothness;
-  final double? width;
-  final LiquidGlassTouch? touch;
+/// Lightweight 120 Hz floating frosted glass AppBar with mathematically centered
+/// title regardless of asymmetric leading/trailing actions and zero GPU shader
+/// backdrop readbacks.
+class NutriVietGlassAppBar extends StatelessWidget {
+  final Widget? leading;
+  final Widget? title;
+  final List<Widget> actions;
+  final double height;
+  final double horizontalPadding;
 
-  const NutriVietGlassMorphCard({
+  const NutriVietGlassAppBar({
     super.key,
-    required this.child,
-    this.motion = LiquidGlassMorphMotion.calm,
-    this.style,
-    this.alignment = Alignment.topCenter,
-    this.smoothness = 26,
-    this.width,
-    this.touch,
+    this.leading,
+    this.title,
+    this.actions = const [],
+    this.height = 56,
+    this.horizontalPadding = 8,
   });
 
   @override
   Widget build(BuildContext context) {
-    return LiquidGlassMorph(
-      width: width,
-      alignment: alignment,
-      motion: motion,
-      smoothness: smoothness,
-      touch: touch,
-      style: style ?? NutriVietGlass.cardGlass(cornerRadius: 22),
-      child: child,
+    return RepaintBoundary(
+      child: Container(
+        height: height,
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(height / 2),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xF5FFFFFF),
+              Color(0xEAF5FAF7),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFFFFFFF),
+            width: 1.2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x140F172A),
+              blurRadius: 14,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (title != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 52),
+                child: DefaultTextStyle.merge(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                    decoration: TextDecoration.none,
+                  ),
+                  child: title!,
+                ),
+              ),
+            if (leading != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: leading!,
+              ),
+            if (actions.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: actions,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Circular frosted utility icon button used inside [NutriVietGlassAppBar].
+class NutriVietGlassCircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  final Color iconColor;
+
+  const NutriVietGlassCircleButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.size = 40,
+    this.iconColor = const Color(0xFF1F2937),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return NutriVietPressScale(
+      pressedScale: 0.90,
+      enableHaptic: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFF1F5F3),
+            border: Border.all(
+              color: const Color(0xFFE2E9E4),
+              width: 1.0,
+            ),
+          ),
+          child: Center(
+            child: PhosphorIcon(icon, color: iconColor, size: 19),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lightweight gradient top/bottom scroll fade edge with zero shader passes.
+class NutriVietScrollFadeOverlay extends StatelessWidget {
+  final AlignmentGeometry begin;
+  final AlignmentGeometry end;
+  final double height;
+  final Color color;
+
+  const NutriVietScrollFadeOverlay.top({
+    super.key,
+    required this.height,
+    this.color = const Color(0xE8EEF6F2),
+  })  : begin = Alignment.topCenter,
+        end = Alignment.bottomCenter;
+
+  const NutriVietScrollFadeOverlay.bottom({
+    super.key,
+    required this.height,
+    this.color = const Color(0xECEAF3EE),
+  })  : begin = Alignment.bottomCenter,
+        end = Alignment.topCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: begin,
+            end: end,
+            colors: [
+              color,
+              color.withValues(alpha: 0.72),
+              color.withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.45, 1.0],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Crisp, zero-readback 120 Hz spring glass toggle switch replacing per-row
+/// shader switches inside scrolling lists.
+class NutriVietGlassSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Color activeColor;
+  final Color inactiveColor;
+
+  const NutriVietGlassSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.activeColor = NutriVietGlass.brandGreen,
+    this.inactiveColor = const Color(0xFFD1D5DB),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      toggled: value,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onChanged(!value);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: 52,
+          height: 31,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: value ? activeColor : inactiveColor,
+            border: Border.all(
+              color: value
+                  ? Colors.white.withValues(alpha: 0.28)
+                  : Colors.white.withValues(alpha: 0.65),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: value
+                    ? activeColor.withValues(alpha: 0.25)
+                    : const Color(0x140F172A),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              width: 25,
+              height: 25,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF3F6F4)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x260F172A),
+                    blurRadius: 4,
+                    offset: Offset(0, 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tab descriptor for [NutriVietFloatingBottomBar].
+class NutriVietBottomTabItem {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+
+  const NutriVietBottomTabItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
+}
+
+/// Unified, pixel-aligned, zero-shader-readback floating bottom navigation dock
+/// pairing the frosted 4-tab capsule and detached emerald scan orb on the exact
+/// same horizontal row and single `SafeArea` baseline across every screen size.
+class NutriVietFloatingBottomBar extends StatelessWidget {
+  final List<NutriVietBottomTabItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onScanTap;
+  final Color selectedColor;
+  final Color unselectedColor;
+
+  const NutriVietFloatingBottomBar({
+    super.key,
+    required this.items,
+    required this.selectedIndex,
+    required this.onChanged,
+    required this.onScanTap,
+    this.selectedColor = NutriVietGlass.brandGreen,
+    this.unselectedColor = const Color(0xFF1F2937),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final double bottomInset = MediaQuery.paddingOf(context).bottom;
+    const double barHeight = 62.0;
+    const double scanSize = 60.0;
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: NutriVietScrollFadeOverlay.bottom(
+              height: bottomInset + 96,
+              color: const Color(0xECEAF3EE),
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: RepaintBoundary(
+                          child: Container(
+                            height: barHeight,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(barHeight / 2),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color(0xF6FFFFFF),
+                                  Color(0xECF3F8F5),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: const Color(0xFFFFFFFF),
+                                width: 1.25,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x160F172A),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final int count = items.length;
+                                final double slotW =
+                                    count > 0 ? constraints.maxWidth / count : 0;
+                                return Stack(
+                                  children: [
+                                    // Smooth spring sliding active glass pill
+                                    AnimatedPositioned(
+                                      duration: const Duration(milliseconds: 220),
+                                      curve: Curves.easeOutCubic,
+                                      left: slotW * selectedIndex,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: slotW,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            (barHeight - 8) / 2,
+                                          ),
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              selectedColor.withValues(alpha: 0.17),
+                                              selectedColor.withValues(alpha: 0.11),
+                                            ],
+                                          ),
+                                          border: Border.all(
+                                            color: selectedColor.withValues(
+                                              alpha: 0.22,
+                                            ),
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: List<Widget>.generate(count, (i) {
+                                        final item = items[i];
+                                        final bool active = i == selectedIndex;
+                                        final Color fg =
+                                            active ? selectedColor : unselectedColor;
+                                        return Expanded(
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () {
+                                              if (selectedIndex != i) {
+                                                HapticFeedback.selectionClick();
+                                                onChanged(i);
+                                              }
+                                            },
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  PhosphorIcon(
+                                                    active
+                                                        ? item.selectedIcon
+                                                        : item.icon,
+                                                    color: fg,
+                                                    size: 21,
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                      horizontal: 2,
+                                                    ),
+                                                    child: Text(
+                                                      item.label,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        color: fg,
+                                                        fontSize: 10.5,
+                                                        fontWeight: active
+                                                            ? FontWeight.w800
+                                                            : FontWeight.w600,
+                                                        letterSpacing: -0.1,
+                                                        height: 1.15,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      RepaintBoundary(
+                        child: NutriVietPressScale(
+                          pressedScale: 0.91,
+                          enableHaptic: true,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: onScanTap,
+                            child: Container(
+                              width: scanSize,
+                              height: scanSize,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF28A458),
+                                    Color(0xFF14803C),
+                                    Color(0xFF0E642D),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  width: 1.35,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x3B14803C),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: PhosphorIcon(
+                                  PhosphorIconsBold.scan,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

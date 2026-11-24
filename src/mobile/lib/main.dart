@@ -1,29 +1,23 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:flutter/services.dart';
 import 'l10n/app_locale.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
 
-class MyHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback =
-          (X509Certificate cert, String host, int port) => true;
-  }
-}
-
 void main() async {
-  HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
-  await LiquidGlassShaders.ensureLoaded();
-  LiquidGlassConfiguration.batchMode = LiquidGlassBatchMode.singlePass;
-  LiquidGlassConfiguration.blurMethod = LiquidGlassBlurMethod.shader;
-  LiquidGlassConfiguration.batchBlurMethod = LiquidGlassBlurMethod.shader;
-  LiquidGlassConfiguration.shapeCache = true;
-  LiquidGlassConfiguration.rimLiftOnDark = true;
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarContrastEnforced: false,
+    ),
+  );
   await AppLocale.loadSaved();
   final session = await AuthService.getSession();
   runApp(NutriVietApp(initialUser: session));

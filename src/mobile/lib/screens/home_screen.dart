@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -51,8 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _scans = [];
   int _monthlyScans = 0;
   int _monthlyWarnings = 0;
-  int _totalScans = 0;
-  int _warningScans = 0;
   bool _loadingInitialData = true;
   final Set<int> _expandedScanIds = {};
 
@@ -202,23 +199,36 @@ class _HomeScreenState extends State<HomeScreen> {
       await AppLocale.setLanguage(backendLang);
     }
 
+    String? refreshedUserName;
+    if (!_isGuest) {
+      final session = await AuthService.getSession();
+      final storedName = (session?['full_name'] ?? '').toString().trim();
+      if (storedName.isNotEmpty) {
+        refreshedUserName = storedName;
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       _loadingInitialData = false;
       _langPref = AppLocale.code;
+      if (refreshedUserName != null) {
+        _userName = refreshedUserName;
+      }
       if (results[0]['success'] == true) {
         _allergens = List<Map<String, dynamic>>.from(results[0]['allergens'] ?? []);
       }
       if (results[2]['success'] == true) {
         _familyMembers = List<Map<String, dynamic>>.from(results[2]['members'] ?? []);
-        if (_familyMembers.isNotEmpty && _selectedMemberName.isEmpty) {
+        final hasSelected = _familyMembers.any(
+          (m) => (m['member_name'] ?? '').toString() == _selectedMemberName,
+        );
+        if (_familyMembers.isNotEmpty && (_selectedMemberName.isEmpty || !hasSelected)) {
           _selectedMemberName = (_familyMembers.first['member_name'] ?? '').toString();
         }
       }
       if (results[3]['success'] == true) {
         _scans = List<Map<String, dynamic>>.from(results[3]['scans'] ?? []);
-        _totalScans = (results[3]['total_scans'] ?? _scans.length) as int;
-        _warningScans = (results[3]['warning_scans'] ?? 0) as int;
         _monthlyScans = (results[3]['monthly_scans'] ?? 0) as int;
         _monthlyWarnings = (results[3]['monthly_warnings'] ?? 0) as int;
         for (final sc in _scans) {
@@ -593,11 +603,6 @@ class _HomeScreenState extends State<HomeScreen> {
             {'id': 0, 'member_name': _shortName, 'is_primary': 1}
           ];
 
-    final badgeFirstScan = _totalScans >= 1;
-    final badgeFirstWarning = _warningScans >= 1;
-    final badgeTenScans = _totalScans >= 10;
-    final tenProgress = (_totalScans.clamp(0, 10)) / 10.0;
-
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
@@ -605,7 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _refreshUserData,
         child: NutriVietGlassScrollArea(
           child: ListView(
-            scrollCacheExtent: const ScrollCacheExtent.pixels(800),
+            scrollCacheExtent: const ScrollCacheExtent.pixels(500),
             physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics()),
             padding: const EdgeInsets.fromLTRB(0, 18, 0, 120),
@@ -645,11 +650,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white.withValues(alpha: 0.36),
                     width: 1.2,
                   ),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
-                      color: const Color(0xFF0E632E).withValues(alpha: 0.24),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
+                      color: Color(0x360E632E),
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
                     ),
                   ],
                 ),
@@ -1028,119 +1033,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            const SizedBox(height: 26),
+            const SizedBox(height: 20),
 
-            // Section: Huy hiệu / Badges
+            // Category Pills Row (balanced 4-column bar — zero clipping, zero ShaderMask saveLayer!)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    AppLocale.t('Huy hiệu', 'Badges'),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+                  Expanded(
+                    child: _buildCategoryPill(
+                      id: 'sugar',
+                      icon: PhosphorIconsDuotone.cube,
+                      label: AppLocale.t('Đường', 'Sugar'),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _tabNotifier.value = 2,
-                    child: Text(
-                      AppLocale.t('Xem tất cả', 'See all'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: _brandGreen,
-                      ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCategoryPill(
+                      id: 'salt',
+                      icon: PhosphorIconsDuotone.grains,
+                      label: AppLocale.t('Muối', 'Salt'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCategoryPill(
+                      id: 'fat',
+                      icon: PhosphorIconsDuotone.drop,
+                      label: AppLocale.t('Chất béo', 'Fat'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCategoryPill(
+                      id: 'allergen',
+                      icon: PhosphorIconsDuotone.shieldWarning,
+                      label: AppLocale.t('Dị ứng', 'Allergens'),
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: NutriVietGlassCard(
-                cornerRadius: 22,
-                padding: const EdgeInsets.fromLTRB(12, 20, 12, 18),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _buildBadgeColumn(
-                        icon: PhosphorIconsDuotone.sparkle,
-                        unlocked: badgeFirstScan,
-                        title: AppLocale.t(
-                          'Đọc nhãn đầu\ntiên của bạn',
-                          'Read your\nfirst label',
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildBadgeColumn(
-                        icon: PhosphorIconsDuotone.shieldWarning,
-                        unlocked: badgeFirstWarning,
-                        title: AppLocale.t(
-                          'Phát hiện cảnh\nbáo đầu tiên',
-                          'Detect your\nfirst warning',
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildBadgeColumn(
-                        icon: PhosphorIconsDuotone.trophy,
-                        unlocked: badgeTenScans,
-                        title: AppLocale.t('Đọc 10 nhãn', 'Read 10 labels'),
-                        progress: tenProgress,
-                        progressText: AppLocale.t(
-                          '${_totalScans.clamp(0, 10)}/10 nhãn',
-                          '${_totalScans.clamp(0, 10)}/10 labels',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
 
             const SizedBox(height: 16),
-
-            // Category Pills Row (full-bleed horizontal strip with soft edge fade)
-            NutriVietHorizontalFadeScroll(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-              fadeExtent: 48,
-              child: Row(
-                children: [
-                  _buildCategoryPill(
-                    id: 'sugar',
-                    icon: PhosphorIconsDuotone.cube,
-                    label: AppLocale.t('Đường', 'Sugar'),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildCategoryPill(
-                    id: 'salt',
-                    icon: PhosphorIconsDuotone.grains,
-                    label: AppLocale.t('Muối', 'Salt'),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildCategoryPill(
-                    id: 'fat',
-                    icon: PhosphorIconsDuotone.drop,
-                    label: AppLocale.t('Chất béo', 'Fat'),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildCategoryPill(
-                    id: 'allergen',
-                    icon: PhosphorIconsDuotone.shieldWarning,
-                    label: AppLocale.t('Dị ứng', 'Allergens'),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 6),
 
             // Active Category Knowledge Section (items are emitted as direct
             // ListView children so Viewport culls offscreen cards at 120Hz)
@@ -1261,140 +1196,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBadgeColumn({
-    required IconData icon,
-    required bool unlocked,
-    required String title,
-    double? progress,
-    String? progressText,
-  }) {
-    final badgeAccent = unlocked ? _brandGreen : const Color(0xFF6B7280);
-    return NutriVietPressScale(
-      pressedScale: 0.94,
-      child: Column(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              NutriVietPulseHalo(
-                active: unlocked,
-                glowColor: _brandGreen,
-                size: 64,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: unlocked
-                          ? [
-                              const Color(0xFFDCFCE7),
-                              const Color(0xFFBAE6CC),
-                            ]
-                          : [
-                              const Color(0xFFF3F2EC),
-                              const Color(0xFFE6E4DC),
-                            ],
-                    ),
-                    border: Border.all(
-                      color: unlocked
-                          ? Colors.white.withValues(alpha: 0.95)
-                          : Colors.white.withValues(alpha: 0.8),
-                      width: 1.6,
-                    ),
-                  ),
-                  child: Center(
-                    child: PhosphorIcon(
-                      icon,
-                      size: 30,
-                      color: badgeAccent,
-                      duotoneSecondaryOpacity: unlocked ? 0.34 : 0.20,
-                      duotoneSecondaryColor: badgeAccent,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: -3,
-                bottom: -3,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: unlocked ? _brandGreen : const Color(0xFFD6D5CE),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (unlocked ? _brandGreen : Colors.black)
-                            .withValues(alpha: 0.16),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: PhosphorIcon(
-                      unlocked
-                          ? PhosphorIconsFill.sealCheck
-                          : PhosphorIconsDuotone.lockKey,
-                      size: 13,
-                      color: unlocked ? Colors.white : const Color(0xFF4B5563),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1F2937),
-              height: 1.25,
-            ),
-          ),
-          if (progress != null && progressText != null) ...[
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.0, end: math.max(progress, 0.15)),
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, animVal, _) {
-                    return LinearProgressIndicator(
-                      value: animVal,
-                      minHeight: 5,
-                      backgroundColor: const Color(0xFFE5E7EB),
-                      valueColor: const AlwaysStoppedAnimation<Color>(_brandGreen),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              progressText,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6B7280),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildCategoryPill({
     required String id,
     required IconData icon,
@@ -1405,14 +1206,16 @@ class _HomeScreenState extends State<HomeScreen> {
       pressedScale: 0.94,
       enableHaptic: true,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticFeedback.selectionClick();
           _loadCategoryConcepts(id);
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(22),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -1424,51 +1227,43 @@ class _HomeScreenState extends State<HomeScreen> {
               color: isSelected
                   ? _brandGreen.withValues(alpha: 0.48)
                   : Colors.white.withValues(alpha: 0.92),
-              width: 1.25,
+              width: 1.2,
             ),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: isSelected
-                    ? _brandGreen.withValues(alpha: 0.10)
-                    : const Color(0xFF0F172A).withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: Color(0x0B0F172A),
+                blurRadius: 6,
+                offset: Offset(0, 2),
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected
-                      ? _brandGreen.withValues(alpha: 0.18)
-                      : Colors.white.withValues(alpha: 0.7),
-                ),
-                child: Center(
-                  child: PhosphorIcon(
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PhosphorIcon(
                     icon,
                     size: 16,
                     color: isSelected ? _brandGreen : const Color(0xFF4B5563),
                     duotoneSecondaryOpacity: 0.30,
                     duotoneSecondaryColor: _brandGreen,
                   ),
-                ),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? _brandGreen : const Color(0xFF1F2937),
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? _brandGreen : const Color(0xFF1F2937),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1574,8 +1369,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final validIds = updatedScans.map((s) => s['id']).whereType<int>().toSet();
     setState(() {
       _scans = updatedScans;
-      _totalScans = (res['total_scans'] ?? updatedScans.length) as int;
-      _warningScans = (res['warning_scans'] ?? 0) as int;
       _monthlyScans = (res['monthly_scans'] ?? 0) as int;
       _monthlyWarnings = (res['monthly_warnings'] ?? 0) as int;
       _expandedScanIds.removeWhere((id) => !validIds.contains(id));
@@ -1717,754 +1510,684 @@ class _HomeScreenState extends State<HomeScreen> {
         color: _brandGreen,
         onRefresh: _refreshUserData,
         child: NutriVietGlassScrollArea(
-          child: ListView(
-            scrollCacheExtent: const ScrollCacheExtent.pixels(600),
+          child: CustomScrollView(
+            scrollCacheExtent: const ScrollCacheExtent.pixels(450),
             physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    AppLocale.t('Lịch sử', 'History'),
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  if (_scans.isNotEmpty)
-                    NutriVietPressScale(
-                      pressedScale: 0.95,
-                      enableHaptic: true,
-                      child: GestureDetector(
-                        onTap: _confirmAndClearAllScans,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEE2E2).withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: _riskHighRed.withValues(alpha: 0.35),
-                              width: 1.1,
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            AppLocale.t('Lịch sử', 'History'),
+                            style: const TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF111827),
+                              letterSpacing: -0.5,
                             ),
                           ),
+                          if (_scans.isNotEmpty)
+                            NutriVietPressScale(
+                              pressedScale: 0.95,
+                              enableHaptic: true,
+                              child: GestureDetector(
+                                onTap: _confirmAndClearAllScans,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEE2E2).withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: _riskHighRed.withValues(alpha: 0.35),
+                                      width: 1.1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const PhosphorIcon(
+                                        PhosphorIconsBold.trash,
+                                        size: 15,
+                                        color: _riskHighRed,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        AppLocale.t('Xóa tất cả', 'Clear all'),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: _riskHighRed,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (_isGuest) ...[
+                        const SizedBox(height: 12),
+                        NutriVietGlassCard(
+                          cornerRadius: 18,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          onTap: _openLoginFromGuest,
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
                               const PhosphorIcon(
-                                PhosphorIconsBold.trash,
-                                size: 15,
-                                color: _riskHighRed,
+                                PhosphorIconsDuotone.deviceMobile,
+                                color: _brandGreen,
+                                size: 20,
                               ),
-                              const SizedBox(width: 5),
-                              Text(
-                                AppLocale.t('Xóa tất cả', 'Clear all'),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: _riskHighRed,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  AppLocale.t(
+                                    'Chế độ Khách: Lịch sử quét lưu cục bộ trên máy. Nhấn để đăng nhập & đồng bộ đám mây.',
+                                    'Guest Mode: Scans are saved locally on this device. Tap to sign in & sync to cloud.',
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: Color(0xFF334155),
+                                    height: 1.35,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                      ],
+                    ],
+                  ),
+                ),
               ),
-              if (_isGuest) ...[
-                const SizedBox(height: 12),
-                NutriVietGlassCard(
-                  cornerRadius: 18,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  onTap: _openLoginFromGuest,
-                  child: Row(
-                    children: [
-                      const PhosphorIcon(
-                        PhosphorIconsDuotone.deviceMobile,
-                        color: _brandGreen,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          AppLocale.t(
-                            'Chế độ Khách: Lịch sử quét lưu cục bộ trên máy. Nhấn để đăng nhập & đồng bộ đám mây.',
-                            'Guest Mode: Scans are saved locally on this device. Tap to sign in & sync to cloud.',
-                          ),
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: Color(0xFF334155),
-                            height: 1.35,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 18),
               if (_loadingInitialData && _scans.isEmpty)
-                const NutriVietHistoryListSkeleton(itemCount: 3)
-              else if (_scans.isEmpty)
-              NutriVietEntranceMotion(
-                child: NutriVietGlassCard(
-                  cornerRadius: 22,
-                  padding: const EdgeInsets.symmetric(vertical: 42, horizontal: 20),
-                  child: Column(
-                    children: [
-                      const NutriVietGlassIconTile(
-                        icon: PhosphorIconsDuotone.clockCounterClockwise,
-                        color: _brandGreen,
-                        size: 74,
-                        isCircle: true,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppLocale.t('Chưa có lịch sử quét nhãn', 'No scan history yet'),
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        AppLocale.t(
-                          'Hãy nhấn nút "Quét nhãn" để kiểm tra thành phần và phụ gia trên bao bì thực phẩm.',
-                          'Tap "Scan label" to inspect ingredients and additives on food packaging.',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
-                      ),
-                      const SizedBox(height: 20),
-                      NutriVietPressScale(
-                        pressedScale: 0.96,
-                        enableHaptic: true,
-                        child: LiquidGlassButton(
-                          height: 46,
-                          icon: PhosphorIconsBold.scan,
-                          label: AppLocale.t('Quét nhãn ngay', 'Scan label now'),
-                          foregroundColor: Colors.white,
-                          style: NutriVietGlass.emeraldButton,
-                          onPressed: _openScannerScreen,
-                        ),
-                      ),
-                    ],
+                const SliverPadding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, 128),
+                  sliver: SliverToBoxAdapter(
+                    child: NutriVietHistoryListSkeleton(itemCount: 3),
                   ),
-                ),
-              )
-            else
-              ..._scans.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final scan = entry.value;
-                final scanId = (scan['id'] ?? 0) as int;
-                final isExpanded = _expandedScanIds.contains(scanId);
-                final title = AppLocale.translateScanTitle(
-                  (scan['label_title'] ?? '').toString(),
-                );
-                final additiveCount = (scan['additive_count'] ?? 0) as int;
-                final warningCount = (scan['warning_count'] ?? 0) as int;
-                final riskLevel = (scan['risk_level'] ?? 'low').toString();
-                final rawText = (scan['raw_text'] ?? '').toString();
-                final evaluation = (scan['evaluation'] is Map)
-                    ? Map<String, dynamic>.from(scan['evaluation'] as Map)
-                    : <String, dynamic>{};
-                final details = List<Map<String, dynamic>>.from(evaluation['details'] ?? []);
-                final redTriggers = List<Map<String, dynamic>>.from(evaluation['red_triggers'] ?? []);
-                final yellowTriggers = List<Map<String, dynamic>>.from(evaluation['yellow_triggers'] ?? []);
-
-                final localizedSummaryList = details.isNotEmpty
-                    ? details.map(_localizedDetailName).where((s) => s.isNotEmpty).join(', ')
-                    : rawText;
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Dismissible(
-                    key: ValueKey('history_scan_$scanId'),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(22),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFEF4444), Color(0xFFB91C1C)],
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                )
+              else if (_scans.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 128),
+                  sliver: SliverToBoxAdapter(
+                    child: NutriVietGlassCard(
+                      cornerRadius: 22,
+                      padding: const EdgeInsets.symmetric(vertical: 42, horizontal: 20),
+                      child: Column(
                         children: [
+                          const NutriVietGlassIconTile(
+                            icon: PhosphorIconsDuotone.clockCounterClockwise,
+                            color: _brandGreen,
+                            size: 74,
+                            isCircle: true,
+                          ),
+                          const SizedBox(height: 16),
                           Text(
-                            AppLocale.t('Xóa', 'Delete'),
+                            AppLocale.t('Chưa có lịch sử quét nhãn', 'No scan history yet'),
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
+                              fontSize: 17,
                               fontWeight: FontWeight.w800,
+                              color: Color(0xFF111827),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const PhosphorIcon(
-                            PhosphorIconsBold.trash,
-                            color: Colors.white,
-                            size: 20,
+                          const SizedBox(height: 6),
+                          Text(
+                            AppLocale.t(
+                              'Hãy nhấn nút "Quét nhãn" để kiểm tra thành phần và phụ gia trên bao bì thực phẩm.',
+                              'Tap "Scan label" to inspect ingredients and additives on food packaging.',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
+                          ),
+                          const SizedBox(height: 20),
+                          NutriVietGlassActionButton(
+                            height: 46,
+                            icon: PhosphorIconsBold.scan,
+                            label: AppLocale.t('Quét nhãn ngay', 'Scan label now'),
+                            onPressed: _openScannerScreen,
                           ),
                         ],
                       ),
                     ),
-                    confirmDismiss: (_) async {
-                      await _confirmAndDeleteScan(scanId, title);
-                      return false;
-                    },
-                    child: NutriVietEntranceMotion(
-                      delayMs: idx < 6 ? idx * 45 : 0,
-                      child: RepaintBoundary(
-                        child: NutriVietGlassCard(
-                          cornerRadius: 22,
-                          padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() {
-                                  if (isExpanded) {
-                                    _expandedScanIds.remove(scanId);
-                                  } else {
-                                    _expandedScanIds.add(scanId);
-                                  }
-                                });
-                              },
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 58,
-                                    height: 58,
-                                    alignment: Alignment.center,
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: riskLevel == 'high'
-                                            ? [const Color(0xFFDC2626), const Color(0xFF991B1B)]
-                                            : [const Color(0xFF6B7280), const Color(0xFF4B5563)],
-                                      ),
-                                      border: Border.all(color: Colors.white, width: 2.2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (riskLevel == 'high'
-                                                  ? const Color(0xFFDC2626)
-                                                  : Colors.black)
-                                              .withValues(alpha: 0.16),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      localizedSummaryList,
-                                      maxLines: 3,
-                                      overflow: TextOverflow.clip,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 6.5,
-                                        height: 1.15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          title,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF111827),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          redTriggers.isNotEmpty
-                                              ? AppLocale.t(
-                                                  'Phát hiện $additiveCount phụ gia · ${redTriggers.length} BÁO ĐỎ dị ứng',
-                                                  'Detected $additiveCount additives · ${redTriggers.length} RED allergy alerts',
-                                                )
-                                              : (warningCount > 0
-                                                  ? AppLocale.t(
-                                                      'Phát hiện $additiveCount phụ gia · $warningCount cảnh báo',
-                                                      'Detected $additiveCount additives · $warningCount warnings',
-                                                    )
-                                                  : AppLocale.t(
-                                                      'Phát hiện $additiveCount phụ gia',
-                                                      'Detected $additiveCount additives',
-                                                    )),
-                                          style: TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: redTriggers.isNotEmpty
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                            color: redTriggers.isNotEmpty
-                                                ? _riskHighRed
-                                                : const Color(0xFF6B7280),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        _buildRiskPill(riskLevel),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 220),
-                                    curve: Curves.easeOutCubic,
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: isExpanded
-                                          ? _brandGreen.withValues(alpha: 0.14)
-                                          : const Color(0xFFF0EFEA),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: AnimatedRotation(
-                                        turns: isExpanded ? 0.5 : 0.0,
-                                        duration: const Duration(milliseconds: 220),
-                                        curve: Curves.easeOutCubic,
-                                        child: PhosphorIcon(
-                                          PhosphorIconsBold.caretDown,
-                                          color: isExpanded ? _brandGreen : const Color(0xFF4B5563),
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 128),
+                  sliver: SliverList.builder(
+                    itemCount: _scans.length,
+                    itemBuilder: (context, idx) {
+                      final scan = _scans[idx];
+                      final scanId = (scan['id'] ?? 0) as int;
+                      final isExpanded = _expandedScanIds.contains(scanId);
+                      final title = AppLocale.translateScanTitle(
+                        (scan['label_title'] ?? '').toString(),
+                      );
+                      final additiveCount = (scan['additive_count'] ?? 0) as int;
+                      final warningCount = (scan['warning_count'] ?? 0) as int;
+                      final riskLevel = (scan['risk_level'] ?? 'low').toString();
+                      final rawText = (scan['raw_text'] ?? '').toString();
+                      final evaluation = (scan['evaluation'] is Map)
+                          ? Map<String, dynamic>.from(scan['evaluation'] as Map)
+                          : <String, dynamic>{};
+                      final details = List<Map<String, dynamic>>.from(evaluation['details'] ?? []);
+                      final redTriggers = List<Map<String, dynamic>>.from(evaluation['red_triggers'] ?? []);
+                      final yellowTriggers = List<Map<String, dynamic>>.from(evaluation['yellow_triggers'] ?? []);
+
+                      final localizedSummaryList = details.isNotEmpty
+                          ? details.map(_localizedDetailName).where((s) => s.isNotEmpty).join(', ')
+                          : rawText;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Dismissible(
+                          key: ValueKey('history_scan_$scanId'),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(22),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFEF4444), Color(0xFFB91C1C)],
                               ),
                             ),
-                            AnimatedSize(
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeOutCubic,
-                              alignment: Alignment.topCenter,
-                              child: isExpanded
-                                  ? AnimatedOpacity(
-                                      opacity: isExpanded ? 1.0 : 0.0,
-                                      duration: const Duration(milliseconds: 220),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(height: 14),
-                                          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            AppLocale.t(
-                                              'Thành phần đã phân tích: $localizedSummaryList',
-                                              'Analyzed ingredients: $localizedSummaryList',
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  AppLocale.t('Xóa', 'Delete'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const PhosphorIcon(
+                                  PhosphorIconsBold.trash,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                          confirmDismiss: (_) async {
+                            await _confirmAndDeleteScan(scanId, title);
+                            return false;
+                          },
+                          child: NutriVietGlassCard(
+                            cornerRadius: 22,
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() {
+                                      if (isExpanded) {
+                                        _expandedScanIds.remove(scanId);
+                                      } else {
+                                        _expandedScanIds.add(scanId);
+                                      }
+                                    });
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 58,
+                                        height: 58,
+                                        alignment: Alignment.center,
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: riskLevel == 'high'
+                                                ? [const Color(0xFFDC2626), const Color(0xFF991B1B)]
+                                                : [const Color(0xFF6B7280), const Color(0xFF4B5563)],
+                                          ),
+                                          border: Border.all(color: Colors.white, width: 2.2),
+                                        ),
+                                        child: Text(
+                                          localizedSummaryList,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.clip,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 6.5,
+                                            height: 1.15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              title,
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF111827),
+                                              ),
                                             ),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Color(0xFF4B5563),
-                                              height: 1.4,
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              redTriggers.isNotEmpty
+                                                  ? AppLocale.t(
+                                                      'Phát hiện $additiveCount phụ gia · ${redTriggers.length} BÁO ĐỎ dị ứng',
+                                                      'Detected $additiveCount additives · ${redTriggers.length} RED allergy alerts',
+                                                    )
+                                                  : (warningCount > 0
+                                                      ? AppLocale.t(
+                                                          'Phát hiện $additiveCount phụ gia · $warningCount cảnh báo',
+                                                          'Detected $additiveCount additives · $warningCount warnings',
+                                                        )
+                                                      : AppLocale.t(
+                                                          'Phát hiện $additiveCount phụ gia',
+                                                          'Detected $additiveCount additives',
+                                                        )),
+                                              style: TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: redTriggers.isNotEmpty
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                                color: redTriggers.isNotEmpty
+                                                    ? _riskHighRed
+                                                    : const Color(0xFF6B7280),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            _buildRiskPill(riskLevel),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        curve: Curves.easeOutCubic,
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          color: isExpanded
+                                              ? _brandGreen.withValues(alpha: 0.14)
+                                              : const Color(0xFFF0EFEA),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: AnimatedRotation(
+                                            turns: isExpanded ? 0.5 : 0.0,
+                                            duration: const Duration(milliseconds: 200),
+                                            curve: Curves.easeOutCubic,
+                                            child: PhosphorIcon(
+                                              PhosphorIconsBold.caretDown,
+                                              color: isExpanded ? _brandGreen : const Color(0xFF4B5563),
+                                              size: 18,
                                             ),
                                           ),
-                                          if (redTriggers.isNotEmpty) ...[
-                                            const SizedBox(height: 10),
-                                            Container(
-                                              padding: const EdgeInsets.all(11),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFFEF2F2),
-                                                borderRadius: BorderRadius.circular(14),
-                                                border: Border.all(
-                                                  color: const Color(0xFFEF4444),
-                                                  width: 1.4,
-                                                ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                AnimatedSize(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  alignment: Alignment.topCenter,
+                                  child: isExpanded
+                                      ? Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const SizedBox(height: 14),
+                                            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              AppLocale.t(
+                                                'Thành phần đã phân tích: $localizedSummaryList',
+                                                'Analyzed ingredients: $localizedSummaryList',
                                               ),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: redTriggers.map((t) {
-                                                  final alLabel =
-                                                      (t['allergen_name_en'] ?? t['allergen_name'] ?? t['allergen_code'])
-                                                          .toString();
-                                                  final matchedName =
-                                                      (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
-                                                          .toString();
-                                                  final srcFood =
-                                                      (t['source_food_en'] ?? t['source_food'] ?? '')
-                                                          .toString()
-                                                          .trim();
-                                                  final hasSrcFood =
-                                                      srcFood.isNotEmpty && srcFood.toLowerCase() != alLabel.toLowerCase();
-
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(bottom: 6),
-                                                    child: Row(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        const Padding(
-                                                          padding: EdgeInsets.only(top: 1),
-                                                          child: PhosphorIcon(
-                                                            PhosphorIconsFill.warningOctagon,
-                                                            size: 17,
-                                                            color: _riskHighRed,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(width: 7),
-                                                        Expanded(
-                                                          child: Text(
-                                                            hasSrcFood
-                                                                ? AppLocale.t(
-                                                                    'BÁO ĐỎ (Từ dị ứng "$srcFood"): Phát hiện "$matchedName" thuộc cùng nhóm $alLabel trên cây FoodOn!',
-                                                                    'RED ALERT (From "$srcFood" allergy): Detected "$matchedName" in the $alLabel family via FoodOn!',
-                                                                  )
-                                                                : AppLocale.t(
-                                                                    'BÁO ĐỎ DỊ ỨNG: Phát hiện "$matchedName" → Nhóm $alLabel',
-                                                                    'ALLERGY RED ALERT: Detected "$matchedName" → $alLabel',
-                                                                  ),
-                                                            style: const TextStyle(
-                                                              fontSize: 12.8,
-                                                              fontWeight: FontWeight.w800,
-                                                              color: Color(0xFFB91C1C),
-                                                              height: 1.35,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                }).toList(),
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Color(0xFF4B5563),
+                                                height: 1.4,
                                               ),
                                             ),
-                                          ],
-                                          if (yellowTriggers.isNotEmpty) ...[
-                                            const SizedBox(height: 8),
-                                            ...yellowTriggers.map((t) {
-                                              final chLabel = AppLocale.translateChronicCode(
-                                                t['chronic_code']?.toString(),
-                                                fallback: (t['chronic_name_en'] ?? t['chronic_code']).toString(),
-                                              );
-                                              final matchedName =
-                                                  (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
-                                                      .toString();
-                                              return Padding(
-                                                padding: const EdgeInsets.only(bottom: 6),
-                                                child: Row(
-                                                  children: [
-                                                    const PhosphorIcon(
-                                                      PhosphorIconsFill.warning,
-                                                      size: 16,
-                                                      color: Color(0xFFD97706),
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    Expanded(
-                                                      child: Text(
-                                                        AppLocale.t(
-                                                          'Lưu ý: $matchedName → $chLabel',
-                                                          'Health note: $matchedName → $chLabel',
-                                                        ),
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                          fontWeight: FontWeight.w700,
-                                                          color: Color(0xFFB45309),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
+                                            if (redTriggers.isNotEmpty) ...[
+                                              const SizedBox(height: 10),
+                                              Container(
+                                                padding: const EdgeInsets.all(11),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFFEF2F2),
+                                                  borderRadius: BorderRadius.circular(14),
+                                                  border: Border.all(
+                                                    color: const Color(0xFFEF4444),
+                                                    width: 1.4,
+                                                  ),
                                                 ),
-                                              );
-                                            }),
-                                          ],
-                                          if (details.isNotEmpty) ...[
-                                            const SizedBox(height: 10),
-                                            Builder(
-                                              builder: (context) {
-                                                final triggeredAlCodes = redTriggers
-                                                    .map((t) => (t['allergen_code'] ?? '').toString())
-                                                    .where((s) => s.isNotEmpty)
-                                                    .toSet();
-                                                final triggeredChCodes = yellowTriggers
-                                                    .map((t) => (t['chronic_code'] ?? '').toString())
-                                                    .where((s) => s.isNotEmpty)
-                                                    .toSet();
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: redTriggers.map((t) {
+                                                    final alLabel =
+                                                        (t['allergen_name_en'] ?? t['allergen_name'] ?? t['allergen_code'])
+                                                            .toString();
+                                                    final matchedName =
+                                                        (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
+                                                            .toString();
+                                                    final srcFood =
+                                                        (t['source_food_en'] ?? t['source_food'] ?? '')
+                                                            .toString()
+                                                            .trim();
+                                                    final hasSrcFood =
+                                                        srcFood.isNotEmpty && srcFood.toLowerCase() != alLabel.toLowerCase();
 
-                                                return Wrap(
-                                                  spacing: 6,
-                                                  runSpacing: 6,
-                                                  children: details.map((d) {
-                                                    final matched = d['matched'] == true;
-                                                    final dispName = _localizedDetailName(d);
-                                                    final dAls = (d['allergens'] as List? ?? [])
-                                                        .map((x) => x.toString())
-                                                        .toSet();
-                                                    final dChs = (d['chronics'] as List? ?? [])
-                                                        .map((x) => x.toString())
-                                                        .toSet();
-                                                    final isRedChip = (d['is_allergy_trigger'] == true) ||
-                                                        dAls.intersection(triggeredAlCodes).isNotEmpty;
-                                                    final isYellowChip = !isRedChip &&
-                                                        ((d['is_chronic_trigger'] == true) ||
-                                                            dChs.intersection(triggeredChCodes).isNotEmpty);
-
-                                                    return GestureDetector(
-                                                      onTap: () {
-                                                        final matches = d['matches'];
-                                                        if (matches is List &&
-                                                            matches.isNotEmpty &&
-                                                            matches.first is Map) {
-                                                          _showConceptDetailSheet(
-                                                            Map<String, dynamic>.from(matches.first as Map),
-                                                          );
-                                                        }
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 5,
-                                                        ),
-                                                        decoration: BoxDecoration(
-                                                          color: isRedChip
-                                                              ? const Color(0xFFFEE2E2)
-                                                              : (isYellowChip
-                                                                  ? const Color(0xFFFEF3C7)
-                                                                  : (matched
-                                                                      ? const Color(0xFFE2ECE5)
-                                                                      : const Color(0xFFF3F4F6))),
-                                                          borderRadius: BorderRadius.circular(10),
-                                                          border: isRedChip
-                                                              ? Border.all(
-                                                                  color: const Color(0xFFDC2626),
-                                                                  width: 1.5,
-                                                                )
-                                                              : (isYellowChip
-                                                                  ? Border.all(
-                                                                      color: const Color(0xFFD97706),
-                                                                      width: 1.1,
+                                                    return Padding(
+                                                      padding: const EdgeInsets.only(bottom: 6),
+                                                      child: Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          const Padding(
+                                                            padding: EdgeInsets.only(top: 1),
+                                                            child: PhosphorIcon(
+                                                              PhosphorIconsFill.warningOctagon,
+                                                              size: 17,
+                                                              color: _riskHighRed,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 7),
+                                                          Expanded(
+                                                            child: Text(
+                                                              hasSrcFood
+                                                                  ? AppLocale.t(
+                                                                      'BÁO ĐỎ (Từ dị ứng "$srcFood"): Phát hiện "$matchedName" thuộc cùng nhóm $alLabel trên cây FoodOn!',
+                                                                      'RED ALERT (From "$srcFood" allergy): Detected "$matchedName" in the $alLabel family via FoodOn!',
                                                                     )
-                                                                  : null),
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            if (isRedChip) ...[
-                                                              const PhosphorIcon(
-                                                                PhosphorIconsFill.warningOctagon,
-                                                                size: 13.5,
-                                                                color: Color(0xFFDC2626),
-                                                              ),
-                                                              const SizedBox(width: 4),
-                                                            ] else if (isYellowChip) ...[
-                                                              const PhosphorIcon(
-                                                                PhosphorIconsFill.warning,
-                                                                size: 13.5,
-                                                                color: Color(0xFFD97706),
-                                                              ),
-                                                              const SizedBox(width: 4),
-                                                            ],
-                                                            Flexible(
-                                                              child: Text(
-                                                                dispName,
-                                                                style: TextStyle(
-                                                                  fontSize: 12,
-                                                                  fontWeight: isRedChip
-                                                                      ? FontWeight.w800
-                                                                      : FontWeight.w600,
-                                                                  color: isRedChip
-                                                                      ? const Color(0xFFB91C1C)
-                                                                      : (isYellowChip
-                                                                          ? const Color(0xFFB45309)
-                                                                          : (matched
-                                                                              ? _brandGreen
-                                                                              : const Color(0xFF6B7280))),
-                                                                ),
+                                                                  : AppLocale.t(
+                                                                      'BÁO ĐỎ DỊ ỨNG: Phát hiện "$matchedName" → Nhóm $alLabel',
+                                                                      'ALLERGY RED ALERT: Detected "$matchedName" → $alLabel',
+                                                                    ),
+                                                              style: const TextStyle(
+                                                                fontSize: 12.8,
+                                                                fontWeight: FontWeight.w800,
+                                                                color: Color(0xFFB91C1C),
+                                                                height: 1.35,
                                                               ),
                                                             ),
-                                                          ],
-                                                        ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     );
                                                   }).toList(),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                          const SizedBox(height: 14),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              NutriVietGlassPillButton(
-                                                height: 38,
-                                                variant:
-                                                    NutriVietGlassButtonVariant
-                                                        .danger,
-                                                label: AppLocale.t(
-                                                  'Xóa',
-                                                  'Delete',
-                                                ),
-                                                onPressed: () =>
-                                                    _confirmAndDeleteScan(
-                                                  scanId,
-                                                  title,
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
-                                              NutriVietGlassPillButton(
-                                                height: 38,
-                                                label: AppLocale.t(
-                                                  'Chia sẻ lên Cộng đồng',
-                                                  'Share to Community',
-                                                ),
-                                                onPressed: () async {
-                                                  final evalVerdict =
-                                                      (evaluation['verdict'] ??
-                                                              scan['verdict'] ??
-                                                              (riskLevel == 'high'
-                                                                  ? 'RED'
-                                                                  : (riskLevel ==
-                                                                          'low'
-                                                                      ? 'YELLOW'
-                                                                      : 'GREEN')))
-                                                          .toString();
-                                                  final published =
-                                                      await CommunityFeedScreen
-                                                          .openComposeSheet(
-                                                    context: context,
-                                                    user: _activeUserMap,
-                                                    initialProductName: title,
-                                                    initialVerdict: evalVerdict,
-                                                    initialIngredients: rawText,
+                                            ],
+                                            if (yellowTriggers.isNotEmpty) ...[
+                                              const SizedBox(height: 8),
+                                              ...yellowTriggers.map((t) {
+                                                final chLabel = AppLocale.translateChronicCode(
+                                                  t['chronic_code']?.toString(),
+                                                  fallback: (t['chronic_name_en'] ?? t['chronic_code']).toString(),
+                                                );
+                                                final matchedName =
+                                                    (t['matched_en'] ?? t['label_en'] ?? t['matched'] ?? t['token'])
+                                                        .toString();
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(bottom: 6),
+                                                  child: Row(
+                                                    children: [
+                                                      const PhosphorIcon(
+                                                        PhosphorIconsFill.warning,
+                                                        size: 16,
+                                                        color: Color(0xFFD97706),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Text(
+                                                          AppLocale.t(
+                                                            'Lưu ý: $matchedName → $chLabel',
+                                                            'Health note: $matchedName → $chLabel',
+                                                          ),
+                                                          style: const TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight: FontWeight.w700,
+                                                            color: Color(0xFFB45309),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }),
+                                            ],
+                                            if (details.isNotEmpty) ...[
+                                              const SizedBox(height: 10),
+                                              Builder(
+                                                builder: (context) {
+                                                  final triggeredAlCodes = redTriggers
+                                                      .map((t) => (t['allergen_code'] ?? '').toString())
+                                                      .where((s) => s.isNotEmpty)
+                                                      .toSet();
+                                                  final triggeredChCodes = yellowTriggers
+                                                      .map((t) => (t['chronic_code'] ?? '').toString())
+                                                      .where((s) => s.isNotEmpty)
+                                                      .toSet();
+
+                                                  return Wrap(
+                                                    spacing: 6,
+                                                    runSpacing: 6,
+                                                    children: details.map((d) {
+                                                      final matched = d['matched'] == true;
+                                                      final dispName = _localizedDetailName(d);
+                                                      final dAls = (d['allergens'] as List? ?? [])
+                                                          .map((x) => x.toString())
+                                                          .toSet();
+                                                      final dChs = (d['chronics'] as List? ?? [])
+                                                          .map((x) => x.toString())
+                                                          .toSet();
+                                                      final isRedChip = (d['is_allergy_trigger'] == true) ||
+                                                          dAls.intersection(triggeredAlCodes).isNotEmpty;
+                                                      final isYellowChip = !isRedChip &&
+                                                          ((d['is_chronic_trigger'] == true) ||
+                                                              dChs.intersection(triggeredChCodes).isNotEmpty);
+
+                                                      return GestureDetector(
+                                                        onTap: () {
+                                                          final matches = d['matches'];
+                                                          if (matches is List &&
+                                                              matches.isNotEmpty &&
+                                                              matches.first is Map) {
+                                                            _showConceptDetailSheet(
+                                                              Map<String, dynamic>.from(matches.first as Map),
+                                                            );
+                                                          }
+                                                        },
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: isRedChip
+                                                                ? const Color(0xFFFEE2E2)
+                                                                : (isYellowChip
+                                                                    ? const Color(0xFFFEF3C7)
+                                                                    : (matched
+                                                                        ? const Color(0xFFE2ECE5)
+                                                                        : const Color(0xFFF3F4F6))),
+                                                            borderRadius: BorderRadius.circular(10),
+                                                            border: isRedChip
+                                                                ? Border.all(
+                                                                    color: const Color(0xFFDC2626),
+                                                                    width: 1.5,
+                                                                  )
+                                                                : (isYellowChip
+                                                                    ? Border.all(
+                                                                        color: const Color(0xFFD97706),
+                                                                        width: 1.1,
+                                                                      )
+                                                                    : null),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              if (isRedChip) ...[
+                                                                const PhosphorIcon(
+                                                                  PhosphorIconsFill.warningOctagon,
+                                                                  size: 13.5,
+                                                                  color: Color(0xFFDC2626),
+                                                                ),
+                                                                const SizedBox(width: 4),
+                                                              ] else if (isYellowChip) ...[
+                                                                const PhosphorIcon(
+                                                                  PhosphorIconsFill.warning,
+                                                                  size: 13.5,
+                                                                  color: Color(0xFFD97706),
+                                                                ),
+                                                                const SizedBox(width: 4),
+                                                              ],
+                                                              Flexible(
+                                                                child: Text(
+                                                                  dispName,
+                                                                  style: TextStyle(
+                                                                    fontSize: 12,
+                                                                    fontWeight: isRedChip
+                                                                        ? FontWeight.w800
+                                                                        : FontWeight.w600,
+                                                                    color: isRedChip
+                                                                        ? const Color(0xFFB91C1C)
+                                                                        : (isYellowChip
+                                                                            ? const Color(0xFFB45309)
+                                                                            : (matched
+                                                                                ? _brandGreen
+                                                                                : const Color(0xFF6B7280))),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }).toList(),
                                                   );
-                                                  if (published && mounted) {
-                                                    setState(() =>
-                                                        _communityRefreshTick++);
-                                                    _tabNotifier.value = 1;
-                                                  }
                                                 },
                                               ),
                                             ],
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
+                                            const SizedBox(height: 14),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.end,
+                                              children: [
+                                                NutriVietGlassPillButton(
+                                                  height: 38,
+                                                  variant: NutriVietGlassButtonVariant.danger,
+                                                  label: AppLocale.t('Xóa', 'Delete'),
+                                                  onPressed: () => _confirmAndDeleteScan(scanId, title),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                NutriVietGlassPillButton(
+                                                  height: 38,
+                                                  label: AppLocale.t('Chia sẻ lên Cộng đồng', 'Share to Community'),
+                                                  onPressed: () async {
+                                                    final evalVerdict =
+                                                        (evaluation['verdict'] ??
+                                                                scan['verdict'] ??
+                                                                (riskLevel == 'high'
+                                                                    ? 'RED'
+                                                                    : (riskLevel == 'low' ? 'YELLOW' : 'GREEN')))
+                                                            .toString();
+                                                    final published =
+                                                        await CommunityFeedScreen.openComposeSheet(
+                                                      context: context,
+                                                      user: _activeUserMap,
+                                                      initialProductName: title,
+                                                      initialVerdict: evalVerdict,
+                                                      initialIngredients: rawText,
+                                                    );
+                                                    if (published && mounted) {
+                                                      setState(() => _communityRefreshTick++);
+                                                      _tabNotifier.value = 1;
+                                                    }
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
-                );
-              }),
-          ],
-        ),
-      ),
-    ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Floating Liquid Glass Tab Bar + Detached Emerald Scan Action Orb
-  // ---------------------------------------------------------------------------
-  List<Widget> _buildLiquidGlassBottomChrome(BuildContext context) {
-    final double bottomInset = MediaQuery.paddingOf(context).bottom;
-    final double bottomPad = bottomInset + 14;
-    final double screenWidth = MediaQuery.sizeOf(context).width;
-    const double sideMargin = 14.0;
-    const double actionSize = 60.0;
-    const double gap = 10.0;
-    final double barWidth =
-        (screenWidth - sideMargin * 2 - actionSize - gap).clamp(240.0, 380.0);
-
-    return [
-      Positioned(
-        left: 0,
-        right: 0,
-        bottom: 0,
-        child: LiquidGlassScrollEdge(
-          edge: LiquidGlassEdge.bottom,
-          height: bottomPad + 80,
-          blur: 0,
-          style: LiquidGlassScrollEdgeStyle.soft,
-          color: const Color(0xDCEAF3EE),
-        ),
-      ),
-      LiquidGlassBatch.exclude(
-        child: ValueListenableBuilder<int>(
-          valueListenable: _tabNotifier,
-          builder: (context, currentTab, _) => LiquidGlassTabBar(
-            alignment: Alignment.bottomLeft,
-            margin: EdgeInsets.only(left: sideMargin, bottom: bottomPad),
-            width: barWidth,
-            height: 62,
-            itemPadding: 4,
-            selectedIndex: currentTab,
-            onChanged: (idx) {
-              if (_tabNotifier.value != idx) {
-                HapticFeedback.selectionClick();
-                _tabNotifier.value = idx;
-              }
-            },
-            style: NutriVietGlass.navBar,
-            pillStyle: NutriVietGlass.navPill,
-            itemStyle: const LiquidGlassTabItemStyle(
-              selectedColor: _brandGreen,
-              unselectedColor: Color(0xFF1F2937),
-              iconSize: 21,
-              labelFontSize: 10.5,
-              iconLabelGap: 2,
-            ),
-            items: [
-              LiquidGlassTabBarItem(
-                icon: PhosphorIconsRegular.house,
-                selectedIcon: PhosphorIconsFill.house,
-                label: AppLocale.t('Trang chủ', 'Home'),
-              ),
-              LiquidGlassTabBarItem(
-                icon: PhosphorIconsRegular.usersThree,
-                selectedIcon: PhosphorIconsFill.usersThree,
-                label: AppLocale.t('Cộng đồng', 'Community'),
-              ),
-              LiquidGlassTabBarItem(
-                icon: PhosphorIconsRegular.clockCounterClockwise,
-                selectedIcon: PhosphorIconsFill.clockCounterClockwise,
-                label: AppLocale.t('Lịch sử', 'History'),
-              ),
-              LiquidGlassTabBarItem(
-                icon: PhosphorIconsRegular.slidersHorizontal,
-                selectedIcon: PhosphorIconsFill.slidersHorizontal,
-                label: AppLocale.t('Cài đặt', 'Settings'),
-              ),
             ],
           ),
         ),
       ),
-      Positioned(
-        right: sideMargin,
-        bottom: bottomPad + 1,
-        child: LiquidGlassBatch.exclude(
-          child: LiquidGlassTabBarAction(
-            icon: PhosphorIconsBold.scan,
-            foregroundColor: Colors.white,
-            size: actionSize,
-            style: NutriVietGlass.emeraldActionOrb,
-            touch: NutriVietGlass.touchPronounced,
-            onTap: _openScannerScreen,
-          ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Unified Pixel-Aligned 120 Hz Floating Tab Bar + Detached Scan Action Orb
+  // ---------------------------------------------------------------------------
+  List<Widget> _buildLiquidGlassBottomChrome(BuildContext context) {
+    return [
+      ValueListenableBuilder<int>(
+        valueListenable: _tabNotifier,
+        builder: (context, currentTab, _) => NutriVietFloatingBottomBar(
+          selectedIndex: currentTab,
+          selectedColor: _brandGreen,
+          unselectedColor: const Color(0xFF1F2937),
+          onChanged: (idx) {
+            if (_tabNotifier.value != idx) {
+              _tabNotifier.value = idx;
+            }
+          },
+          onScanTap: _openScannerScreen,
+          items: [
+            NutriVietBottomTabItem(
+              icon: PhosphorIconsRegular.house,
+              selectedIcon: PhosphorIconsFill.house,
+              label: AppLocale.t('Trang chủ', 'Home'),
+            ),
+            NutriVietBottomTabItem(
+              icon: PhosphorIconsRegular.usersThree,
+              selectedIcon: PhosphorIconsFill.usersThree,
+              label: AppLocale.t('Cộng đồng', 'Community'),
+            ),
+            NutriVietBottomTabItem(
+              icon: PhosphorIconsRegular.clockCounterClockwise,
+              selectedIcon: PhosphorIconsFill.clockCounterClockwise,
+              label: AppLocale.t('Lịch sử', 'History'),
+            ),
+            NutriVietBottomTabItem(
+              icon: PhosphorIconsRegular.slidersHorizontal,
+              selectedIcon: PhosphorIconsFill.slidersHorizontal,
+              label: AppLocale.t('Cài đặt', 'Settings'),
+            ),
+          ],
         ),
       ),
     ];

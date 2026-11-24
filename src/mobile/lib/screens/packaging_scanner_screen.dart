@@ -533,8 +533,8 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
     setState(() {
       _sentImageBytes = preparedBytes;
       _ocrProgressMessage = AppLocale.t(
-        'Đang gửi ảnh lên PaddleOCR-VL-1.6 ($kb KB)...',
-        'Uploading to PaddleOCR-VL-1.6 ($kb KB)...',
+        'Đang đọc nhãn bằng AI Vision ($kb KB)...',
+        'Scanning label with AI Vision ($kb KB)...',
       );
     });
 
@@ -570,12 +570,13 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
       if (hasIngredients && extracted.isNotEmpty) {
         HapticFeedback.mediumImpact();
         final pct = fuzzyScore > 0 ? ' ${(fuzzyScore * 100).round()}%' : '';
+        final engineLabel = (ocrRes['engine'] ?? 'AI Vision').toString().trim();
         setState(() {
           _ingredientsCtrl.text = extracted;
           _ocrNutritionStripped = nutritionDetected;
           _ocrMatchedHeader = matchedHeader;
           _ocrStatsBadge =
-              'PaddleOCR-VL-1.6 · ${secLabel}s · $kb KB${pct.isNotEmpty ? ' · Fuzzy$pct' : ''}';
+              '$engineLabel · ${secLabel}s · $kb KB${pct.isNotEmpty ? ' · Fuzzy$pct' : ''}';
           _stage = _ScannerStage.result;
           _ocrProgressMessage = null;
         });
@@ -935,58 +936,68 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
             width: 1.0,
           ),
         ),
-        child: Row(
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            _CircleHeaderBtn(
-              icon: hasLiveCam
-                  ? (_torchOn
-                      ? PhosphorIconsFill.lightning
-                      : PhosphorIconsBold.lightning)
-                  : (_stage != _ScannerStage.liveCamera
-                      ? PhosphorIconsBold.arrowLeft
-                      : PhosphorIconsBold.key),
-              color: hasLiveCam
-                  ? (_torchOn ? const Color(0xFFFBBF24) : _brandEmerald)
-                  : Colors.white,
-              onTap: hasLiveCam
-                  ? _toggleTorch
-                  : (_stage != _ScannerStage.liveCamera
-                      ? _returnToLiveCamera
-                      : _openTokenConfigDialog),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _CircleHeaderBtn(
+                icon: hasLiveCam
+                    ? (_torchOn
+                        ? PhosphorIconsFill.lightning
+                        : PhosphorIconsBold.lightning)
+                    : (_stage != _ScannerStage.liveCamera
+                        ? PhosphorIconsBold.arrowLeft
+                        : PhosphorIconsBold.key),
+                color: hasLiveCam
+                    ? (_torchOn ? const Color(0xFFFBBF24) : _brandEmerald)
+                    : Colors.white,
+                onTap: hasLiveCam
+                    ? _toggleTorch
+                    : (_stage != _ScannerStage.liveCamera
+                        ? _returnToLiveCamera
+                        : _openTokenConfigDialog),
+              ),
             ),
-            Expanded(
-              child: Center(
-                child: RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: 'Nutri',
-                        style: TextStyle(color: _brandPurple),
-                      ),
-                      TextSpan(
-                        text: 'Viet',
-                        style: TextStyle(color: _brandEmerald),
-                      ),
-                    ],
+            Center(
+              child: RichText(
+                text: const TextSpan(
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                   ),
+                  children: [
+                    TextSpan(
+                      text: 'Nutri',
+                      style: TextStyle(color: _brandPurple),
+                    ),
+                    TextSpan(
+                      text: 'Viet',
+                      style: TextStyle(color: _brandEmerald),
+                    ),
+                  ],
                 ),
               ),
             ),
-            _CircleHeaderBtn(
-              icon: PhosphorIconsBold.key,
-              color: _brandEmerald,
-              onTap: _openTokenConfigDialog,
-            ),
-            const SizedBox(width: 6),
-            _CircleHeaderBtn(
-              icon: PhosphorIconsBold.x,
-              color: Colors.white,
-              onTap: () => Navigator.pop(context),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CircleHeaderBtn(
+                    icon: PhosphorIconsBold.key,
+                    color: _brandEmerald,
+                    onTap: _openTokenConfigDialog,
+                  ),
+                  const SizedBox(width: 6),
+                  _CircleHeaderBtn(
+                    icon: PhosphorIconsBold.x,
+                    color: Colors.white,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

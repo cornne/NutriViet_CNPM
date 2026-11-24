@@ -286,26 +286,85 @@ class PaddleOcrVlService {
       }
 
       if (submitResp.statusCode != 200) {
+        String serverMsg = '';
+        try {
+          final errJson = _asMap(jsonDecode(submitBody));
+          serverMsg = (errJson?['message'] ?? '').toString().trim();
+        } catch (_) {}
         return {
           'success': false,
-          'message': AppLocale.t(
-            'Không thể gửi ảnh tới PaddleOCR-VL-1.6 (HTTP ${submitResp.statusCode}).',
-            'Failed to submit image to PaddleOCR-VL-1.6 (HTTP ${submitResp.statusCode}).',
-          ),
+          'message': serverMsg.isNotEmpty
+              ? serverMsg
+              : AppLocale.t(
+                  'Không thể nhận dạng ảnh lúc này (HTTP ${submitResp.statusCode}).',
+                  'Failed to process label image (HTTP ${submitResp.statusCode}).',
+                ),
           'detail': submitBody.length > 240 ? submitBody.substring(0, 240) : submitBody,
         };
       }
 
       final submitJson = _asMap(jsonDecode(submitBody));
       final submitData = _asMap(submitJson?['data']);
+      final submitState =
+          (submitJson?['state'] ?? submitData?['state'] ?? '').toString().toLowerCase();
+      final resolvedEngine =
+          (submitJson?['engine'] ?? modelName).toString().trim().isNotEmpty
+              ? (submitJson?['engine'] ?? modelName).toString().trim()
+              : modelName;
+      final providerId = (submitJson?['provider_id'] ?? '').toString().trim();
+
+      // Synchronous fast-path: Worker already completed OCR via fastest sync
+      // Vision provider (e.g. Kilo Particle-1 or Cloudflare Mistral-3.1) -> zero polling!
+      if (submitState == 'done') {
+        emit(
+          PaddleOcrStage.parsing,
+          'Đang lọc mục Thành phần...',
+          'Filtering Ingredients section...',
+          pollCount: 0,
+        );
+        final directText = (submitJson?['text'] ?? '').toString().trim();
+        final rawHasIngredients = submitJson?['has_ingredients'];
+        final resolvedHasIngredients =
+            (submitJson != null && submitJson.containsKey('has_ingredients'))
+                ? (rawHasIngredients == true)
+                : directText.isNotEmpty;
+        final nonEmptyLines = directText
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+        final reasonStr = (submitJson?['reason'] ?? 'OK').toString();
+        return {
+          'success': true,
+          'has_ingredients': resolvedHasIngredients && directText.isNotEmpty,
+          'text': resolvedHasIngredients ? directText : '',
+          'raw_text': (submitJson?['raw_text'] ?? '').toString(),
+          'raw_markdown': (submitJson?['raw_markdown'] ?? '').toString(),
+          'matched_header': submitJson?['matched_header']?.toString(),
+          'fuzzy_score': (submitJson?['fuzzy_score'] as num?)?.toDouble() ?? 0.0,
+          'nutrition_detected': submitJson?['nutrition_detected'] == true,
+          'reason': resolvedHasIngredients && directText.isNotEmpty
+              ? 'OK'
+              : (reasonStr == 'OK' ? 'NO_INGREDIENTS_FOUND' : reasonStr),
+          'line_count': resolvedHasIngredients ? nonEmptyLines.length : 0,
+          'upload_kb': uploadBytes != null ? (uploadBytes.length / 1024).round() : 0,
+          'total_ms': sw.elapsedMilliseconds,
+          'job_id': (submitJson?['job_id'] ?? submitJson?['jobId'] ?? '').toString(),
+          'engine': resolvedEngine,
+          if (providerId.isNotEmpty) 'provider_id': providerId,
+          if (submitJson?['fallback_attempts'] != null)
+            'fallback_attempts': submitJson?['fallback_attempts'],
+        };
+      }
+
       final jobId =
           (submitJson?['jobId'] ?? submitData?['jobId'] ?? '').toString().trim();
       if (jobId.isEmpty) {
         return {
           'success': false,
           'message': AppLocale.t(
-            'PaddleOCR-VL-1.6 không trả về mã tác vụ (jobId).',
-            'PaddleOCR-VL-1.6 did not return a job ID.',
+            'Không nhận được mã tác vụ OCR (jobId).',
+            'OCR service did not return a job ID.',
           ),
         };
       }
@@ -443,8 +502,8 @@ class PaddleOcrVlService {
         } else {
           emit(
             PaddleOcrStage.queued,
-            'Đang xếp hàng trên máy chủ AI Vision... (${sec}s)',
-            'Queued on AI Vision server... (${sec}s)',
+            'Đang khởi chạy đọc nhãn... (${sec}s)',
+            'Preparing label scan... (${sec}s)',
             pollCount: pollCount,
           );
         }

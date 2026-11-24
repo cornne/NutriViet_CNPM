@@ -123,26 +123,28 @@ export async function sendVerificationEmail(
   return sendEmail(env, toEmail, "[NutriViet] Xác thực địa chỉ email tài khoản", html, text);
 }
 
-export async function sendPasswordResetEmail(
+export async function sendPasswordResetOtpEmail(
   env: Env,
   toEmail: string,
   fullName: string,
-  tempPassword: string
+  otpCode: string,
+  ttlMinutes = 15
 ): Promise<EmailDispatchResult> {
-  const text = `Xin chao ${fullName},\n\nMat khau tam thoi cua tai khoan NutriViet la: ${tempPassword}\nVui long dang nhap va doi mat khau moi trong Cai dat.`;
+  const spacedOtp = otpCode.length === 6 ? `${otpCode.slice(0, 3)} ${otpCode.slice(3)}` : otpCode;
+  const text = `Xin chao ${fullName},\n\nMa xac thuc dat lai mat khau NutriViet cua ban la: ${otpCode}\nMa co hieu luc trong ${ttlMinutes} phut.\n\nNeu ban khong yeu cau dat lai mat khau, vui long bo qua email nay — mat khau hien tai cua ban van an toan.`;
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,sans-serif;background:#f8fafc;margin:0;padding:24px;">
   <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
     <div style="font-size:26px;font-weight:800;color:#10B981;text-align:center;margin-bottom:20px;">NutriViet</div>
-    <h2 style="color:#0F172A;font-size:20px;margin-top:0;">Khôi phục mật khẩu tài khoản</h2>
+    <h2 style="color:#0F172A;font-size:20px;margin-top:0;">Mã xác thực đặt lại mật khẩu</h2>
     <p style="color:#334155;font-size:14px;">Xin chào <strong>${escapeHtml(fullName)}</strong>,</p>
-    <p style="color:#475569;font-size:14px;">Mật khẩu tạm thời của bạn là:</p>
-    <div style="background:#F1F5F9;border:1.5px dashed #10B981;border-radius:12px;padding:16px;text-align:center;font-size:24px;font-weight:800;letter-spacing:3px;color:#0F172A;margin:20px 0;">${escapeHtml(tempPassword)}</div>
-    <p style="color:#475569;font-size:13px;">Vui lòng đăng nhập và đổi mật khẩu mới trong Cài đặt.</p>
+    <p style="color:#475569;font-size:14px;line-height:1.6;">Nhập mã OTP gồm 6 chữ số bên dưới vào ứng dụng NutriViet để thiết lập mật khẩu mới (hiệu lực <strong>${ttlMinutes} phút</strong>):</p>
+    <div style="background:#F1F5F9;border:1.5px dashed #10B981;border-radius:12px;padding:18px;text-align:center;font-size:28px;font-weight:800;letter-spacing:6px;color:#0F172A;margin:20px 0;">${escapeHtml(spacedOtp)}</div>
+    <p style="color:#64748B;font-size:12px;line-height:1.6;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email — mật khẩu hiện tại của bạn vẫn giữ nguyên và không bị thay đổi.</p>
   </div>
 </body></html>`;
-  return sendEmail(env, toEmail, "[NutriViet] Khôi phục mật khẩu tài khoản", html, text);
+  return sendEmail(env, toEmail, "[NutriViet] Mã xác thực đặt lại mật khẩu", html, text);
 }
 
 function escapeHtml(s: string): string {

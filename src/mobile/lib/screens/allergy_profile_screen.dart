@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -1406,13 +1405,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              LiquidGlassBatch.exclude(
-                child: LiquidGlassSwitch(
-                  value: _scanDerivatives,
-                  activeColor: NutriVietGlass.brandGreen,
-                  inactiveColor: const Color(0xFFD1D5DB),
-                  onChanged: (val) => setState(() => _scanDerivatives = val),
-                ),
+              NutriVietGlassSwitch(
+                value: _scanDerivatives,
+                activeColor: NutriVietGlass.brandGreen,
+                inactiveColor: const Color(0xFFD1D5DB),
+                onChanged: (val) => setState(() => _scanDerivatives = val),
               ),
             ],
           ),
@@ -1449,13 +1446,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              LiquidGlassBatch.exclude(
-                child: LiquidGlassSwitch(
-                  value: _warnTraces,
-                  activeColor: NutriVietGlass.brandGreen,
-                  inactiveColor: const Color(0xFFD1D5DB),
-                  onChanged: (val) => setState(() => _warnTraces = val),
-                ),
+              NutriVietGlassSwitch(
+                value: _warnTraces,
+                activeColor: NutriVietGlass.brandGreen,
+                inactiveColor: const Color(0xFFD1D5DB),
+                onChanged: (val) => setState(() => _warnTraces = val),
               ),
             ],
           ),
@@ -1469,7 +1464,6 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     final selectedAllergens = _allergens.where((a) => a.isSelected).length;
     final selectedChronics = _conditions.where((c) => c.isActive).length;
     final topInset = MediaQuery.paddingOf(context).top;
-    final screenW = MediaQuery.sizeOf(context).width;
 
     void handleBack() {
       final finalName =
@@ -1583,23 +1577,21 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                 const SizedBox(height: 26),
 
                                 // Single clear bottom Save CTA
-                                LiquidGlassBatch.exclude(
-                                  child: NutriVietGlassActionButton(
-                                    label: widget.isInitialSetup
-                                        ? AppLocale.t(
-                                            'Hoàn tất & Bắt đầu quét',
-                                            'Finish & Start Scanning',
-                                          )
-                                        : AppLocale.t(
-                                            'Lưu hồ sơ sức khỏe',
-                                            'Save Health Profile',
-                                          ),
-                                    icon: PhosphorIconsBold.checkCircle,
-                                    isLoading: _isSaving,
-                                    width: double.infinity,
-                                    height: 56,
-                                    onPressed: _handleSave,
-                                  ),
+                                NutriVietGlassActionButton(
+                                  label: widget.isInitialSetup
+                                      ? AppLocale.t(
+                                          'Hoàn tất & Bắt đầu quét',
+                                          'Finish & Start Scanning',
+                                        )
+                                      : AppLocale.t(
+                                          'Lưu hồ sơ sức khỏe',
+                                          'Save Health Profile',
+                                        ),
+                                  icon: PhosphorIconsBold.checkCircle,
+                                  isLoading: _isSaving,
+                                  width: double.infinity,
+                                  height: 56,
+                                  onPressed: _handleSave,
                                 ),
                                 const SizedBox(height: 16),
                               ],
@@ -1610,64 +1602,43 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
               ),
             ),
 
-            // Soft top scroll edge
+            // Soft top scroll edge (zero shader pass)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: LiquidGlassScrollEdge(
-                edge: LiquidGlassEdge.top,
+              child: NutriVietScrollFadeOverlay.top(
                 height: topInset + 84,
-                blur: 0,
-                style: LiquidGlassScrollEdgeStyle.soft,
-                curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
-                color: const Color(0xDDEEF6F2),
+                color: const Color(0xE8EEF6F2),
               ),
             ),
 
-            // Clean Floating Glass AppBar (no duplicate Save button)
+            // Clean Floating Glass AppBar (pixel-centered title, zero shader readback)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: LiquidGlassBatch.exclude(
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-                    child: Center(
-                      child: LiquidGlassAppBar(
-                        width: screenW - 28,
-                        height: 58,
-                        style: NutriVietGlass.appBar,
-                        touch: NutriVietGlass.touchSubtle,
-                        centerTitle: true,
-                        leading: Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: LiquidGlassTabBarAction(
-                            icon: widget.isInitialSetup
-                                ? PhosphorIconsBold.x
-                                : PhosphorIconsBold.arrowLeft,
-                            foregroundColor: const Color(0xFF1F2937),
-                            size: 40,
-                            style: NutriVietGlass.circleOrb,
-                            touch: NutriVietGlass.touchPronounced,
-                            onTap: handleBack,
-                          ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: NutriVietGlassAppBar(
+                        height: 56,
+                        leading: NutriVietGlassCircleButton(
+                          icon: widget.isInitialSetup
+                              ? PhosphorIconsBold.x
+                              : PhosphorIconsBold.arrowLeft,
+                          onTap: handleBack,
                         ),
                         title: Text(
                           AppLocale.t(
                             'Hồ Sơ Dị Ứng & Sức Khỏe',
                             'Allergy & Health Profile',
                           ),
-                          style: const TextStyle(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                            letterSpacing: -0.2,
-                          ),
                         ),
-                        actions: const [SizedBox(width: 44)],
                       ),
                     ),
                   ),

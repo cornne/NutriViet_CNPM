@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -38,7 +37,11 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showForgotPasswordDialog() {
     final forgotEmailController =
         TextEditingController(text: _emailController.text);
+    final otpController = TextEditingController();
+    final newPwdController = TextEditingController();
     bool isSubmitting = false;
+    bool otpStep = false;
+    bool obscureNewPwd = true;
     String? dialogMessage;
     bool dialogSuccess = false;
 
@@ -68,95 +71,229 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    AppLocale.t('Khôi phục mật khẩu', 'Password Recovery'),
+                    otpStep
+                        ? AppLocale.t('Nhập mã OTP đặt lại mật khẩu', 'Enter Reset OTP')
+                        : AppLocale.t('Khôi phục mật khẩu', 'Password Recovery'),
                   ),
                 ),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  AppLocale.t(
-                    'Nhập email tài khoản NutriViet của bạn để nhận hướng dẫn đặt lại mật khẩu.',
-                    'Enter your NutriViet account email to receive password reset instructions.',
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    otpStep
+                        ? AppLocale.t(
+                            'Nhập mã OTP 6 chữ số đã gửi tới email của bạn (hiệu lực 15 phút) và mật khẩu mới.',
+                            'Enter the 6-digit OTP sent to your email (valid for 15 minutes) and your new password.',
+                          )
+                        : AppLocale.t(
+                            'Nhập email tài khoản NutriViet để nhận mã OTP 6 chữ số đặt lại mật khẩu. Mật khẩu hiện tại sẽ không bị thay đổi cho đến khi bạn xác nhận mã.',
+                            'Enter your NutriViet account email to receive a 6-digit reset OTP. Your current password remains unchanged until verified.',
+                          ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: forgotEmailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF0F172A)),
-                  decoration: InputDecoration(
-                    labelText: AppLocale.t('Email', 'Email'),
-                    hintText: 'email@example.com',
-                    prefixIcon: const PhosphorIcon(
-                      PhosphorIconsDuotone.envelope,
-                      size: 20,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-                if (dialogMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: dialogSuccess
-                          ? const Color(0xFFD1FAE5)
-                          : const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      dialogMessage!,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: dialogSuccess
-                            ? const Color(0xFF065F46)
-                            : const Color(0xFF991B1B),
-                        fontWeight: FontWeight.w500,
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: forgotEmailController,
+                    enabled: !otpStep && !isSubmitting,
+                    keyboardType: TextInputType.emailAddress,
+                    style: const TextStyle(fontSize: 15, color: Color(0xFF0F172A)),
+                    decoration: InputDecoration(
+                      labelText: AppLocale.t('Email', 'Email'),
+                      hintText: 'email@example.com',
+                      prefixIcon: const PhosphorIcon(
+                        PhosphorIconsDuotone.envelope,
+                        size: 20,
+                        color: Color(0xFF64748B),
                       ),
                     ),
                   ),
+                  if (otpStep) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: otpController,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 4,
+                        color: Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
+                        counterText: '',
+                        labelText: AppLocale.t('Mã OTP (6 chữ số)', '6-digit OTP'),
+                        hintText: '123456',
+                        prefixIcon: const PhosphorIcon(
+                          PhosphorIconsDuotone.key,
+                          size: 20,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newPwdController,
+                      enabled: !isSubmitting,
+                      obscureText: obscureNewPwd,
+                      style: const TextStyle(fontSize: 15, color: Color(0xFF0F172A)),
+                      decoration: InputDecoration(
+                        labelText: AppLocale.t('Mật khẩu mới', 'New password'),
+                        hintText: AppLocale.t('Tối thiểu 6 ký tự', 'At least 6 characters'),
+                        prefixIcon: const PhosphorIcon(
+                          PhosphorIconsDuotone.lockSimple,
+                          size: 20,
+                          color: Color(0xFF64748B),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: PhosphorIcon(
+                            obscureNewPwd
+                                ? PhosphorIconsRegular.eye
+                                : PhosphorIconsRegular.eyeSlash,
+                            size: 19,
+                            color: const Color(0xFF64748B),
+                          ),
+                          onPressed: () =>
+                              setDialogState(() => obscureNewPwd = !obscureNewPwd),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (dialogMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: dialogSuccess
+                            ? const Color(0xFFD1FAE5)
+                            : const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        dialogMessage!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: dialogSuccess
+                              ? const Color(0xFF065F46)
+                              : const Color(0xFF991B1B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
             actions: [
               NutriVietGlassPillButton(
-                label: AppLocale.t('Hủy', 'Cancel'),
+                label: otpStep
+                    ? AppLocale.t('Quay lại', 'Back')
+                    : AppLocale.t('Hủy', 'Cancel'),
                 variant: NutriVietGlassButtonVariant.neutral,
                 height: 44,
                 width: 96,
-                onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
+                onPressed: isSubmitting
+                    ? null
+                    : () {
+                        if (otpStep) {
+                          setDialogState(() {
+                            otpStep = false;
+                            dialogMessage = null;
+                          });
+                        } else {
+                          Navigator.pop(dialogCtx);
+                        }
+                      },
               ),
               NutriVietGlassPillButton(
-                label: AppLocale.t('Gửi yêu cầu', 'Send Request'),
+                label: otpStep
+                    ? AppLocale.t('Đặt lại mật khẩu', 'Reset Password')
+                    : AppLocale.t('Gửi mã OTP', 'Send OTP'),
                 isLoading: isSubmitting,
                 height: 44,
-                width: 148,
+                width: 158,
                 onPressed: isSubmitting
                     ? null
                     : () async {
                         final email = forgotEmailController.text.trim();
-                        if (email.isEmpty) {
+                        if (!otpStep) {
+                          if (email.isEmpty || !email.contains('@')) {
+                            setDialogState(() {
+                              dialogMessage = AppLocale.t(
+                                'Vui lòng nhập địa chỉ email hợp lệ.',
+                                'Please enter a valid email address.',
+                              );
+                              dialogSuccess = false;
+                            });
+                            return;
+                          }
+                          setDialogState(() => isSubmitting = true);
+                          final res =
+                              await AuthService.forgotPassword(email: email);
+                          setDialogState(() {
+                            isSubmitting = false;
+                            dialogMessage = res['message']?.toString();
+                            dialogSuccess = res['success'] == true;
+                            if (res['success'] == true) {
+                              otpStep = true;
+                            }
+                          });
+                          return;
+                        }
+
+                        final otp = otpController.text.trim();
+                        final newPwd = newPwdController.text;
+                        if (otp.length != 6) {
                           setDialogState(() {
                             dialogMessage = AppLocale.t(
-                              'Vui lòng nhập địa chỉ email',
-                              'Please enter your email address',
+                              'Vui lòng nhập đủ mã OTP gồm 6 chữ số.',
+                              'Please enter the full 6-digit OTP code.',
                             );
                             dialogSuccess = false;
                           });
                           return;
                         }
+                        if (newPwd.length < 6) {
+                          setDialogState(() {
+                            dialogMessage = AppLocale.t(
+                              'Mật khẩu mới phải từ 6 ký tự trở lên.',
+                              'New password must be at least 6 characters.',
+                            );
+                            dialogSuccess = false;
+                          });
+                          return;
+                        }
+
                         setDialogState(() => isSubmitting = true);
-                        final res =
-                            await AuthService.forgotPassword(email: email);
-                        setDialogState(() {
-                          isSubmitting = false;
-                          dialogMessage = res['message'];
-                          dialogSuccess = res['success'] == true;
-                        });
+                        final res = await AuthService.resetPassword(
+                          email: email,
+                          otp: otp,
+                          newPassword: newPwd,
+                        );
+                        if (res['success'] == true) {
+                          if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                          if (mounted) {
+                            _emailController.text = email;
+                            showNutriVietNotice(
+                              this.context,
+                              res['message']?.toString() ??
+                                  AppLocale.t(
+                                    'Đặt lại mật khẩu thành công!',
+                                    'Password reset successfully!',
+                                  ),
+                              tone: NutriVietNoticeTone.success,
+                            );
+                          }
+                        } else {
+                          setDialogState(() {
+                            isSubmitting = false;
+                            dialogMessage = res['message']?.toString();
+                            dialogSuccess = false;
+                          });
+                        }
                       },
               ),
             ],
@@ -785,46 +922,63 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // Top-right language switcher
+              // Top-right language switcher (zero-readback frosted pill)
               Positioned(
                 top: 10,
                 right: 20,
-                child: LiquidGlassBatch.exclude(
-                  child: LiquidGlassLens(
-                    style: NutriVietGlass.floatingChrome,
-                    touch: NutriVietGlass.touchHorizontalCapsule,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () async {
-                        await AppLocale.setLanguage(
-                          AppLocale.isEn ? 'vi' : 'en',
-                        );
-                        if (mounted) setState(() {});
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
+                child: NutriVietPressScale(
+                  pressedScale: 0.94,
+                  enableHaptic: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () async {
+                      await AppLocale.setLanguage(
+                        AppLocale.isEn ? 'vi' : 'en',
+                      );
+                      if (mounted) setState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xF5FFFFFF), Color(0xEBF3F8F5)],
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const PhosphorIcon(
-                              PhosphorIconsDuotone.translate,
-                              size: 17,
-                              color: Color(0xFF14803C),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              AppLocale.isEn ? 'English' : 'Tiếng Việt',
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          ],
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 1.2,
                         ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x140F172A),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const PhosphorIcon(
+                            PhosphorIconsDuotone.translate,
+                            size: 17,
+                            color: Color(0xFF14803C),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            AppLocale.isEn ? 'English' : 'Tiếng Việt',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -14,11 +14,11 @@ Serverless production backend for **NutriViet**, running 100% on **Cloudflare Wo
 
 | Group | Methods & Endpoints | Purpose |
 | :--- | :--- | :--- |
-| **System & Web** | `GET /health`, `GET /`, `GET /foodon-graph` | Health telemetry (`ocr_proxy` status) and Edge-cached FoodOn Graph HTML visualizer |
-| **Auth & Account** | `POST /api/v1/auth/register`, `login`, `resend-verification`, `forgot-password`, `change-password`, `update-profile`, `GET /verify-email` | PBKDF2-HMAC-SHA256 (100,000 iterations) auth, bearer sessions, optional email verification |
-| **Health Profile** | `GET/POST /api/v1/profile/allergens`, `chronics`, `metrics`, `settings`, `family` | Personalized allergens (triggers scan re-evaluation), chronics, validated BMI/TDEE metrics, family profiles |
-| **Scan History** | `GET/POST /api/v1/scans`, `DELETE /api/v1/scans/:id`, `DELETE /api/v1/scans` | Label analysis persisted per user, individual delete and clear-all history |
-| **FoodOn Ontology** | `GET /api/v1/foodon/graph`, `graph/expand`, `graph/path`, `allergy-lookup`, `additives`, `category`, `search`, `POST /api/v1/foodon/evaluate` | Indexed D1 queries across 33,688 FoodOn concepts, 53,242 lexical terms, and 742 E-codes |
+| **System & Web** | `GET /health`, `GET /`, `GET /foodon-graph` | Health telemetry (`ocr_proxy`, `email_verification` status), security headers, and Edge-cached FoodOn Graph HTML visualizer |
+| **Auth & Account** | `POST /api/v1/auth/register`, `login`, `logout`, `resend-verification`, `forgot-password`, `reset-password`, `change-password`, `update-profile`, `GET /verify-email` | PBKDF2-HMAC-SHA256 (100,000 iterations) auth, Bearer session tokens, 6-digit 15-min OTP password reset, IP rate limiting |
+| **Health Profile** | `GET/POST /api/v1/profile/allergens`, `chronics`, `settings`, `family` | Strictly Bearer-authenticated personalized allergens (triggers scan re-evaluation), chronics, `scan_derivatives`/`warn_traces` settings, family profiles |
+| **Scan History** | `GET/POST /api/v1/scans`, `DELETE /api/v1/scans/:id`, `DELETE /api/v1/scans` | Strictly Bearer-authenticated owner-scoped label analysis persisted per user, individual delete and clear-all history |
+| **FoodOn Ontology** | `GET /api/v1/foodon/graph`, `graph/expand`, `graph/path`, `allergy-lookup`, `additives`, `category`, `search`, `POST /api/v1/foodon/evaluate` | Indexed D1 queries across 33,688 pure-English FoodOn concepts, 53,242 lexical terms, 742 E-codes (incl. bare parenthesized INS codes), Levenshtein fuzzy matching, `scan_derivatives`/`warn_traces` evaluation |
 | **Community & Admin** | `GET/POST /api/v1/community/posts`, `like`, `comments`, `report`, `upload-image`, `GET /api/v1/community/media/:filename`, `GET/POST /api/v1/admin/*` | Authenticated community feed, D1-backed image storage (`community_media`), strict server-side `role === 'admin'` moderation |
 | **OCR Edge Proxy** | `POST /api/v1/ocr/jobs`, `GET /api/v1/ocr/jobs/:jobId` | Proxies packaging images to `PaddleOCR-VL-1.6` using Worker Secrets and cleans Markdown/HTML tables on Edge |
 
@@ -40,13 +40,15 @@ src/cloudflare-worker/
 ├── cloudflare.config.ts    # Worker name, compatibility_date, D1 bindings & Smart Placement
 ├── package.json            # Scripts: typecheck, test, build (esbuild -> dist/worker.js)
 ├── src/
-│   ├── index.ts            # Hono router, CORS, /health, /foodon-graph, /api/v1/foodon/*
-│   ├── auth_profile.ts     # Auth, session management, profile, family & scan history CRUD
-│   ├── community.ts        # Community posts, D1 media upload/serve & Admin RBAC endpoints
-│   ├── foodon.ts           # D1FoodOnEngine: indexed ontology inference & graph traversal
+│   ├── index.ts            # Hono router, CORS, security headers, IP rate limiter, /health, /api/v1/foodon/*
+│   ├── auth_profile.ts     # Auth, 6-digit OTP reset, Bearer-guarded profile, family & scan history CRUD
+│   ├── community.ts        # Bearer/Admin auth guards, Community posts, D1 media upload/serve & Admin RBAC
+│   ├── foodon.ts           # D1FoodOnEngine: Levenshtein fuzzy, bare E-codes, scan_derivatives/warn_traces
+│   ├── ingredient_extractor.ts # Fuzzy Ingredients-only section extractor (strips Nutrition Facts & storage)
 │   ├── ocr_proxy.ts        # PaddleOCR-VL-1.6 proxy & server-side Markdown/HTML text cleaner
-│   ├── crypto.ts           # Web Crypto PBKDF2-HMAC-SHA256 (compatible with Python hashlib)
-│   ├── email.ts            # HTTP Email dispatcher (Resend / Brevo / auto-verify fallback)
+│   ├── rate_limit.ts       # Per-isolate sliding-window IP rate limiter for auth & OCR submit endpoints
+│   ├── crypto.ts           # Web Crypto PBKDF2-HMAC-SHA256, SHA-256 & unbiased 6-digit OTP generator
+│   ├── email.ts            # HTTP Email dispatcher (Resend / Brevo) for verification & OTP reset
 │   └── types.ts            # Cloudflare Env bindings & typed D1 row interfaces
 ├── static/
 │   └── foodon_graph.html   # Interactive FoodOn Ontology Graph HTML source (seeded into D1 static_pages)

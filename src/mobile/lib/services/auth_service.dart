@@ -203,7 +203,7 @@ class AuthService {
     }
   }
 
-  /// Request password recovery (Forgot Password)
+  /// Request 6-digit password reset OTP via email
   static Future<Map<String, dynamic>> forgotPassword({required String email}) async {
     final url = Uri.parse('$baseUrl/forgot-password');
 
@@ -220,10 +220,11 @@ class AuthService {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return {
         'success': response.statusCode == 200,
+        'otp_sent': data['otp_sent'] == true,
         'message': data['message'] ??
             AppLocale.t(
-              'Đã gửi hướng dẫn khôi phục mật khẩu vào hộp thư của bạn.',
-              'Password recovery instructions sent to your inbox.',
+              'Đã gửi mã OTP 6 chữ số vào hộp thư của bạn.',
+              'A 6-digit OTP has been sent to your inbox.',
             ),
       };
     } catch (e) {
@@ -238,7 +239,50 @@ class AuthService {
     }
   }
 
-  /// Change Password (Supports both current normal password and temporary password from email)
+  /// Complete password reset using 6-digit email OTP
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse('$baseUrl/reset-password');
+
+    try {
+      debugPrint('[AUTH] POST $url');
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email.trim().toLowerCase(),
+              'otp': otp.replaceAll(RegExp(r'\s+'), ''),
+              'new_password': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return {
+        'success': response.statusCode == 200,
+        'code': data['code'],
+        'message': data['message'] ??
+            (response.statusCode == 200
+                ? AppLocale.t('Đặt lại mật khẩu thành công!', 'Password reset successfully!')
+                : AppLocale.t('Mã OTP không hợp lệ hoặc đã hết hạn.', 'Invalid or expired OTP.')),
+      };
+    } catch (e) {
+      debugPrint('[AUTH RESET PWD ERROR] $e');
+      return {
+        'success': false,
+        'message': AppLocale.t(
+          'Không thể kết nối tới máy chủ để đặt lại mật khẩu.',
+          'Unable to connect to the server to reset password.',
+        ),
+      };
+    }
+  }
+
+  /// Change Password (Requires active Bearer session token)
   static Future<Map<String, dynamic>> changePassword({
     required int userId,
     required String currentPassword,
@@ -247,11 +291,15 @@ class AuthService {
     final url = Uri.parse('$baseUrl/change-password');
 
     try {
+      final token = await getToken();
       debugPrint('[AUTH] POST $url');
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({
               'user_id': userId,
               'current_password': currentPassword,
@@ -280,7 +328,7 @@ class AuthService {
     }
   }
 
-  /// Update user full name
+  /// Update user full name (Requires active Bearer session token)
   static Future<Map<String, dynamic>> updateProfile({
     required int userId,
     required String fullName,
@@ -288,11 +336,15 @@ class AuthService {
     final url = Uri.parse('$baseUrl/update-profile');
 
     try {
+      final token = await getToken();
       debugPrint('[AUTH] POST $url');
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({
               'user_id': userId,
               'full_name': fullName.trim(),
@@ -396,8 +448,31 @@ class AuthService {
     };
   }
 
+  /// Returns the currently stored Bearer token (empty string for Guests / logged-out).
+  static Future<String> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('is_guest') == true) return '';
+    return (prefs.getString('auth_token') ?? '').trim();
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    final token = (prefs.getString('auth_token') ?? '').trim();
+    if (token.isNotEmpty) {
+      try {
+        await http
+            .post(
+              Uri.parse('$baseUrl/logout'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+            )
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {
+        // Best-effort remote session revocation; always clear local session
+      }
+    }
     await prefs.remove('auth_token');
     await prefs.remove('user_name');
     await prefs.remove('user_email');

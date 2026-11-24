@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -525,15 +524,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               top: 0,
               left: 0,
               right: 0,
-              child: IgnorePointer(
-                child: LiquidGlassScrollEdge(
-                  edge: LiquidGlassEdge.top,
-                  height: topInset + 84,
-                  blur: 0,
-                  style: LiquidGlassScrollEdgeStyle.soft,
-                  curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
-                  color: const Color(0xDDEEF6F2),
-                ),
+              child: NutriVietScrollFadeOverlay.top(
+                height: topInset + 84,
+                color: const Color(0xE8EEF6F2),
               ),
             ),
 
@@ -545,26 +538,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 bottom: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: LiquidGlassBatch.exclude(
-                    child: LiquidGlassAppBar(
-                      style: NutriVietGlass.appBar,
-                      width: double.infinity,
-                      leading: IconButton(
-                        icon: const PhosphorIcon(
-                          PhosphorIconsBold.caretLeft,
-                          color: Color(0xFF0F172A),
-                          size: 20,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      title: Text(
-                        AppLocale.t('Đăng Ký Tài Khoản', 'Create Account'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
+                  child: NutriVietGlassAppBar(
+                    leading: NutriVietGlassCircleButton(
+                      icon: PhosphorIconsBold.caretLeft,
+                      iconColor: const Color(0xFF0F172A),
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    title: Text(
+                      AppLocale.t('Đăng Ký Tài Khoản', 'Create Account'),
                     ),
                   ),
                 ),

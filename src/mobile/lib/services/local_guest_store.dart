@@ -12,7 +12,6 @@ class LocalGuestStore {
   static const String _kFamily = 'nv_guest_family';
   static const String _kScans = 'nv_guest_scans';
   static const String _kSettings = 'nv_guest_settings';
-  static const String _kMetrics = 'nv_guest_metrics';
 
   static Future<List<Map<String, dynamic>>> _readList(String key) async {
     final prefs = await SharedPreferences.getInstance();
@@ -162,52 +161,6 @@ class LocalGuestStore {
   }
 
   // ---------------------------------------------------------------------------
-  // Body Metrics (local only for Guest)
-  // ---------------------------------------------------------------------------
-  static Future<Map<String, dynamic>> getMetrics() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kMetrics);
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final map = jsonDecode(raw);
-        if (map is Map) {
-          return {
-            'success': true,
-            'has_metrics': true,
-            'metrics': Map<String, dynamic>.from(map),
-          };
-        }
-      } catch (_) {}
-    }
-    return {
-      'success': true,
-      'has_metrics': false,
-      'metrics': null,
-    };
-  }
-
-  static Future<Map<String, dynamic>> saveMetrics({
-    required int age,
-    required String gender,
-    required double height,
-    required double weight,
-    required String activityLevel,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _kMetrics,
-      jsonEncode({
-        'age': age,
-        'gender': gender,
-        'height': height,
-        'weight': weight,
-        'activity_level': activityLevel,
-      }),
-    );
-    return {'success': true};
-  }
-
-  // ---------------------------------------------------------------------------
   // Local Scan History (computed with stateless FoodOn API, stored on-device)
   // ---------------------------------------------------------------------------
   static Map<String, dynamic> _summarizeScans(List<Map<String, dynamic>> scans) {
@@ -271,6 +224,10 @@ class LocalGuestStore {
   }) async {
     final alRes = await getAllergens();
     final chRes = await getChronics();
+    final setRes = await getSettings();
+    final settingsMap = (setRes['settings'] as Map?) ?? const {};
+    final scanDerivatives = settingsMap['scan_derivatives'] != false;
+    final warnTraces = settingsMap['warn_traces'] != false;
     final allergens = List<Map<String, dynamic>>.from(alRes['allergens'] as List);
     final chronics = (chRes['chronics'] as List)
         .map((c) => (c is Map ? (c['code'] ?? c['chronic_code'] ?? '') : c).toString())
@@ -281,6 +238,8 @@ class LocalGuestStore {
       rawText: rawText,
       allergens: allergens,
       chronics: chronics,
+      scanDerivatives: scanDerivatives,
+      warnTraces: warnTraces,
     );
     if (evalRes['success'] != true) {
       return evalRes;
@@ -431,6 +390,5 @@ class LocalGuestStore {
     await prefs.remove(_kFamily);
     await prefs.remove(_kScans);
     await prefs.remove(_kSettings);
-    await prefs.remove(_kMetrics);
   }
 }

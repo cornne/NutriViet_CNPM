@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../l10n/app_locale.dart';
+import 'auth_service.dart';
 
 class ProfileService {
   static const String cloudApiRoot = String.fromEnvironment(
@@ -12,7 +13,7 @@ class ProfileService {
 
   // Persistent HTTP client for TCP/keep-alive reuse across tabs and API calls.
   static final http.Client _client = http.Client();
-  static String? _cachedWorkingRoot;
+  static const Duration _requestTimeout = Duration(seconds: 12);
 
   /// Resolves backend API roots.
   /// All build modes target Cloudflare Workers HTTPS exclusively (configurable
@@ -27,16 +28,15 @@ class ProfileService {
     return <String>[cloudApiRoot];
   }
 
-  static List<String> get _apiRoots => buildApiRoots(
-        isReleaseMode: kReleaseMode,
-        platform: defaultTargetPlatform,
-        isWeb: kIsWeb,
-        cachedWorkingRoot: _cachedWorkingRoot,
-      );
+  static List<String> get apiRoots => <String>[cloudApiRoot];
 
-  static List<String> get apiRoots => _apiRoots;
-
-  static Duration _timeoutForRoot(String root) => const Duration(seconds: 12);
+  static Future<Map<String, String>> _buildHeaders() async {
+    final token = await AuthService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   static Future<dynamic> _decodeJsonBytes(Uint8List bytes) {
     // Offload large JSON payloads (e.g., FoodOn/additive lists) off the 120Hz UI isolate.
@@ -46,180 +46,147 @@ class ProfileService {
     return Future.value(jsonDecode(utf8.decode(bytes)));
   }
 
-  static Future<Map<String, dynamic>> _getJson(
-    String subPath, {
-    bool preferCloudFirst = false,
-  }) async {
-    final roots = preferCloudFirst
-        ? [cloudApiRoot, ..._apiRoots.where((r) => r != cloudApiRoot)]
-        : _apiRoots;
-
-    String lastError = AppLocale.t(
-      'Không thể kết nối tới máy chủ.',
-      'Unable to connect to the server.',
-    );
-    for (final root in roots) {
-      final url = Uri.parse('$root$subPath');
-      try {
-        final response = await _client
-            .get(url, headers: {'Content-Type': 'application/json'})
-            .timeout(_timeoutForRoot(root));
-        if (response.statusCode == 200) {
-          final data = await _decodeJsonBytes(response.bodyBytes);
-          if (data is Map<String, dynamic>) {
-            _cachedWorkingRoot = root;
-            return {'_ok': true, ...data};
-          }
-        } else if (response.statusCode == 404) {
-          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        } else {
-          try {
-            final errData = await _decodeJsonBytes(response.bodyBytes);
-            lastError = errData['message'] ??
-                AppLocale.t(
-                  'Lỗi máy chủ (${response.statusCode})',
-                  'Server error (${response.statusCode})',
-                );
-          } catch (_) {
-            lastError = AppLocale.t(
-              'Lỗi máy chủ (${response.statusCode})',
-              'Server error (${response.statusCode})',
-            );
-          }
+  static Future<Map<String, dynamic>> _getJson(String subPath) async {
+    final url = Uri.parse('$cloudApiRoot$subPath');
+    try {
+      final headers = await _buildHeaders();
+      final response = await _client.get(url, headers: headers).timeout(_requestTimeout);
+      if (response.statusCode == 200) {
+        final data = await _decodeJsonBytes(response.bodyBytes);
+        if (data is Map<String, dynamic>) {
+          return {'_ok': true, ...data};
         }
-      } catch (e) {
-        if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        lastError = AppLocale.t(
+      }
+      try {
+        final errData = await _decodeJsonBytes(response.bodyBytes);
+        return {
+          '_ok': false,
+          'success': false,
+          'status_code': response.statusCode,
+          'message': errData['message'] ??
+              AppLocale.t(
+                'Lỗi máy chủ (${response.statusCode})',
+                'Server error (${response.statusCode})',
+              ),
+        };
+      } catch (_) {
+        return {
+          '_ok': false,
+          'success': false,
+          'status_code': response.statusCode,
+          'message': AppLocale.t(
+            'Lỗi máy chủ (${response.statusCode})',
+            'Server error (${response.statusCode})',
+          ),
+        };
+      }
+    } catch (e) {
+      return {
+        '_ok': false,
+        'success': false,
+        'message': AppLocale.t(
           'Không thể kết nối máy chủ ($e)',
           'Unable to connect to server ($e)',
-        );
-      }
+        ),
+      };
     }
-    return {'_ok': false, 'success': false, 'message': lastError};
   }
 
   static Future<Map<String, dynamic>> _postJson(
     String subPath,
-    Map<String, dynamic> payload, {
-    bool syncAllReachable = false,
-  }) async {
-    bool anySuccess = false;
-    Map<String, dynamic> bestResponse = {};
-    String lastError = AppLocale.t(
-      'Không thể kết nối tới máy chủ.',
-      'Unable to connect to the server.',
-    );
-
-    for (final root in _apiRoots) {
-      final url = Uri.parse('$root$subPath');
-      try {
-        final response = await _client
-            .post(
-              url,
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(payload),
-            )
-            .timeout(_timeoutForRoot(root));
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final data = await _decodeJsonBytes(response.bodyBytes);
-          if (data is Map<String, dynamic>) {
-            _cachedWorkingRoot = root;
-            anySuccess = true;
-            if (bestResponse.isEmpty) {
-              bestResponse = {'_ok': true, ...data};
-            }
-            if (!syncAllReachable || (kReleaseMode && root == cloudApiRoot)) {
-              return bestResponse;
-            }
-          }
-        } else if (response.statusCode == 404) {
-          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        } else {
-          try {
-            final errData = await _decodeJsonBytes(response.bodyBytes);
-            lastError = errData['message'] ??
-                AppLocale.t(
-                  'Lỗi máy chủ (${response.statusCode})',
-                  'Server error (${response.statusCode})',
-                );
-          } catch (_) {
-            lastError = AppLocale.t(
-              'Lỗi máy chủ (${response.statusCode})',
-              'Server error (${response.statusCode})',
-            );
-          }
+    Map<String, dynamic> payload,
+  ) async {
+    final url = Uri.parse('$cloudApiRoot$subPath');
+    try {
+      final headers = await _buildHeaders();
+      final response = await _client
+          .post(url, headers: headers, body: jsonEncode(payload))
+          .timeout(_requestTimeout);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = await _decodeJsonBytes(response.bodyBytes);
+        if (data is Map<String, dynamic>) {
+          return {'_ok': true, ...data};
         }
-      } catch (e) {
-        if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        lastError = AppLocale.t(
+      }
+      try {
+        final errData = await _decodeJsonBytes(response.bodyBytes);
+        return {
+          '_ok': false,
+          'success': false,
+          'status_code': response.statusCode,
+          'message': errData['message'] ??
+              AppLocale.t(
+                'Lỗi máy chủ (${response.statusCode})',
+                'Server error (${response.statusCode})',
+              ),
+        };
+      } catch (_) {
+        return {
+          '_ok': false,
+          'success': false,
+          'status_code': response.statusCode,
+          'message': AppLocale.t(
+            'Lỗi máy chủ (${response.statusCode})',
+            'Server error (${response.statusCode})',
+          ),
+        };
+      }
+    } catch (e) {
+      return {
+        '_ok': false,
+        'success': false,
+        'message': AppLocale.t(
           'Không thể kết nối máy chủ ($e)',
           'Unable to connect to server ($e)',
-        );
-      }
+        ),
+      };
     }
-
-    if (anySuccess) {
-      return bestResponse;
-    }
-    return {'_ok': false, 'success': false, 'message': lastError};
   }
 
   static Future<Map<String, dynamic>> _deleteJson(String subPath) async {
-    String lastError = AppLocale.t(
-      'Không thể kết nối tới máy chủ.',
-      'Unable to connect to the server.',
-    );
-    int? lastStatusCode;
-    for (final root in _apiRoots) {
-      final url = Uri.parse('$root$subPath');
-      try {
-        final response = await _client
-            .delete(url, headers: {'Content-Type': 'application/json'})
-            .timeout(_timeoutForRoot(root));
-        lastStatusCode = response.statusCode;
-        if (response.statusCode == 200) {
-          final data = await _decodeJsonBytes(response.bodyBytes);
-          if (data is Map<String, dynamic>) {
-            _cachedWorkingRoot = root;
-            return {'_ok': true, ...data};
-          }
-        } else if (response.statusCode == 404 || response.statusCode == 405) {
-          if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-          try {
-            final errData = await _decodeJsonBytes(response.bodyBytes);
-            if (errData is Map && errData['message'] != null) {
-              lastError = errData['message'].toString();
-            }
-          } catch (_) {}
-        } else {
-          try {
-            final errData = await _decodeJsonBytes(response.bodyBytes);
-            lastError = errData['message'] ??
-                AppLocale.t(
-                  'Lỗi máy chủ (${response.statusCode})',
-                  'Server error (${response.statusCode})',
-                );
-          } catch (_) {
-            lastError = AppLocale.t(
-              'Lỗi máy chủ (${response.statusCode})',
-              'Server error (${response.statusCode})',
-            );
-          }
+    final url = Uri.parse('$cloudApiRoot$subPath');
+    try {
+      final headers = await _buildHeaders();
+      final response = await _client.delete(url, headers: headers).timeout(_requestTimeout);
+      if (response.statusCode == 200) {
+        final data = await _decodeJsonBytes(response.bodyBytes);
+        if (data is Map<String, dynamic>) {
+          return {'_ok': true, ...data};
         }
-      } catch (e) {
-        if (_cachedWorkingRoot == root) _cachedWorkingRoot = null;
-        lastError = AppLocale.t(
+      }
+      try {
+        final errData = await _decodeJsonBytes(response.bodyBytes);
+        return {
+          '_ok': false,
+          'success': false,
+          'status_code': response.statusCode,
+          'message': errData['message'] ??
+              AppLocale.t(
+                'Lỗi máy chủ (${response.statusCode})',
+                'Server error (${response.statusCode})',
+              ),
+        };
+      } catch (_) {
+        return {
+          '_ok': false,
+          'success': false,
+          'status_code': response.statusCode,
+          'message': AppLocale.t(
+            'Lỗi máy chủ (${response.statusCode})',
+            'Server error (${response.statusCode})',
+          ),
+        };
+      }
+    } catch (e) {
+      return {
+        '_ok': false,
+        'success': false,
+        'message': AppLocale.t(
           'Không thể kết nối máy chủ ($e)',
           'Unable to connect to server ($e)',
-        );
-      }
+        ),
+      };
     }
-    return {
-      '_ok': false,
-      'success': false,
-      'status_code': lastStatusCode,
-      'message': lastError,
-    };
   }
 
   // ---------------------------------------------------------------------------
@@ -250,7 +217,6 @@ class ProfileService {
     final res = await _postJson(
       '/profile/allergens',
       {'user_id': userId, 'allergens': allergens},
-      syncAllReachable: true,
     );
     if (res['_ok'] == true) {
       return {
@@ -267,7 +233,7 @@ class ProfileService {
   }
 
   // ---------------------------------------------------------------------------
-  // 2. Chronic Conditions ("Tình trạng của tôi" — Persisted in SQLite DB)
+  // 2. Chronic Conditions ("Tình trạng của tôi" — Persisted in D1 DB)
   // ---------------------------------------------------------------------------
   static Future<Map<String, dynamic>> getChronics(int userId) async {
     final res = await _getJson('/profile/chronics?user_id=$userId');
@@ -294,7 +260,6 @@ class ProfileService {
     final res = await _postJson(
       '/profile/chronics',
       {'user_id': userId, 'chronics': chronics},
-      syncAllReachable: true,
     );
     if (res['_ok'] == true) {
       return {
@@ -317,73 +282,7 @@ class ProfileService {
   }
 
   // ---------------------------------------------------------------------------
-  // 3. Physical Metrics (No hardcoded fake 22yo/170cm/65kg fallback)
-  // ---------------------------------------------------------------------------
-  static Future<Map<String, dynamic>> getMetrics(int userId) async {
-    final res = await _getJson('/profile/metrics?user_id=$userId');
-    if (res['_ok'] == true) {
-      final metrics = res['metrics'];
-      final isDefault = res['is_default'] == true;
-      final hasMetrics = (res['has_metrics'] == true) || (metrics != null && !isDefault);
-      return {
-        'success': true,
-        'has_metrics': hasMetrics,
-        'metrics': hasMetrics ? metrics : null,
-      };
-    }
-    return {
-      'success': false,
-      'message': res['message'] ??
-          AppLocale.t(
-            'Không thể tải chỉ số thể trạng từ máy chủ.',
-            'Unable to load body metrics from server.',
-          ),
-    };
-  }
-
-  static Future<Map<String, dynamic>> saveMetrics({
-    required int userId,
-    required int age,
-    required String gender,
-    required double height,
-    required double weight,
-    String activityLevel = 'moderate',
-  }) async {
-    final res = await _postJson(
-      '/profile/metrics',
-      {
-        'user_id': userId,
-        'age': age,
-        'gender': gender,
-        'height': height,
-        'weight': weight,
-        'activity_level': activityLevel,
-      },
-      syncAllReachable: true,
-    );
-    if (res['_ok'] == true) {
-      return {
-        'success': true,
-        'message': res['message'] ??
-            AppLocale.t(
-              'Đã cập nhật chỉ số thể trạng thành công!',
-              'Body metrics updated successfully!',
-            ),
-        'metrics': res['metrics'],
-      };
-    }
-    return {
-      'success': false,
-      'message': res['message'] ??
-          AppLocale.t(
-            'Không thể lưu chỉ số thể trạng lên máy chủ.',
-            'Unable to save body metrics to server.',
-          ),
-    };
-  }
-
-  // ---------------------------------------------------------------------------
-  // 4. User Settings ("Ngôn ngữ", "Chúc mừng huy hiệu", "Nhắc nhở nhẹ nhàng")
+  // 3. User Settings ("Ngôn ngữ", "Chúc mừng huy hiệu", "Nhắc nhở nhẹ nhàng")
   // ---------------------------------------------------------------------------
   static Future<Map<String, dynamic>> getSettings(int userId) async {
     final res = await _getJson('/profile/settings?user_id=$userId');
@@ -421,7 +320,6 @@ class ProfileService {
         'scan_derivatives': scanDerivatives,
         'warn_traces': warnTraces,
       },
-      syncAllReachable: true,
     );
     if (res['_ok'] == true) {
       return {
@@ -627,11 +525,15 @@ class ProfileService {
     required String rawText,
     List<Map<String, dynamic>> allergens = const [],
     List<String> chronics = const [],
+    bool scanDerivatives = true,
+    bool warnTraces = true,
   }) async {
     final res = await _postJson('/foodon/evaluate', {
       'raw_text': rawText,
       'allergens': allergens,
       'chronics': chronics,
+      'scan_derivatives': scanDerivatives,
+      'warn_traces': warnTraces,
       'lang': 'en',
     });
     if (res['_ok'] == true) {

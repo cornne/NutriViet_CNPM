@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -225,32 +224,20 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 bottom: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: LiquidGlassBatch.exclude(
-                    child: LiquidGlassAppBar(
-                      style: NutriVietGlass.appBar,
-                      width: double.infinity,
-                      leading: IconButton(
-                        icon: const PhosphorIcon(
-                          PhosphorIconsBold.caretLeft,
-                          color: Color(0xFF0F172A),
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        },
-                      ),
-                      title: Text(
-                        AppLocale.t('Xác Thực Email', 'Verify Email'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
+                  child: NutriVietGlassAppBar(
+                    leading: NutriVietGlassCircleButton(
+                      icon: PhosphorIconsBold.caretLeft,
+                      iconColor: const Color(0xFF0F172A),
+                      onTap: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                    title: Text(
+                      AppLocale.t('Xác Thực Email', 'Verify Email'),
                     ),
                   ),
                 ),

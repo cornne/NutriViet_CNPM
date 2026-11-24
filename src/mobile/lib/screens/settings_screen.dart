@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -45,45 +44,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late String _currentName;
   List<Map<String, dynamic>> _chronics = [];
   List<Map<String, dynamic>> _allergens = [];
+  List<Map<String, dynamic>> _familyMembers = [];
   String _language = AppLocale.code;
   bool _notifyBadges = true;
   bool _notifyReminders = false;
+  bool _scanDerivatives = true;
+  bool _warnTraces = true;
   bool _isLoading = true;
-
-  List<Map<String, String>> get _chronicCatalog => [
-        {
-          'code': 'diabetes',
-          'name': AppLocale.t('Tiểu đường', 'Diabetes'),
-          'desc': AppLocale.t(
-            'Cảnh báo đường tinh luyện, si-rô, mạch nha và đường đơn trong thực phẩm',
-            'Warns about refined sugar, syrups, maltose, and glucose in food products',
-          ),
-        },
-        {
-          'code': 'hypertension',
-          'name': AppLocale.t('Tăng huyết áp', 'Hypertension'),
-          'desc': AppLocale.t(
-            'Cảnh báo muối natri, bột ngọt (E621) và các phụ gia giàu natri',
-            'Warns about dietary sodium, MSG (E621), and high-sodium food additives',
-          ),
-        },
-        {
-          'code': 'gout',
-          'name': AppLocale.t('Bệnh Gút (Axit Uric)', 'Gout (High Uric Acid)'),
-          'desc': AppLocale.t(
-            'Cảnh báo hải sản giàu purin, chất điều vị và đồ uống lên men',
-            'Warns about high-purine seafood, flavor enhancers, and fermented drinks',
-          ),
-        },
-        {
-          'code': 'cholesterol',
-          'name': AppLocale.t('Mỡ máu / Cholesterol cao', 'High Cholesterol'),
-          'desc': AppLocale.t(
-            'Cảnh báo mỡ động vật, dầu cọ tinh luyện và chất béo bão hòa',
-            'Warns about animal fats, refined palm oil, and saturated fatty acids',
-          ),
-        },
-      ];
 
   @override
   void initState() {
@@ -102,6 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String get _shortName {
+    if (widget.isGuest) return AppLocale.t('Khách', 'Guest');
     final trimmed = _currentName.trim();
     if (trimmed.isEmpty) return AppLocale.t('Tôi', 'Me');
     final parts = trimmed.split(RegExp(r'\s+'));
@@ -109,19 +77,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return target[0].toUpperCase() + (target.length > 1 ? target.substring(1) : '');
   }
 
-  String get _chronicsSummary {
-    if (_chronics.isEmpty) return AppLocale.t('Không có', 'None');
-    if (_chronics.length == 1) {
-      final c = _chronics.first;
-      return AppLocale.translateChronicCode(
-        c['code']?.toString(),
-        fallback: (c['name'] ?? c['code']).toString(),
+  String get _healthProfileSummary {
+    final alCount = _allergens.length;
+    final chCount = _chronics.length;
+    if (alCount == 0 && chCount == 0) {
+      return AppLocale.t('Chưa thiết lập', 'Not set');
+    }
+    final parts = <String>[];
+    if (alCount > 0) {
+      parts.add(
+        AppLocale.t(
+          '$alCount dị ứng',
+          '$alCount ${alCount == 1 ? 'allergy' : 'allergies'}',
+        ),
       );
     }
-    return AppLocale.t(
-      '${_chronics.length} tình trạng',
-      '${_chronics.length} conditions',
-    );
+    if (chCount > 0) {
+      parts.add(
+        AppLocale.t(
+          '$chCount bệnh nền',
+          '$chCount ${chCount == 1 ? 'condition' : 'conditions'}',
+        ),
+      );
+    }
+    return parts.join(' · ');
+  }
+
+  String get _familySummary {
+    if (_familyMembers.length > 1) {
+      return AppLocale.t(
+        '${_familyMembers.length} thành viên',
+        '${_familyMembers.length} members',
+      );
+    }
+    return _shortName;
   }
 
   String get _languageLabel {
@@ -135,6 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         LocalGuestStore.getChronics(),
         LocalGuestStore.getAllergens(),
         LocalGuestStore.getSettings(),
+        LocalGuestStore.getFamilyMembers(),
       ]);
       if (!mounted) return;
       _chronics = List<Map<String, dynamic>>.from(results[0]['chronics'] ?? []);
@@ -142,6 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final s = results[2]['settings'] is Map
           ? Map<String, dynamic>.from(results[2]['settings'] as Map)
           : <String, dynamic>{};
+      _familyMembers = List<Map<String, dynamic>>.from(results[3]['members'] ?? []);
       final localLang = (s['language'] ?? '').toString();
       if (localLang == 'en' || localLang == 'vi') {
         _language = localLang;
@@ -151,6 +142,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       _notifyBadges = s['notify_badges'] ?? true;
       _notifyReminders = s['notify_reminders'] ?? false;
+      _scanDerivatives = s['scan_derivatives'] ?? true;
+      _warnTraces = s['warn_traces'] ?? true;
       setState(() => _isLoading = false);
       return;
     }
@@ -159,6 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ProfileService.getChronics(widget.userId),
       ProfileService.getAllergens(widget.userId),
       ProfileService.getSettings(widget.userId),
+      ProfileService.getFamilyMembers(widget.userId),
     ]);
     if (!mounted) return;
 
@@ -179,6 +173,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       _notifyBadges = s['notify_badges'] ?? true;
       _notifyReminders = s['notify_reminders'] ?? false;
+      _scanDerivatives = s['scan_derivatives'] ?? true;
+      _warnTraces = s['warn_traces'] ?? true;
+    }
+    if (results[3]['success'] == true) {
+      _familyMembers = List<Map<String, dynamic>>.from(results[3]['members'] ?? []);
     }
     setState(() => _isLoading = false);
   }
@@ -189,6 +188,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'language': _language,
         'notify_badges': _notifyBadges,
         'notify_reminders': _notifyReminders,
+        'scan_derivatives': _scanDerivatives,
+        'warn_traces': _warnTraces,
       });
       widget.onProfileUpdated?.call();
       return;
@@ -198,126 +199,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
       language: _language,
       notifyBadges: _notifyBadges,
       notifyReminders: _notifyReminders,
+      scanDerivatives: _scanDerivatives,
+      warnTraces: _warnTraces,
     );
     widget.onProfileUpdated?.call();
   }
 
-  Future<void> _openChronicsSheet() async {
-    final selectedNotifier = ValueNotifier<Set<String>>(
-      _chronics.map((c) => c['code'].toString()).toSet(),
-    );
-    final savingNotifier = ValueNotifier<bool>(false);
-    final catalog = _chronicCatalog;
-    await showNutriVietGlassSheet(
+  Future<void> _openFamilyProfilesSheet() async {
+    await showNutriVietGlassSheet<void>(
       context: context,
       isScrollControlled: true,
       anchor: NutriVietGlassSheetAnchor.attached,
       grabber: true,
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      builder: (ctx) {
-        return SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 6),
-              Text(
-                AppLocale.t('Tình trạng của tôi', 'My Health Conditions'),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                AppLocale.t(
-                  'Chọn các tình trạng sức khỏe để hệ thống tự động cảnh báo đường, muối hoặc chất béo khi quét nhãn.',
-                  'Select your health conditions so the system automatically flags sugar, salt, or fat when scanning labels.',
-                ),
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: Color(0xFF4B5563),
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 14),
-              ...catalog.map((item) {
-                final code = item['code']!;
-                return ValueListenableBuilder<Set<String>>(
-                  valueListenable: selectedNotifier,
-                  builder: (_, selected, __) {
-                    return NutriVietGlassCheckRow(
-                      title: item['name']!,
-                      subtitle: item['desc']!,
-                      checked: selected.contains(code),
-                      activeColor: _brandGreen,
-                      onTap: () {
-                        final next = Set<String>.from(selectedNotifier.value);
-                        if (!next.add(code)) {
-                          next.remove(code);
-                        }
-                        selectedNotifier.value = next;
-                      },
-                    );
-                  },
-                );
-              }),
-              const SizedBox(height: 10),
-              ValueListenableBuilder<bool>(
-                valueListenable: savingNotifier,
-                builder: (_, saving, __) {
-                  return NutriVietGlassPillButton(
-                    width: double.infinity,
-                    height: 50,
-                    isLoading: saving,
-                    label: AppLocale.t(
-                      'Lưu tình trạng sức khỏe',
-                      'Save health conditions',
-                    ),
-                    onPressed: () async {
-                      if (savingNotifier.value) return;
-                      savingNotifier.value = true;
-                      final activeCodes = selectedNotifier.value;
-                      final payload = catalog
-                          .where((c) => activeCodes.contains(c['code']))
-                          .map((c) => {'code': c['code']!, 'name': c['name']!})
-                          .toList();
-                      final res = widget.isGuest
-                          ? await LocalGuestStore.saveChronics(payload)
-                          : await ProfileService.saveChronics(
-                              userId: widget.userId,
-                              chronics: payload,
-                            );
-                      if (!ctx.mounted) return;
-                      Navigator.pop(ctx);
-                      if (res['success'] == true) {
-                        await _loadData();
-                        widget.onProfileUpdated?.call();
-                      } else if (mounted) {
-                        showNutriVietNotice(
-                          context,
-                          (res['message'] ??
-                                  AppLocale.t(
-                                    'Không thể lưu tình trạng sức khỏe.',
-                                    'Unable to save health conditions.',
-                                  ))
-                              .toString(),
-                          tone: NutriVietNoticeTone.error,
-                        );
-                      }
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      builder: (_) => _FamilyProfilesSheet(
+        userId: widget.userId,
+        isGuest: widget.isGuest,
+        initialUserName: _currentName,
+        initialMembers: List<Map<String, dynamic>>.from(_familyMembers),
+        onUserNameChanged: (newName) {
+          if (!mounted) return;
+          setState(() => _currentName = newName);
+          widget.onProfileUpdated?.call();
+        },
+        onMembersChanged: (updatedMembers) {
+          if (!mounted) return;
+          setState(() => _familyMembers = updatedMembers);
+          widget.onProfileUpdated?.call();
+        },
+      ),
     );
-    selectedNotifier.dispose();
-    savingNotifier.dispose();
   }
 
   Future<void> _openLanguageSheet() async {
@@ -590,12 +501,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     _buildSettingRow(
-                      icon: PhosphorIconsDuotone.heartbeat,
+                      icon: PhosphorIconsDuotone.shieldWarning,
                       iconColor: _brandGreen,
-                      title: AppLocale.t('Tình trạng của tôi', 'My conditions'),
-                      trailingText: _chronicsSummary,
+                      title: AppLocale.t(
+                        'Dị ứng & sức khỏe',
+                        'Allergies & health',
+                      ),
+                      trailingText: _healthProfileSummary,
                       isRowLoading: _isLoading,
-                      onTap: _openChronicsSheet,
+                      onTap: _openAllergyProfile,
                     ),
                     Divider(
                       height: 1,
@@ -605,28 +519,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildSettingRow(
                       icon: PhosphorIconsDuotone.usersThree,
                       iconColor: _brandGreen,
-                      title: AppLocale.t('Quản lý hồ sơ', 'Manage profiles'),
-                      trailingText: _shortName,
+                      title: AppLocale.t('Hồ sơ gia đình', 'Family profiles'),
+                      trailingText: _familySummary,
                       isRowLoading: _isLoading,
-                      onTap: _openAllergyProfile,
-                    ),
-                    Divider(
-                      height: 1,
-                      indent: 68,
-                      color: Colors.black.withValues(alpha: 0.05),
-                    ),
-                    _buildSettingRow(
-                      icon: PhosphorIconsDuotone.shieldWarning,
-                      iconColor: _brandGreen,
-                      title: AppLocale.t('Quản lý dị ứng', 'Manage allergies'),
-                      trailingText: _allergens.isEmpty
-                          ? ''
-                          : AppLocale.t(
-                              '${_allergens.length} nhóm',
-                              '${_allergens.length} groups',
-                            ),
-                      isRowLoading: _isLoading,
-                      onTap: _openAllergyProfile,
+                      onTap: _openFamilyProfilesSheet,
                     ),
                   ],
                 ),
@@ -636,8 +532,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 AppLocale.t(
-                  'Các cài đặt này cung cấp cảnh báo thực phẩm cá nhân hóa, chẳng hạn như cảnh báo đường cho bệnh tiểu đường.',
-                  'These settings provide personalized food alerts, such as sugar warnings for diabetes.',
+                  'Quản lý nhóm dị ứng, bệnh nền và danh sách thành viên gia đình để nhận cảnh báo phù hợp khi quét nhãn.',
+                  'Manage food allergies, health conditions, and family members for tailored alerts when scanning labels.',
                 ),
                 style: const TextStyle(
                   fontSize: 14,
@@ -685,38 +581,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             NutriVietGlassCard(
               cornerRadius: 22,
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                children: [
-                  _buildSwitchRow(
-                    icon: PhosphorIconsDuotone.medal,
-                    iconColor: _brandPurple,
-                    title: AppLocale.t('Chúc mừng huy hiệu', 'Badge celebrations'),
-                    subtitle: AppLocale.t(
-                      'Một thông báo ngắn khi bạn mở khóa huy hiệu mới.',
-                      'A brief notification when you unlock a new badge.',
-                    ),
-                    value: _notifyBadges,
-                    onChanged: (v) async {
-                      setState(() => _notifyBadges = v);
-                      await _persistSettings();
-                    },
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSwitchRow(
-                    icon: PhosphorIconsDuotone.bellRinging,
-                    iconColor: _brandPurple,
-                    title: AppLocale.t('Nhắc nhở nhẹ nhàng', 'Gentle reminders'),
-                    subtitle: AppLocale.t(
-                      'Nhắc nhở đôi khi nếu bạn chưa quét trong một thời gian.',
-                      'Occasional reminders if you have not scanned labels in a while.',
-                    ),
-                    value: _notifyReminders,
-                    onChanged: (v) async {
-                      setState(() => _notifyReminders = v);
-                      await _persistSettings();
-                    },
-                  ),
-                ],
+              child: _buildSwitchRow(
+                icon: PhosphorIconsDuotone.bellRinging,
+                iconColor: _brandPurple,
+                title: AppLocale.t('Nhắc nhở nhẹ nhàng', 'Gentle reminders'),
+                subtitle: AppLocale.t(
+                  'Nhắc nhở đôi khi nếu bạn chưa quét trong một thời gian.',
+                  'Occasional reminders if you have not scanned labels in a while.',
+                ),
+                value: _notifyReminders,
+                onChanged: (v) async {
+                  setState(() => _notifyReminders = v);
+                  await _persistSettings();
+                },
               ),
             ),
             const SizedBox(height: 10),
@@ -818,6 +695,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: AppLocale.t('Đổi mật khẩu', 'Change password'),
                       trailingText: widget.userEmail,
                       onTap: _openPasswordDialog,
+                    ),
+                    Divider(
+                      height: 1,
+                      indent: 68,
+                      color: Colors.black.withValues(alpha: 0.05),
                     ),
                     _buildSettingRow(
                       icon: PhosphorIconsDuotone.signOut,
@@ -979,16 +861,588 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          LiquidGlassBatch.exclude(
-            child: LiquidGlassSwitch(
-              value: value,
-              activeColor: _brandGreen,
-              inactiveColor: const Color(0xFFD1D5DB),
-              onChanged: onChanged,
-            ),
+          NutriVietGlassSwitch(
+            value: value,
+            activeColor: _brandGreen,
+            inactiveColor: const Color(0xFFD1D5DB),
+            onChanged: onChanged,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FamilyProfilesSheet extends StatefulWidget {
+  final int userId;
+  final bool isGuest;
+  final String initialUserName;
+  final List<Map<String, dynamic>> initialMembers;
+  final ValueChanged<String> onUserNameChanged;
+  final ValueChanged<List<Map<String, dynamic>>> onMembersChanged;
+
+  const _FamilyProfilesSheet({
+    required this.userId,
+    required this.isGuest,
+    required this.initialUserName,
+    required this.initialMembers,
+    required this.onUserNameChanged,
+    required this.onMembersChanged,
+  });
+
+  @override
+  State<_FamilyProfilesSheet> createState() => _FamilyProfilesSheetState();
+}
+
+class _FamilyProfilesSheetState extends State<_FamilyProfilesSheet> {
+  static const Color _brandGreen = Color(0xFF14803C);
+  static const Color _brandPurple = Color(0xFF4F37C8);
+
+  late final TextEditingController _displayNameCtrl;
+  late final TextEditingController _memberNameCtrl;
+  late final TextEditingController _memberRelCtrl;
+  late List<Map<String, dynamic>> _members;
+
+  bool _savingName = false;
+  bool _addingMember = false;
+  final Set<int> _deletingIds = {};
+  String? _errorText;
+
+  List<String> get _quickRelationships => [
+        AppLocale.t('Con cái', 'Child'),
+        AppLocale.t('Vợ/Chồng', 'Spouse'),
+        AppLocale.t('Bố/Mẹ', 'Parent'),
+        AppLocale.t('Người thân', 'Family'),
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    _displayNameCtrl = TextEditingController(text: widget.initialUserName);
+    _memberNameCtrl = TextEditingController();
+    _memberRelCtrl = TextEditingController(
+      text: AppLocale.t('Người thân', 'Family'),
+    );
+    _members = List<Map<String, dynamic>>.from(widget.initialMembers);
+  }
+
+  @override
+  void dispose() {
+    _displayNameCtrl.dispose();
+    _memberNameCtrl.dispose();
+    _memberRelCtrl.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _fieldDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14.5),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.82),
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _brandGreen, width: 1.5),
+      ),
+    );
+  }
+
+  Future<void> _saveDisplayName() async {
+    final trimmed = _displayNameCtrl.text.trim();
+    if (trimmed.isEmpty) {
+      setState(() {
+        _errorText = AppLocale.t(
+          'Vui lòng nhập tên hiển thị.',
+          'Please enter a display name.',
+        );
+      });
+      return;
+    }
+    if (_savingName) return;
+    setState(() {
+      _savingName = true;
+      _errorText = null;
+    });
+
+    final res = await AuthService.updateProfile(
+      userId: widget.userId,
+      fullName: trimmed,
+    );
+    if (!mounted) return;
+    setState(() => _savingName = false);
+    if (res['success'] == true) {
+      widget.onUserNameChanged(trimmed);
+      showNutriVietNotice(
+        context,
+        AppLocale.t('Đã cập nhật tên hiển thị.', 'Display name updated.'),
+        tone: NutriVietNoticeTone.success,
+      );
+    } else {
+      setState(() {
+        _errorText = (res['message'] ??
+                AppLocale.t(
+                  'Không thể cập nhật tên hiển thị.',
+                  'Unable to update display name.',
+                ))
+            .toString();
+      });
+    }
+  }
+
+  Future<void> _addMember() async {
+    final name = _memberNameCtrl.text.trim();
+    final rel = _memberRelCtrl.text.trim().isEmpty
+        ? AppLocale.t('Người thân', 'Family')
+        : _memberRelCtrl.text.trim();
+    if (name.isEmpty) {
+      setState(() {
+        _errorText = AppLocale.t(
+          'Vui lòng nhập tên thành viên.',
+          'Please enter a member name.',
+        );
+      });
+      return;
+    }
+    if (_addingMember) return;
+    setState(() {
+      _addingMember = true;
+      _errorText = null;
+    });
+
+    final res = widget.isGuest
+        ? await LocalGuestStore.addFamilyMember(
+            memberName: name,
+            relationship: rel,
+          )
+        : await ProfileService.addFamilyMember(
+            userId: widget.userId,
+            memberName: name,
+            relationship: rel,
+          );
+    if (!mounted) return;
+    setState(() => _addingMember = false);
+
+    if (res['success'] == true) {
+      final updated = List<Map<String, dynamic>>.from(res['members'] ?? []);
+      setState(() {
+        _members = updated;
+        _memberNameCtrl.clear();
+      });
+      widget.onMembersChanged(updated);
+      showNutriVietNotice(
+        context,
+        AppLocale.t('Đã thêm thành viên "$name".', 'Added member "$name".'),
+        tone: NutriVietNoticeTone.success,
+      );
+    } else {
+      setState(() {
+        _errorText = (res['message'] ??
+                AppLocale.t(
+                  'Không thể thêm thành viên.',
+                  'Unable to add family member.',
+                ))
+            .toString();
+      });
+    }
+  }
+
+  Future<void> _deleteMember(int memberId, String displayName) async {
+    if (_deletingIds.contains(memberId)) return;
+    setState(() {
+      _deletingIds.add(memberId);
+      _errorText = null;
+    });
+
+    final res = widget.isGuest
+        ? await LocalGuestStore.deleteFamilyMember(memberId)
+        : await ProfileService.deleteFamilyMember(
+            userId: widget.userId,
+            memberId: memberId,
+          );
+    if (!mounted) return;
+    setState(() => _deletingIds.remove(memberId));
+
+    if (res['success'] == true) {
+      final updated = List<Map<String, dynamic>>.from(res['members'] ?? []);
+      setState(() => _members = updated);
+      widget.onMembersChanged(updated);
+      showNutriVietNotice(
+        context,
+        AppLocale.t('Đã xóa "$displayName".', 'Removed "$displayName".'),
+        tone: NutriVietNoticeTone.info,
+      );
+    } else {
+      setState(() {
+        _errorText = (res['message'] ??
+                AppLocale.t(
+                  'Không thể xóa thành viên.',
+                  'Unable to remove family member.',
+                ))
+            .toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.82;
+
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                const SizedBox(height: 6),
+                Text(
+                  AppLocale.t('Hồ sơ gia đình', 'Family profiles'),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  AppLocale.t(
+                    'Quản lý tên hiển thị và thành viên gia đình để chọn nhanh khi quét nhãn thực phẩm.',
+                    'Manage your display name and family members for quick selection when scanning food labels.',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    color: Color(0xFF4B5563),
+                    height: 1.4,
+                  ),
+                ),
+                if (_errorText != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Text(
+                      _errorText!,
+                      style: const TextStyle(
+                        color: Color(0xFFB91C1C),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+                if (!widget.isGuest) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    AppLocale.t('Tên hiển thị', 'Display name'),
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _displayNameCtrl,
+                          style: const TextStyle(
+                            color: Color(0xFF111827),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _saveDisplayName(),
+                          decoration: _fieldDecoration(
+                            AppLocale.t('Họ và tên của bạn', 'Your full name'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      NutriVietGlassPillButton(
+                        height: 46,
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        isLoading: _savingName,
+                        label: AppLocale.t('Lưu', 'Save'),
+                        onPressed: _saveDisplayName,
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Text(
+                  AppLocale.t(
+                    'Thành viên (${_members.length})',
+                    'Members (${_members.length})',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (_members.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Text(
+                      AppLocale.t(
+                        'Chưa có thành viên nào.',
+                        'No family members yet.',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  )
+                else
+                  ..._members.map((member) {
+                    final rawId = member['id'];
+                    final memberId = rawId is int ? rawId : int.tryParse('$rawId');
+                    final isPrimary =
+                        member['is_primary'] == 1 || member['is_primary'] == true;
+                    final displayName = AppLocale.translateMemberName(
+                      member['member_name']?.toString(),
+                    );
+                    final relationship = AppLocale.translateRelationship(
+                      member['relationship']?.toString(),
+                    );
+                    final isDeleting =
+                        memberId != null && _deletingIds.contains(memberId);
+                    final initial = displayName.isNotEmpty
+                        ? displayName.substring(0, 1).toUpperCase()
+                        : 'U';
+                    final accent = isPrimary ? _brandGreen : _brandPurple;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.black.withValues(alpha: 0.06),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              initial,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  relationship,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isPrimary)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _brandGreen.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                AppLocale.t('Chính', 'Primary'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _brandGreen,
+                                ),
+                              ),
+                            )
+                          else if (memberId != null)
+                            IconButton(
+                              onPressed: isDeleting
+                                  ? null
+                                  : () => _deleteMember(memberId, displayName),
+                              tooltip: AppLocale.t(
+                                'Xóa thành viên',
+                                'Remove member',
+                              ),
+                              icon: isDeleting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFFDC2626),
+                                      ),
+                                    )
+                                  : const PhosphorIcon(
+                                      PhosphorIconsRegular.trash,
+                                      size: 19,
+                                      color: Color(0xFFDC2626),
+                                    ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                const SizedBox(height: 14),
+                Text(
+                  AppLocale.t('Thêm thành viên mới', 'Add a family member'),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _memberNameCtrl,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                  textInputAction: TextInputAction.next,
+                  decoration: _fieldDecoration(
+                    AppLocale.t(
+                      'Tên thành viên (VD: Mẹ, Bé An)',
+                      'Member name (e.g., Mom, Leo)',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _quickRelationships.map((rel) {
+                    final selected = _memberRelCtrl.text.trim() == rel;
+                    return GestureDetector(
+                      onTap: () => setState(() => _memberRelCtrl.text = rel),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? _brandGreen.withValues(alpha: 0.14)
+                              : Colors.white.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: selected
+                                ? _brandGreen
+                                : Colors.black.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Text(
+                          rel,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: selected
+                                ? _brandGreen
+                                : const Color(0xFF4B5563),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _memberRelCtrl,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 14.5,
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _addMember(),
+                  decoration: _fieldDecoration(
+                    AppLocale.t('Mối quan hệ', 'Relationship'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                NutriVietGlassPillButton(
+                  width: double.infinity,
+                  height: 48,
+                  isLoading: _addingMember,
+                  label: AppLocale.t('Thêm thành viên', 'Add member'),
+                  onPressed: _addMember,
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        ),
     );
   }
 }
