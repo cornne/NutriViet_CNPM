@@ -852,10 +852,92 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final tabBarRect = tester.getRect(find.byType(LayoutBuilder));
+      final tabBarRect = tester.getRect(find.byType(AnimatedAlign));
       final scanOrbRect = tester.getRect(find.byIcon(PhosphorIconsBold.scan));
       // Vertical centers of the tab bar and scan orb must match within 2dp (no double bottomInset!)
       expect((tabBarRect.center.dy - scanOrbRect.center.dy).abs(), lessThanOrEqualTo(2.0));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen bounces cleanly past overscroll limits instead of sticking flat',
+    (WidgetTester tester) async {
+      await AppLocale.setLanguage('vi');
+      await tester.pumpWidget(
+        const MaterialApp(
+          scrollBehavior: NutriVietScrollBehavior(),
+          home: Scaffold(
+            body: SettingsScreen(
+              userId: 0,
+              userName: 'Khách',
+              userEmail: '',
+              isGuest: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final listFinder = find.byType(ListView);
+      expect(listFinder, findsOneWidget);
+      final listView = tester.widget<ListView>(listFinder);
+      expect(listView.physics, isA<BouncingScrollPhysics>());
+
+      final scrollableState = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      // Drag downward past the top limit — must overscroll smoothly (< 0) then spring back to 0.
+      final gesture = await tester.startGesture(tester.getCenter(listFinder));
+      await gesture.moveBy(const Offset(0, 180));
+      await tester.pump();
+      expect(scrollableState.position.pixels, lessThan(0.0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(scrollableState.position.pixels, closeTo(0.0, 0.5));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'NutriVietTabView lazily mounts tabs on first visit and preserves state across switches',
+    (WidgetTester tester) async {
+      int activeTab = 0;
+      late StateSetter outerSetState;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              outerSetState = setState;
+              return NutriVietTabView(
+                index: activeTab,
+                children: const [
+                  Center(child: Text('TabZeroBody')),
+                  Center(child: Text('TabOneLazyBody')),
+                  Center(child: Text('TabTwoLazyBody')),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+
+      // Only Tab 0 is mounted initially; Tabs 1 & 2 are not built yet
+      expect(find.text('TabZeroBody'), findsOneWidget);
+      expect(find.text('TabOneLazyBody', skipOffstage: false), findsNothing);
+      expect(find.text('TabTwoLazyBody', skipOffstage: false), findsNothing);
+
+      // Switch to Tab 1 -> lazily mounts Tab 1 while keeping Tab 0 alive offstage
+      outerSetState(() => activeTab = 1);
+      await tester.pumpAndSettle();
+      expect(find.text('TabOneLazyBody'), findsOneWidget);
+      expect(find.text('TabZeroBody', skipOffstage: false), findsOneWidget);
+      expect(find.text('TabTwoLazyBody', skipOffstage: false), findsNothing);
+
+      // Switch back to Tab 0 -> Tab 1 stays alive offstage
+      outerSetState(() => activeTab = 0);
+      await tester.pumpAndSettle();
+      expect(find.text('TabZeroBody'), findsOneWidget);
+      expect(find.text('TabOneLazyBody', skipOffstage: false), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
