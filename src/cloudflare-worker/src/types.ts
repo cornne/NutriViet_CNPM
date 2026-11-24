@@ -1,6 +1,11 @@
+export interface WorkersAiBinding {
+  run(model: string, input: Record<string, unknown>): Promise<unknown>;
+}
+
 export interface Env {
   APP_DB: D1Database;
   FOODON_DB: D1Database;
+  AI?: WorkersAiBinding;
   PUBLIC_BASE_URL?: string;
   AUTO_VERIFY_EMAIL?: string;
   PADDLEOCR_VL_TOKEN?: string;
