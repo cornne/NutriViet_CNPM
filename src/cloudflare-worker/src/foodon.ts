@@ -134,28 +134,43 @@ function splitCsv(v: string | null | undefined): string[] {
   return v.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-function similarityRatio(a: string, b: string): number {
-  if (a === b) return 1.0;
-  if (!a || !b) return 0.0;
-  // Fast Dice / bigram + LCS approximation for short OCR strings
+const VIETNAMESE_SPECIFIC_DIACRITIC_RE = /[\u0102\u0103\u0110\u0111\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]/;
+
+export function hasVietnameseDiacritics(input: string): boolean {
+  return VIETNAMESE_SPECIFIC_DIACRITIC_RE.test(input || "");
+}
+
+export function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
   const m = a.length;
   const n = b.length;
-  const dp = new Uint16Array(n + 1);
-  let maxMatch = 0;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = new Uint16Array(n + 1);
+  let curr = new Uint16Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
   for (let i = 1; i <= m; i++) {
-    let prev = 0;
+    curr[0] = i;
+    const ac = a.charCodeAt(i - 1);
     for (let j = 1; j <= n; j++) {
-      const tmp = dp[j];
-      if (a.charCodeAt(i - 1) === b.charCodeAt(j - 1)) {
-        dp[j] = prev + 1;
-        if (dp[j] > maxMatch) maxMatch = dp[j];
-      } else {
-        dp[j] = dp[j] > dp[j - 1] ? dp[j] : dp[j - 1];
-      }
-      prev = tmp;
+      const cost = ac === b.charCodeAt(j - 1) ? 0 : 1;
+      const del = prev[j] + 1;
+      const ins = curr[j - 1] + 1;
+      const sub = prev[j - 1] + cost;
+      curr[j] = del < ins ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
     }
+    const tmp = prev;
+    prev = curr;
+    curr = tmp;
   }
-  return (2 * dp[n]) / (m + n);
+  return prev[n];
+}
+
+export function similarityRatio(a: string, b: string): number {
+  if (a === b) return 1.0;
+  if (!a || !b) return 0.0;
+  const maxLen = Math.max(a.length, b.length);
+  return Math.max(0, 1 - levenshteinDistance(a, b) / maxLen);
 }
 
 function sortEcodeTuple(ec: string): [number, number, string, string] {
@@ -205,12 +220,192 @@ export function repairOcrWordHomoglyphs(text: string): string {
     });
 }
 
+const ADDITIVE_FUNCTIONAL_CLASS_RE =
+  /(?:emulsifier|stabiliz(?:er|ing)|thickener|preservative|antioxidant|sweetener|acidity\s+regulator|flavour?\s+enhancer|flavor\s+enhancer|colou?r(?:ing)?|raising\s+agent|leavening|anti-?caking|glazing\s+agent|humectant|sequestrant|firming\s+agent|foaming\s+agent|gelling\s+agent|bulking\s+agent|propellant|flour\s+treatment|additive|chat\s+on\s+dinh|chat\s+nhu\s+hoa|chat\s+dieu\s+vi|chat\s+dieu\s+chinh\s+do\s+acid|chat\s+bao\s+quan|chat\s+chong\s+oxy\s+hoa|chat\s+tao\s+xop|chat\s+lam\s+day|chat\s+tao\s+ngot|chat\s+tao\s+mau|pham\s+mau|chat\s+chong\s+dong\s+von|chat\s+lam\s+bong|chat\s+giu\s+am|phu\s+gia)s?\s*\(((?:[^()]|\([ivx1lI]+\))+)\)/gi;
+
+const CODE_LIST_PAREN_RE =
+  /\(((?:(?:e|ins|in5)\s*)?[0-9oOlIiS]{3,4}[a-z]?(?:\([ivx1lI]+\))?(?:\s*[,;/]\s*(?:(?:e|ins|in5)\s*)?[0-9oOlIiS]{3,4}[a-z]?(?:\([ivx1lI]+\))?)+)\)/gi;
+
+const TRACE_CLAUSE_RE =
+  /\b(?:may\s+contain|traces?\s+of|trace\s+amounts?|processed\s+in\s+a\s+facility|manufactured\s+(?:in\s+a\s+facility|on\s+(?:shared\s+)?equipment)|shared\s+(?:equipment|lines?|facility)|cross[- ]?contact|cross[- ]?contamination|produced\s+on\s+a\s+line|co\s+the\s+chua|co\s+chua\s+vet|dau\s+vet|vet\s+cua|san\s+xuat\s+tren\s+(?:cung\s+)?day\s+chuyen|day\s+chuyen\s+co\s+su\s+dung|cung\s+day\s+chuyen|nha\s+may\s+co\s+su\s+dung|che\s+bien\s+cung\s+thiet\s+bi)\b/i;
+
+const DIRECT_ALLERGEN_WORDS: Record<string, string[]> = {
+  milk: ["milk", "dairy", "butter", "cheese", "cream", "yogurt", "yoghurt", "buttermilk"],
+  peanuts: ["peanut", "groundnut", "arachis"],
+  soy: ["soy", "soya", "soybean"],
+  eggs: ["egg"],
+  seafood: [
+    "fish", "seafood", "shrimp", "prawn", "crab", "lobster", "shellfish", "squid",
+    "octopus", "clam", "oyster", "mussel", "scallop", "salmon", "tuna", "mackerel",
+    "sardine", "anchovy", "cod", "tilapia", "catfish", "hake", "pollock", "krill",
+  ],
+  gluten: ["gluten", "wheat", "barley", "rye", "oat", "flour"],
+  tree_nuts: [
+    "nut", "almond", "walnut", "cashew", "hazelnut", "pecan", "pistachio",
+    "macadamia", "chestnut", "pine nut", "brazil nut",
+  ],
+  sesame: ["sesame"],
+};
+
+export interface EvaluationOptions {
+  scanDerivatives?: boolean;
+  warnTraces?: boolean;
+}
+
+export function isTraceStatement(token: string): boolean {
+  const folded = removeAccents((token || "").toLowerCase()).replace(/\s+/g, " ").trim();
+  if (!folded) return false;
+  return TRACE_CLAUSE_RE.test(folded);
+}
+
+export function isDirectAllergenMatch(
+  allergenCode: string,
+  token: string,
+  primaryMatch: Record<string, unknown>
+): boolean {
+  const normTok = normalizeEnKey(repairOcrWordHomoglyphs(token));
+  const words = DIRECT_ALLERGEN_WORDS[allergenCode];
+  if (words && words.length > 0) {
+    for (const w of words) {
+      const re = new RegExp(`\\b${w.replace(/\s+/g, "\\s+")}s?\\b`, "i");
+      if (re.test(normTok)) return true;
+    }
+  }
+  const mType = String(primaryMatch.match_type ?? "");
+  if (mType === "ecode_exact" || mType === "ecode_bare") {
+    return false;
+  }
+  const curie = String(primaryMatch.curie ?? "");
+  if (curie.startsWith("CHEBI:") || curie.startsWith("UBERON:")) {
+    return false;
+  }
+  const repCurie = ALLERGEN_REPRESENTATIVE_CURIES[allergenCode];
+  if (repCurie && curie === repCurie) return true;
+  if (words && words.length > 0) {
+    const labelNorm = normalizeEnKey(String(primaryMatch.label_en ?? primaryMatch.title_en ?? ""));
+    for (const w of words) {
+      const re = new RegExp(`\\b${w.replace(/\s+/g, "\\s+")}s?\\b`, "i");
+      if (re.test(labelNorm)) return true;
+    }
+  }
+  return false;
+}
+
+export function extractBareAdditiveCodes(token: string): Array<{ raw: string; cands: string[] }> {
+  const folded = removeAccents(token || "");
+  const out: Array<{ raw: string; cands: string[] }> = [];
+  const seen = new Set<string>();
+
+  for (const m of folded.matchAll(ADDITIVE_FUNCTIONAL_CLASS_RE)) {
+    const inner = (m[1] || "").trim();
+    if (!inner) continue;
+    const rawItems = inner.split(/[,;/]+/).map((s) => s.trim()).filter(Boolean);
+    const pieces: string[] = [];
+    for (const item of rawItems) {
+      if (/%|\b(?:g|mg|ml|kg|kcal|kj)\b/i.test(item)) continue;
+      const subParts = item.split(/\s+/).filter(Boolean);
+      if (subParts.length > 1 && !/^(?:e|ins|in5)$/i.test(subParts[0])) {
+        pieces.push(...subParts);
+      } else {
+        pieces.push(item);
+      }
+    }
+    for (const piece of pieces) {
+      let cleanDigits = "";
+      let suf = "";
+      let roman = "";
+      const direct = piece.match(/^(?:(?:e|ins|in5)\s*)?(\d{3,4})([a-z]?)(?:\(([ivx1lI]+)\))?$/i);
+      if (direct) {
+        cleanDigits = direct[1];
+        suf = (direct[2] || "").toLowerCase();
+        roman = direct[3] ? direct[3].replace(/[1l]/g, "i").toLowerCase() : "";
+      } else {
+        const fuzzy = piece.match(/^(?:(?:e|ins|in5)\s*)?([0-9oOlIS]{3,4})([a-z]?)(?:\(([ivx1lI]+)\))?$/i);
+        if (!fuzzy) continue;
+        cleanDigits = fuzzy[1]
+          .replace(/[oO]/g, "0")
+          .replace(/[lI]/g, "1")
+          .replace(/S/g, "5");
+        suf = (fuzzy[2] || "").toLowerCase();
+        roman = fuzzy[3] ? fuzzy[3].replace(/[1l]/g, "i").toLowerCase() : "";
+      }
+      if (!/^\d{3,4}$/.test(cleanDigits)) continue;
+      const numVal = parseInt(cleanDigits, 10);
+      // Codex Alimentarius INS / EU E-numbers lie strictly within 100..1599
+      if (numVal < 100 || numVal > 1599) continue;
+      const key = `${cleanDigits}${suf}${roman ? `(${roman})` : ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const cands: string[] = [];
+      if (roman) {
+        cands.push(
+          `e${cleanDigits}(${roman})`,
+          `ins${cleanDigits}(${roman})`,
+          `e${cleanDigits}${roman}`,
+          `ins${cleanDigits}${roman}`
+        );
+      } else if (suf) {
+        cands.push(
+          `e${cleanDigits}${suf}`,
+          `ins${cleanDigits}${suf}`,
+          `e${cleanDigits}(${suf})`,
+          `ins${cleanDigits}(${suf})`
+        );
+      }
+      cands.push(`e${cleanDigits}`, `ins${cleanDigits}`);
+      out.push({
+        raw: `E${cleanDigits}${suf}${roman ? `(${roman})` : ""}`,
+        cands: [...new Set(cands)],
+      });
+    }
+  }
+  return out;
+}
+
 export function splitRawIngredients(rawText: string): string[] {
   const cleaned = (rawText || "").replace(/^(?:thành phần|ingredients)\s*[:\-]\s*/i, "");
-  return cleaned
-    .split(/[,;\n]+/)
-    .map((t) => t.replace(/^[\s.]+|[\s.]+$/g, ""))
-    .filter(Boolean);
+  const tokens: string[] = [];
+  const placeholderPrefix = "__NV_CL_";
+  const traceStartRe =
+    /\b(?:may\s+contain|traces?\s+of|processed\s+in\s+a\s+facility|manufactured\s+(?:in\s+a\s+facility|on\s+(?:shared\s+)?equipment)|có\s+thể\s+chứa|dấu\s+vết|sản\s+xuất\s+trên\s+(?:cùng\s+)?dây\s+chuyền)\b/i;
+
+  for (const rawLine of cleaned.split(/\n+/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // Separate a single trailing trace clause on the line (e.g. "Wheat flour, sugar. May contain traces of peanuts, soy.")
+    const traceMatch = traceStartRe.exec(line);
+    const segments: string[] = [];
+    if (traceMatch && traceMatch.index > 0) {
+      segments.push(line.slice(0, traceMatch.index).trim());
+      segments.push(line.slice(traceMatch.index).trim());
+    } else {
+      segments.push(line);
+    }
+
+    for (const seg of segments) {
+      if (!seg) continue;
+      if (isTraceStatement(seg) && seg.length <= 180) {
+        const cleanSeg = seg.replace(/^[\s.,;:-]+|[\s.]+$/g, "").trim();
+        if (cleanSeg) tokens.push(cleanSeg);
+        continue;
+      }
+      // Protect parenthesized additive code lists like "(471, 460i, 407, 466)" from comma splitting
+      const saved: string[] = [];
+      const protectedSeg = seg.replace(CODE_LIST_PAREN_RE, (match) => {
+        const idx = saved.push(match) - 1;
+        return `${placeholderPrefix}${idx}__`;
+      });
+      for (const part of protectedSeg.split(/[,;]+/)) {
+        const restored = part
+          .replace(/__NV_CL_(\d+)__/g, (_, i) => saved[Number(i)] ?? "")
+          .replace(/^[\s.]+|[\s.]+$/g, "");
+        if (restored) tokens.push(restored);
+      }
+    }
+  }
+  return tokens;
 }
 
 /**
@@ -429,6 +624,8 @@ export class D1FoodOnEngine {
   }
 
   private async lookupAsciiOrFuzzy(rawToken: string, threshold = 0.82): Promise<{ curie: string; term: string; matchType: string; confidence: number } | null> {
+    // Keep FoodOn strictly pure English: skip fuzzy English matching on Vietnamese-diacritic tokens
+    if (hasVietnameseDiacritics(rawToken)) return null;
     const repaired = repairOcrWordHomoglyphs(rawToken);
     const tNorm = normalizeEnKey(repaired);
     const tAscii = removeAccents(tNorm);
@@ -456,15 +653,24 @@ export class D1FoodOnEngine {
       };
     }
 
+    // Require >= 5 chars for Levenshtein fuzzy search to prevent short non-English false positives
+    if (tAscii.length < 5) return null;
+    const tokenWordCount = tAscii.split(" ").filter(Boolean).length;
+    const maxEdits = tAscii.length <= 7 ? 1 : 2;
+    const minSim = tAscii.length === 5 ? 0.8 : Math.max(threshold, 0.82);
+
     const scoreRows = (
       rows: Array<{ term_norm: string; term_ascii: string; lang: string; curie: string; confidence_tier: number }>
     ) => {
       let bestMatch: { curie: string; term: string; matchType: string; confidence: number } | null = null;
-      let bestSim = threshold;
+      let bestSim = minSim;
       for (const c of rows) {
-        if (Math.abs(c.term_ascii.length - tAscii.length) > 2) continue;
-        const simAscii = similarityRatio(tAscii, c.term_ascii);
-        if (simAscii < 0.74) continue;
+        if (Math.abs(c.term_ascii.length - tAscii.length) > maxEdits) continue;
+        if (c.term_ascii.split(" ").filter(Boolean).length !== tokenWordCount) continue;
+        const distAscii = levenshteinDistance(tAscii, c.term_ascii);
+        if (distAscii > maxEdits) continue;
+        const simAscii = 1 - distAscii / Math.max(tAscii.length, c.term_ascii.length);
+        if (simAscii < minSim) continue;
         const simAcc = similarityRatio(tNorm, c.term_norm);
         const weighted = 0.6 * simAcc + 0.4 * simAscii;
         const effective = weighted - (c.confidence_tier - 1) * 0.02;
@@ -492,20 +698,16 @@ export class D1FoodOnEngine {
     if (hit3) return hit3;
 
     // Indexed 2-char prefix fallback when PaddleOCR corrupts char #2 or #3 (e.g. "pcanut", "whcat")
-    if (tAscii.length >= 5) {
-      const prefix2 = tAscii.slice(0, 2);
-      const minLen = Math.max(3, tAscii.length - 2);
-      const maxLen = tAscii.length + 2;
-      const cand2 = await this.db
-        .prepare(
-          "SELECT term_norm, term_ascii, lang, curie, confidence_tier FROM lexical_bridge WHERE term_ascii >= ? AND term_ascii < ? AND LENGTH(term_ascii) BETWEEN ? AND ? LIMIT 100"
-        )
-        .bind(prefix2, prefix2.slice(0, 1) + String.fromCharCode(prefix2.charCodeAt(1) + 1), minLen, maxLen)
-        .all<{ term_norm: string; term_ascii: string; lang: string; curie: string; confidence_tier: number }>();
-      return scoreRows(cand2.results);
-    }
-
-    return null;
+    const prefix2 = tAscii.slice(0, 2);
+    const minLen = Math.max(4, tAscii.length - maxEdits);
+    const maxLen = tAscii.length + maxEdits;
+    const cand2 = await this.db
+      .prepare(
+        "SELECT term_norm, term_ascii, lang, curie, confidence_tier FROM lexical_bridge WHERE term_ascii >= ? AND term_ascii < ? AND LENGTH(term_ascii) BETWEEN ? AND ? LIMIT 100"
+      )
+      .bind(prefix2, prefix2.slice(0, 1) + String.fromCharCode(prefix2.charCodeAt(1) + 1), minLen, maxLen)
+      .all<{ term_norm: string; term_ascii: string; lang: string; curie: string; confidence_tier: number }>();
+    return scoreRows(cand2.results);
   }
 
   async recognizeIngredient(rawToken: string): Promise<Record<string, unknown>> {
@@ -544,18 +746,29 @@ export class D1FoodOnEngine {
       });
     };
 
-    // Stage 1: E-numbers / INS codes (with OCR digit/letter homoglyph repair, e.g. E62l -> E621)
+    // Stage 1: E-numbers / INS codes (explicit prefix + bare parenthesized codes after functional class)
     const eClean = repairOcrEcodes(cleanToken);
     const eRegex = /\b(e|ins)\s*(\d{3,4}[a-z]?(?:\([ivx]+\))?)\b/gi;
-    const eHits: Array<{ raw: string; cands: string[] }> = [];
+    const eHits: Array<{ raw: string; cands: string[]; matchType: string }> = [];
+    const seenPrimaryCodes = new Set<string>();
     for (const m of eClean.matchAll(eRegex)) {
       const prefix = m[1].toLowerCase();
       const numPart = m[2].toLowerCase();
       const baseNum = numPart.replace(/\(.*?\)/g, "");
+      const primary = `e${baseNum}`;
+      seenPrimaryCodes.add(primary);
       eHits.push({
         raw: m[0].toUpperCase(),
         cands: [`${prefix}${numPart}`, `e${baseNum}`, `ins${baseNum}`],
+        matchType: "ecode_exact",
       });
+    }
+    for (const bare of extractBareAdditiveCodes(cleanToken)) {
+      const firstCand = bare.cands[0] || "";
+      if (firstCand && !seenPrimaryCodes.has(firstCand)) {
+        seenPrimaryCodes.add(firstCand);
+        eHits.push({ raw: bare.raw, cands: bare.cands, matchType: "ecode_bare" });
+      }
     }
     if (eHits.length > 0) {
       const allCodes = [...new Set(eHits.flatMap((h) => h.cands))];
@@ -569,7 +782,7 @@ export class D1FoodOnEngine {
         for (const cand of h.cands) {
           const c = ecMap.get(cand);
           if (c) {
-            await addMatch(c, h.raw, "ecode_exact", 1.0);
+            await addMatch(c, h.raw, h.matchType, 1.0);
             break;
           }
         }
@@ -579,7 +792,8 @@ export class D1FoodOnEngine {
     let stripped = cleanToken
       .replace(/\(\s*\d+(?:[.,]\d+)?\s*%\s*\)/g, " ")
       .replace(/\b\d+(?:[.,]\d+)?\s*%/g, " ")
-      .replace(/\(\s*(?:e|ins)\s*\d{3,4}[a-z]?(?:\([ivx]+\))?\s*\)/gi, " ");
+      .replace(/\(\s*(?:e|ins)\s*\d{3,4}[a-z]?(?:\([ivx]+\))?\s*\)/gi, " ")
+      .replace(CODE_LIST_PAREN_RE, " ");
 
     const subParts: string[] = [stripped];
     for (const pm of stripped.matchAll(/\(([^)]+)\)/g)) {
@@ -670,10 +884,11 @@ export class D1FoodOnEngine {
       }
     }
 
-    // Stage 4: Fuzzy fallback for OCR typos (whole part + meaningful single words)
+    // Stage 4: Fuzzy fallback for OCR typos (whole part + meaningful English single words >= 5 chars)
     if (matchedRecords.length === 0) {
       for (const pNorm of unmatchedParts) {
-        const fz = await this.lookupAsciiOrFuzzy(pNorm, 0.8);
+        if (hasVietnameseDiacritics(pNorm)) continue;
+        const fz = await this.lookupAsciiOrFuzzy(pNorm, 0.82);
         if (fz) {
           await addMatch(fz.curie, fz.term, fz.matchType, fz.confidence);
           continue;
@@ -681,7 +896,7 @@ export class D1FoodOnEngine {
         const words = normalizeEnKey(repairOcrWordHomoglyphs(pNorm)).split(" ").filter(Boolean);
         if (words.length >= 2) {
           for (const w of words) {
-            if (w.length < 4 || STOPWORDS.has(w)) continue;
+            if (w.length < 5 || STOPWORDS.has(w)) continue;
             if (w === "milk" && isPlantMilk) continue;
             if (w === "butter" && isPlantButter) continue;
             const wFz = await this.lookupAsciiOrFuzzy(w, 0.82);
@@ -748,9 +963,12 @@ export class D1FoodOnEngine {
   async evaluatePackagingLabel(
     ingredientTokens: string[],
     userAllergens: Array<string | Record<string, unknown>>,
-    userChronics: string[] = []
+    userChronics: string[] = [],
+    options: EvaluationOptions = {}
   ): Promise<Record<string, unknown>> {
     const t0 = Date.now();
+    const scanDerivatives = options.scanDerivatives !== false;
+    const warnTraces = options.warnTraces !== false;
     const chronicSet = new Set(userChronics || []);
     const profileSeverity = new Map<string, string>();
     const profileSourceFood = new Map<string, string>();
@@ -780,16 +998,33 @@ export class D1FoodOnEngine {
     const yellowTriggers: Array<Record<string, unknown>> = [];
 
     for (const tok of ingredientTokens.slice(0, 60)) {
+      const isTrace = isTraceStatement(tok);
       const res = await this.recognizeIngredient(tok);
       const matches = (res.matches as Array<Record<string, unknown>>) || [];
       const triggeredCodes: string[] = [];
       const triggeredChronics: string[] = [];
+      let derivativeSkipped = false;
+
+      if (isTrace && !warnTraces) {
+        res.is_trace = true;
+        res.trace_skipped = true;
+        res.is_allergy_trigger = false;
+        res.triggered_allergen_codes = [];
+        res.is_chronic_trigger = false;
+        tokenResults.push(res);
+        continue;
+      }
 
       for (const alCode of (res.allergens as string[]) || []) {
         if (profileSeverity.has(alCode)) {
-          triggeredCodes.push(alCode);
           const primary =
             matches.find((m) => ((m.allergens as string[]) || []).includes(alCode)) ?? matches[0] ?? {};
+          const directHit = isDirectAllergenMatch(alCode, tok, primary);
+          if (!scanDerivatives && !directHit) {
+            derivativeSkipped = true;
+            continue;
+          }
+          triggeredCodes.push(alCode);
           const alEn = formatCodeLabelEn(alCode);
           const mEn = String(primary.title_en ?? primary.label_en ?? tok);
           const srcEn = profileSourceFood.get(alCode) ?? "";
@@ -810,6 +1045,8 @@ export class D1FoodOnEngine {
             lineage: String(primary.lineage ?? ""),
             match_type: String(primary.match_type ?? ""),
             confidence: primary.confidence ?? 1.0,
+            is_trace: isTrace,
+            is_derivative: !directHit,
           });
         }
       }
@@ -824,7 +1061,13 @@ export class D1FoodOnEngine {
 
           for (const [targetC, fullCode] of customCurieTargets.entries()) {
             const targetFam = await this.inferFoodOnFamily(targetC);
-            const hit = lineageSet.has(targetC) || mFam === fullCode || mFam === targetFam;
+            const directCurieHit = mCurie.toUpperCase() === targetC;
+            const inferredHit = lineageSet.has(targetC) || mFam === fullCode || mFam === targetFam;
+            if (!scanDerivatives && !directCurieHit && inferredHit) {
+              derivativeSkipped = true;
+              continue;
+            }
+            const hit = scanDerivatives ? inferredHit : directCurieHit;
             if (hit && !triggeredCodes.includes(fullCode)) {
               triggeredCodes.push(fullCode);
               const targetCard = await this.buildConceptCard(targetC);
@@ -850,6 +1093,8 @@ export class D1FoodOnEngine {
                 lineage: String(m.lineage ?? ""),
                 match_type: String(m.match_type ?? ""),
                 confidence: m.confidence ?? 1.0,
+                is_trace: isTrace,
+                is_derivative: !directCurieHit,
               });
             }
           }
@@ -877,10 +1122,13 @@ export class D1FoodOnEngine {
             lineage: String(primary.lineage ?? ""),
             match_type: String(primary.match_type ?? ""),
             confidence: primary.confidence ?? 1.0,
+            is_trace: isTrace,
           });
         }
       }
 
+      res.is_trace = isTrace;
+      res.derivative_skipped = derivativeSkipped;
       res.is_allergy_trigger = triggeredCodes.length > 0;
       res.triggered_allergen_codes = triggeredCodes;
       res.is_chronic_trigger = triggeredChronics.length > 0;
@@ -948,6 +1196,10 @@ export class D1FoodOnEngine {
       additive_count: additiveCount,
       risk_level: riskLevel,
       risk_label_vi: riskLabelVi,
+      applied_settings: {
+        scan_derivatives: scanDerivatives,
+        warn_traces: warnTraces,
+      },
     };
   }
 
