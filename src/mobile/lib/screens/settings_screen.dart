@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
@@ -473,6 +474,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         bottom: false,
         child: NutriVietGlassScrollArea(
           child: ListView(
+            scrollCacheExtent: const ScrollCacheExtent.pixels(360),
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            addRepaintBoundaries: false,
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 128),
             children: [
               Text(
@@ -1101,9 +1107,12 @@ class _FamilyProfilesSheetState extends State<_FamilyProfilesSheet> {
       top: false,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
+        child: NutriVietGlassScrollArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1443,6 +1452,7 @@ class _FamilyProfilesSheetState extends State<_FamilyProfilesSheet> {
             ),
           ),
         ),
+      ),
     );
   }
 }

@@ -582,22 +582,51 @@ class ProfileService {
     };
   }
 
+  static final Map<String, ({DateTime fetchedAt, Map<String, dynamic> data})>
+      _categoryCache = {};
+  static const Duration _categoryCacheTtl = Duration(minutes: 5);
+
+  static Map<String, dynamic>? peekCachedCategoryConcepts({
+    required String category,
+    List<String> allergens = const [],
+    int limit = 20,
+  }) {
+    final sortedAllergens = List<String>.from(allergens)..sort();
+    final cacheKey = '$category|${sortedAllergens.join(",")}|$limit';
+    final cached = _categoryCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.fetchedAt) < _categoryCacheTtl) {
+      return cached.data;
+    }
+    return null;
+  }
+
   static Future<Map<String, dynamic>> getCategoryConcepts({
     required String category,
     List<String> allergens = const [],
     String? lang,
     int limit = 20,
   }) async {
-    final alParam = Uri.encodeQueryComponent(allergens.join(','));
+    final sortedAllergens = List<String>.from(allergens)..sort();
+    final cacheKey = '$category|${sortedAllergens.join(",")}|$limit';
+    final cached = _categoryCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.fetchedAt) < _categoryCacheTtl) {
+      return cached.data;
+    }
+
+    final alParam = Uri.encodeQueryComponent(sortedAllergens.join(','));
     final res = await _getJson(
       '/foodon/category?category=$category&allergens=$alParam&lang=en&limit=$limit',
     );
     if (res['_ok'] == true) {
-      return {
+      final payload = <String, dynamic>{
         'success': true,
         'category': res['category'] ?? category,
         'items': res['items'] ?? [],
       };
+      _categoryCache[cacheKey] = (fetchedAt: DateTime.now(), data: payload);
+      return payload;
     }
     return {
       'success': false,

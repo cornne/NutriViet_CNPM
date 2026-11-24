@@ -4,6 +4,7 @@ import 'l10n/app_locale.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
+import 'theme/nutriviet_glass.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,8 +37,10 @@ class NutriVietApp extends StatelessWidget {
         return MaterialApp(
           title: 'NutriViet',
           debugShowCheckedModeBanner: false,
+          scrollBehavior: const NutriVietScrollBehavior(),
           theme: ThemeData(
             useMaterial3: true,
+            splashFactory: InkRipple.splashFactory,
             scaffoldBackgroundColor: const Color(0xFFF3F6F3),
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF14803C),

@@ -132,13 +132,6 @@ class NutriVietGlassIconTile extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.85),
           width: 1.15,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: tint.withValues(alpha: 0.12),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Center(
         child: PhosphorIcon(
@@ -236,8 +229,9 @@ class _NutriVietPulseHaloState extends State<NutriVietPulseHalo>
   }
 }
 
-/// Preserves scroll position and state across tabs like [IndexedStack] while
-/// delivering smooth directional fade + horizontal glide transitions at 120 Hz.
+/// Lazily mounts each tab on first visit, preserves scroll position and state
+/// across switches like [IndexedStack], and drives horizontal glide transitions
+/// directly on the GPU compositor via [SlideTransition] with zero Dart rebuilds.
 class NutriVietTabView extends StatefulWidget {
   final int index;
   final List<Widget> children;
@@ -255,29 +249,43 @@ class NutriVietTabView extends StatefulWidget {
 class _NutriVietTabViewState extends State<NutriVietTabView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  int _direction = 1;
+  late final CurvedAnimation _curved;
+  late Animation<Offset> _slideAnimation;
+  late final Set<int> _mountedTabs;
+
+  static const Animation<Offset> _zeroOffset =
+      AlwaysStoppedAnimation<Offset>(Offset.zero);
 
   @override
   void initState() {
     super.initState();
+    _mountedTabs = {widget.index};
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 160),
+      duration: const Duration(milliseconds: 150),
       value: 1.0,
     );
+    _curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    _slideAnimation = _zeroOffset;
   }
 
   @override
   void didUpdateWidget(covariant NutriVietTabView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _mountedTabs.add(widget.index);
     if (widget.index != oldWidget.index) {
-      _direction = widget.index > oldWidget.index ? 1 : -1;
+      final int dir = widget.index > oldWidget.index ? 1 : -1;
+      _slideAnimation = Tween<Offset>(
+        begin: Offset(0.032 * dir, 0.0),
+        end: Offset.zero,
+      ).animate(_curved);
       _ctrl.forward(from: 0.0);
     }
   }
 
   @override
   void dispose() {
+    _curved.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -287,24 +295,18 @@ class _NutriVietTabViewState extends State<NutriVietTabView>
     return Stack(
       fit: StackFit.expand,
       children: List<Widget>.generate(widget.children.length, (i) {
+        if (!_mountedTabs.contains(i)) {
+          return SizedBox.shrink(key: ValueKey(i));
+        }
         final isActive = i == widget.index;
         return Offstage(
           key: ValueKey(i),
           offstage: !isActive,
           child: TickerMode(
             enabled: isActive,
-            child: AnimatedBuilder(
-              animation: _ctrl,
+            child: SlideTransition(
+              position: isActive ? _slideAnimation : _zeroOffset,
               child: RepaintBoundary(child: widget.children[i]),
-              builder: (context, repaintedChild) {
-                if (!isActive || _ctrl.isCompleted) return repaintedChild!;
-                final t = Curves.easeOutCubic.transform(_ctrl.value);
-                final dx = (1.0 - t) * 14.0 * _direction;
-                return Transform.translate(
-                  offset: Offset(dx, 0),
-                  child: repaintedChild,
-                );
-              },
             ),
           ),
         );
@@ -456,13 +458,6 @@ class NutriVietRiskPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: bg.withValues(alpha: 0.24),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -996,15 +991,6 @@ class NutriVietGlassSwitch extends StatelessWidget {
                   : Colors.white.withValues(alpha: 0.65),
               width: 1.0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: value
-                    ? activeColor.withValues(alpha: 0.25)
-                    : const Color(0x140F172A),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 180),
@@ -1087,9 +1073,11 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            child: NutriVietScrollFadeOverlay.bottom(
-              height: bottomInset + 96,
-              color: const Color(0xECEAF3EE),
+            child: RepaintBoundary(
+              child: NutriVietScrollFadeOverlay.bottom(
+                height: bottomInset + 96,
+                color: const Color(0xECEAF3EE),
+              ),
             ),
           ),
           SafeArea(
@@ -1113,8 +1101,8 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  Color(0xF6FFFFFF),
-                                  Color(0xECF3F8F5),
+                                  Color(0xFFFCFEFD),
+                                  Color(0xFFF3F8F5),
                                 ],
                               ),
                               border: Border.all(
@@ -1123,109 +1111,117 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x160F172A),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
+                                  color: Color(0x140F172A),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
                                 ),
                               ],
                             ),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final int count = items.length;
-                                final double slotW =
-                                    count > 0 ? constraints.maxWidth / count : 0;
-                                return Stack(
-                                  children: [
-                                    // Smooth spring sliding active glass pill
-                                    AnimatedPositioned(
-                                      duration: const Duration(milliseconds: 220),
+                            child: Stack(
+                              children: [
+                                // GPU-friendly isolated sliding pill (avoids LayoutBuilder + Stack relayout)
+                                Positioned.fill(
+                                  child: RepaintBoundary(
+                                    child: AnimatedAlign(
+                                      duration: const Duration(milliseconds: 200),
                                       curve: Curves.easeOutCubic,
-                                      left: slotW * selectedIndex,
-                                      top: 0,
-                                      bottom: 0,
-                                      width: slotW,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            (barHeight - 8) / 2,
-                                          ),
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              selectedColor.withValues(alpha: 0.17),
-                                              selectedColor.withValues(alpha: 0.11),
-                                            ],
-                                          ),
-                                          border: Border.all(
-                                            color: selectedColor.withValues(
-                                              alpha: 0.22,
+                                      alignment: Alignment(
+                                        items.length > 1
+                                            ? -1.0 +
+                                                2.0 *
+                                                    selectedIndex /
+                                                    (items.length - 1)
+                                            : 0.0,
+                                        0.0,
+                                      ),
+                                      child: FractionallySizedBox(
+                                        widthFactor: items.isNotEmpty
+                                            ? 1.0 / items.length
+                                            : 1.0,
+                                        heightFactor: 1.0,
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              (barHeight - 8) / 2,
                                             ),
-                                            width: 1.0,
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                selectedColor.withValues(alpha: 0.17),
+                                                selectedColor.withValues(alpha: 0.11),
+                                              ],
+                                            ),
+                                            border: Border.all(
+                                              color: selectedColor.withValues(
+                                                alpha: 0.22,
+                                              ),
+                                              width: 1.0,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                    Row(
-                                      children: List<Widget>.generate(count, (i) {
-                                        final item = items[i];
-                                        final bool active = i == selectedIndex;
-                                        final Color fg =
-                                            active ? selectedColor : unselectedColor;
-                                        return Expanded(
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () {
-                                              if (selectedIndex != i) {
-                                                HapticFeedback.selectionClick();
-                                                onChanged(i);
-                                              }
-                                            },
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  PhosphorIcon(
-                                                    active
-                                                        ? item.selectedIcon
-                                                        : item.icon,
-                                                    color: fg,
-                                                    size: 21,
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                      horizontal: 2,
-                                                    ),
-                                                    child: Text(
-                                                      item.label,
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        color: fg,
-                                                        fontSize: 10.5,
-                                                        fontWeight: active
-                                                            ? FontWeight.w800
-                                                            : FontWeight.w600,
-                                                        letterSpacing: -0.1,
-                                                        height: 1.15,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
+                                  ),
+                                ),
+                                Row(
+                                  children: List<Widget>.generate(items.length, (i) {
+                                    final item = items[i];
+                                    final bool active = i == selectedIndex;
+                                    final Color fg =
+                                        active ? selectedColor : unselectedColor;
+                                    return Expanded(
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          if (selectedIndex != i) {
+                                            HapticFeedback.selectionClick();
+                                            onChanged(i);
+                                          }
+                                        },
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              PhosphorIcon(
+                                                active
+                                                    ? item.selectedIcon
+                                                    : item.icon,
+                                                color: fg,
+                                                size: 21,
                                               ),
-                                            ),
+                                              const SizedBox(height: 2),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 2,
+                                                ),
+                                                child: Text(
+                                                  item.label,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    color: fg,
+                                                    fontSize: 10.5,
+                                                    fontWeight: active
+                                                        ? FontWeight.w800
+                                                        : FontWeight.w600,
+                                                    letterSpacing: -0.1,
+                                                    height: 1.15,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        );
-                                      }),
-                                    ),
-                                  ],
-                                );
-                              },
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
                           ),
                         ),
