@@ -23,6 +23,9 @@ export default {
       databaseId: "357c1fdd-c26c-4771-a120-70e98bb24c74",
     },
   ],
+  ai: {
+    binding: "AI",
+  },
   vars: {
     PUBLIC_BASE_URL: "https://nutriviet.nutriviet-api.workers.dev",
     AUTO_VERIFY_EMAIL: "false",
