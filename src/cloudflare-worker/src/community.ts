@@ -47,14 +47,18 @@ function decodeBase64Bytes(b64: string): Uint8Array | null {
   }
 }
 
-async function authenticateViewer(
-  req: Request,
-  db: D1Database
-): Promise<{ viewer?: ViewerUser; errorStatus?: 401 | 403; errorBody?: Record<string, unknown> }> {
+export function extractBearerToken(req: Request): string {
   const auth = (req.headers.get("Authorization") || "").trim();
-  const token = auth.toLowerCase().startsWith("bearer ")
+  return auth.toLowerCase().startsWith("bearer ")
     ? auth.slice(7).trim()
     : (req.headers.get("X-Auth-Token") || "").trim();
+}
+
+export async function authenticateViewer(
+  req: Request,
+  db: D1Database
+): Promise<{ viewer?: ViewerUser; token?: string; errorStatus?: 401 | 403; errorBody?: Record<string, unknown> }> {
+  const token = extractBearerToken(req);
 
   if (!token) {
     return {
@@ -62,7 +66,7 @@ async function authenticateViewer(
       errorBody: {
         success: false,
         code: "AUTH_REQUIRED",
-        message: "Authentication is required to access Community features.",
+        message: "Authentication is required.",
       },
     };
   }
@@ -97,7 +101,26 @@ async function authenticateViewer(
       },
     };
   }
-  return { viewer: row };
+  return { viewer: row, token };
+}
+
+export async function requireAdmin(
+  req: Request,
+  db: D1Database
+): Promise<{ viewer?: ViewerUser; token?: string; errorStatus?: 401 | 403; errorBody?: Record<string, unknown> }> {
+  const auth = await authenticateViewer(req, db);
+  if (!auth.viewer) return auth;
+  if (auth.viewer.role !== "admin") {
+    return {
+      errorStatus: 403,
+      errorBody: {
+        success: false,
+        code: "ADMIN_REQUIRED",
+        message: "Administrator privileges required.",
+      },
+    };
+  }
+  return auth;
 }
 
 function serializePost(row: Record<string, unknown>, viewer: ViewerUser, likedIds: Set<number>) {
@@ -490,22 +513,6 @@ export function registerCommunityAndAdminRoutes(app: Hono<{ Bindings: Env }>) {
   // ===========================================================================
   // ADMIN ROUTES (Strictly server-side role === 'admin')
   // ===========================================================================
-  const requireAdmin = async (req: Request, db: D1Database) => {
-    const auth = await authenticateViewer(req, db);
-    if (!auth.viewer) return auth;
-    if (auth.viewer.role !== "admin") {
-      return {
-        errorStatus: 403 as const,
-        errorBody: {
-          success: false,
-          code: "ADMIN_REQUIRED",
-          message: "Administrator privileges required.",
-        },
-      };
-    }
-    return { viewer: auth.viewer };
-  };
-
   app.get("/api/v1/admin/overview", async (c) => {
     const auth = await requireAdmin(c.req.raw, c.env.APP_DB);
     if (!auth.viewer) return c.json(auth.errorBody!, auth.errorStatus!);
