@@ -59,15 +59,32 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loadingCategory = false;
 
   late final VoidCallback _localeListener;
+  Map<String, dynamic>? _cachedUserMap;
 
-  Map<String, dynamic> get _activeUserMap => {
-        'id': _userId,
-        'full_name': _userName,
-        'email': _userEmail,
-        'role': _isGuest ? 'guest' : _userRole,
-        'token': _isGuest ? '' : _authToken,
-        'is_guest': _isGuest,
-      };
+  Map<String, dynamic> get _activeUserMap {
+    final existing = _cachedUserMap;
+    final resolvedRole = _isGuest ? 'guest' : _userRole;
+    final resolvedToken = _isGuest ? '' : _authToken;
+    if (existing != null &&
+        existing['id'] == _userId &&
+        existing['full_name'] == _userName &&
+        existing['email'] == _userEmail &&
+        existing['role'] == resolvedRole &&
+        existing['token'] == resolvedToken &&
+        existing['is_guest'] == _isGuest) {
+      return existing;
+    }
+    final next = <String, dynamic>{
+      'id': _userId,
+      'full_name': _userName,
+      'email': _userEmail,
+      'role': resolvedRole,
+      'token': resolvedToken,
+      'is_guest': _isGuest,
+    };
+    _cachedUserMap = next;
+    return next;
+  }
 
   void _openLoginFromGuest() {
     Navigator.push(
@@ -257,15 +274,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadCategoryConcepts(String category) async {
     if (!mounted) return;
+    final alCodes = _allergens
+        .map((a) => (a['code'] ?? '').toString())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    final cached = ProfileService.peekCachedCategoryConcepts(
+      category: category,
+      allergens: alCodes,
+      limit: 12,
+    );
+    if (cached != null) {
+      setState(() {
+        _selectedCategory = category;
+        _loadingCategory = false;
+        _categoryItems = List<Map<String, dynamic>>.from(cached['items'] ?? []);
+      });
+      return;
+    }
+
     setState(() {
       _selectedCategory = category;
       _loadingCategory = true;
     });
 
-    final alCodes = _allergens
-        .map((a) => (a['code'] ?? '').toString())
-        .where((s) => s.isNotEmpty)
-        .toList();
     final res = await ProfileService.getCategoryConcepts(
       category: category,
       allergens: alCodes,
@@ -610,9 +642,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _refreshUserData,
         child: NutriVietGlassScrollArea(
           child: ListView(
-            scrollCacheExtent: const ScrollCacheExtent.pixels(500),
+            scrollCacheExtent: const ScrollCacheExtent.pixels(900),
             physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics()),
+            addRepaintBoundaries: false,
             padding: const EdgeInsets.fromLTRB(0, 18, 0, 120),
             children: [
             Padding(
@@ -652,15 +685,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x360E632E),
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
+                      color: Color(0x2E0E632E),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(25),
-                  child: Stack(
+                child: Stack(
                   children: [
                     const NutriVietHeroSheen(),
                     Padding(
@@ -875,18 +906,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     width:
                                                         isSelected ? 2.4 : 1.3,
                                                   ),
-                                                  boxShadow: isSelected
-                                                      ? [
-                                                          BoxShadow(
-                                                            color: Colors.white
-                                                                .withValues(
-                                                                    alpha:
-                                                                        0.26),
-                                                            blurRadius: 12,
-                                                            spreadRadius: 1,
-                                                          ),
-                                                        ]
-                                                      : null,
                                                 ),
                                                 child: Center(
                                                   child: PhosphorIcon(
@@ -931,20 +950,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                     onTap: _openAddFamilyMemberDialog,
                                     child: Column(
                                       children: [
-                                        RepaintBoundary(
-                                          child: CustomPaint(
-                                            painter: _DashedCirclePainter(
-                                                color: Colors.white
-                                                    .withValues(alpha: 0.85)),
-                                            child: const SizedBox(
-                                              width: 54,
-                                              height: 54,
-                                              child: Center(
-                                                child: PhosphorIcon(
-                                                  PhosphorIconsBold.plus,
-                                                  color: Colors.white,
-                                                  size: 24,
-                                                ),
+                                        CustomPaint(
+                                          painter: _DashedCirclePainter(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.85)),
+                                          child: const SizedBox(
+                                            width: 54,
+                                            height: 54,
+                                            child: Center(
+                                              child: PhosphorIcon(
+                                                PhosphorIconsBold.plus,
+                                                color: Colors.white,
+                                                size: 24,
                                               ),
                                             ),
                                           ),
@@ -990,14 +1007,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Colors.white,
                                     width: 1.2,
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF064E3B)
-                                          .withValues(alpha: 0.14),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1026,8 +1035,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
               ),
@@ -1226,16 +1234,9 @@ class _HomeScreenState extends State<HomeScreen> {
             border: Border.all(
               color: isSelected
                   ? _brandGreen.withValues(alpha: 0.48)
-                  : Colors.white.withValues(alpha: 0.92),
+                  : const Color(0xFFE2ECE6),
               width: 1.2,
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0B0F172A),
-                blurRadius: 6,
-                offset: Offset(0, 2),
-              ),
-            ],
           ),
           child: Center(
             child: FittedBox(
