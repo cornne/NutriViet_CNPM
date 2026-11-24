@@ -1,63 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FoodOn Ontology Graph Explorer — NutriViet</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='800' font-size='14'%3EFO%3C/text%3E%3C/svg%3E" />
+  <title>NutriViet — FoodOn Ontology Graph Explorer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M9 22V10h5.5c2.8 0 4.5 1.5 4.5 3.9 0 2.4-1.7 4-4.5 4H12v4.1H9zm3-6.6h2.3c1.1 0 1.8-.5 1.8-1.5s-.7-1.4-1.8-1.4H12v2.9zM20 22l3.4-12h2.7L22.7 22H20z' fill='%23fff'/%3E%3C/svg%3E" />
   <style>
     :root {
-      --bg: #f8fafc;
-      --dot: #cbd5e1;
-      --surface: rgba(255, 255, 255, 0.92);
-      --surface-solid: #ffffff;
-      --surface-subtle: #f1f5f9;
-      --border: #e2e8f0;
-      --border-strong: #cbd5e1;
+      --bg: #f6f8f7;
+      --dot: #d7e1dc;
+      --surface: #ffffff;
+      --surface-translucent: rgba(255, 255, 255, 0.94);
+      --surface-subtle: #f0f4f2;
+      --surface-hover: #e5eeea;
+      --border: #d9e3de;
+      --border-strong: #b8c8c0;
       --text: #0f172a;
+      --text-secondary: #334155;
       --text-muted: #475569;
-      --text-faint: #64748b;
       --accent: #0f766e;
-      --accent-soft: #ccfbf1;
-      --edge: rgba(100, 116, 139, 0.34);
-      --edge-hi: #0f766e;
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+      --accent-hover: #115e59;
+      --accent-soft: #e6f5f2;
+      --accent-border: #99d6cb;
       --focus: #0f766e;
       --ancestor: #0284c7;
+      --ancestor-soft: #e0f2fe;
       --allergen: #dc2626;
-      --chronic: #d97706;
-      --ecode: #4f46e5;
+      --allergen-soft: #fef2f2;
+      --allergen-border: #fecaca;
+      --chronic: #b45309;
+      --chronic-soft: #fffbeb;
+      --chronic-border: #fde68a;
+      --ecode: #1d4ed8;
+      --ecode-soft: #eff6ff;
+      --ecode-border: #bfdbfe;
+      --path: #15803d;
+      --path-soft: #f0fdf4;
+      --path-border: #bbf7d0;
       --standard: #475569;
       --sibling: #64748b;
-      --path: #059669;
-      --label-bg: rgba(255, 255, 255, 0.88);
+      --edge: rgba(71, 85, 105, 0.30);
+      --edge-hi: #0f766e;
+      --label-bg: rgba(255, 255, 255, 0.94);
+      --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.05);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
     }
 
     body.dark {
-      --bg: #0b1120;
-      --dot: #1e293b;
-      --surface: rgba(15, 23, 42, 0.90);
-      --surface-solid: #0f172a;
-      --surface-subtle: #1e293b;
-      --border: #1e293b;
-      --border-strong: #334155;
-      --text: #f1f5f9;
+      --bg: #0b1215;
+      --dot: #1a2a30;
+      --surface: #111c21;
+      --surface-translucent: rgba(17, 28, 33, 0.94);
+      --surface-subtle: #18272e;
+      --surface-hover: #21343d;
+      --border: #22353e;
+      --border-strong: #324c58;
+      --text: #eef5f2;
+      --text-secondary: #cbd5e1;
       --text-muted: #94a3b8;
-      --text-faint: #64748b;
-      --accent: #14b8a6;
-      --accent-soft: rgba(20, 184, 166, 0.16);
-      --edge: rgba(148, 163, 184, 0.25);
-      --edge-hi: #2dd4bf;
-      --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
-      --focus: #14b8a6;
+      --accent: #2dd4bf;
+      --accent-hover: #5eead4;
+      --accent-soft: rgba(45, 212, 191, 0.14);
+      --accent-border: rgba(45, 212, 191, 0.38);
+      --focus: #2dd4bf;
       --ancestor: #38bdf8;
+      --ancestor-soft: rgba(56, 189, 248, 0.14);
       --allergen: #f87171;
+      --allergen-soft: rgba(248, 113, 113, 0.14);
+      --allergen-border: rgba(248, 113, 113, 0.35);
       --chronic: #fbbf24;
-      --ecode: #818cf8;
+      --chronic-soft: rgba(251, 191, 36, 0.14);
+      --chronic-border: rgba(251, 191, 36, 0.35);
+      --ecode: #60a5fa;
+      --ecode-soft: rgba(96, 165, 250, 0.14);
+      --ecode-border: rgba(96, 165, 250, 0.35);
+      --path: #4ade80;
+      --path-soft: rgba(74, 222, 128, 0.14);
+      --path-border: rgba(74, 222, 128, 0.35);
       --standard: #94a3b8;
       --sibling: #64748b;
-      --path: #34d399;
-      --label-bg: rgba(15, 23, 42, 0.86);
+      --edge: rgba(148, 163, 184, 0.28);
+      --edge-hi: #2dd4bf;
+      --label-bg: rgba(17, 28, 33, 0.92);
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.50);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -67,9 +96,23 @@
       width: 100%;
       overflow: hidden;
       font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
       background: var(--bg);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    button { cursor: pointer; }
+
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .app {
@@ -77,160 +120,189 @@
       grid-template-rows: auto 1fr;
       height: 100vh;
       width: 100vw;
+      overflow: hidden;
     }
 
-    /* Header */
+    /* Topbar */
     .topbar {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 10px 16px;
       background: var(--surface);
-      backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
-      z-index: 30;
-      flex-wrap: wrap;
+      z-index: 40;
+      min-height: 60px;
     }
 
     .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      min-width: 0;
+      flex-shrink: 0;
     }
 
     .brand-mark {
-      width: 34px;
-      height: 34px;
+      width: 36px;
+      height: 36px;
       border-radius: 10px;
-      background: linear-gradient(135deg, #0f766e, #15803d);
-      color: #fff;
+      background: var(--accent);
+      color: #ffffff;
       display: grid;
       place-items: center;
       font-weight: 800;
-      font-size: 15px;
+      font-size: 14px;
+      letter-spacing: -0.02em;
       flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
     }
+
+    body.dark .brand-mark { color: #052e2b; }
+
+    .brand-text { display: flex; flex-direction: column; min-width: 0; }
 
     .brand-title {
       font-size: 15px;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: -0.02em;
-      line-height: 1.15;
+      line-height: 1.2;
+      white-space: nowrap;
     }
 
     .brand-sub {
-      font-size: 11.5px;
+      font-size: 12px;
       color: var(--text-muted);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     /* Search */
     .search-wrap {
       position: relative;
-      flex: 1 1 320px;
+      flex: 1;
       max-width: 520px;
+      min-width: 180px;
     }
 
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 40px;
+      padding: 0 38px 0 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border-strong);
       background: var(--surface-subtle);
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      padding: 0 12px;
-      height: 38px;
-      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      font-size: 13.5px;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
     }
 
-    .search-box:focus-within {
-      background: var(--surface-solid);
+    .search-input:focus {
+      background: var(--surface);
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-soft);
-    }
-
-    .search-box input {
-      flex: 1;
-      border: none;
       outline: none;
-      background: transparent;
-      color: var(--text);
-      font-size: 13.5px;
-      min-width: 0;
     }
 
-    .search-box input::placeholder { color: var(--text-faint); }
-
-    .kbd {
+    .search-kbd {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 2px 7px;
+      border-radius: 6px;
       font-size: 11px;
-      font-family: ui-monospace, monospace;
-      color: var(--text-faint);
+      font-weight: 600;
+      color: var(--text-muted);
       border: 1px solid var(--border-strong);
-      border-radius: 5px;
-      padding: 1px 5px;
+      background: var(--surface);
+      pointer-events: none;
     }
 
     .search-results {
+      display: none;
       position: absolute;
       top: calc(100% + 6px);
       left: 0;
       right: 0;
-      background: var(--surface-solid);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-      max-height: 410px;
+      max-height: 420px;
       overflow-y: auto;
-      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
       z-index: 60;
+      padding: 6px;
     }
 
     .search-results.open { display: block; }
 
     .sr-item {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-      transition: background 0.1s;
+      flex-direction: column;
+      gap: 4px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 1px solid transparent;
     }
 
-    .sr-item:last-child { border-bottom: none; }
-    .sr-item:hover, .sr-item.active { background: var(--surface-subtle); }
+    .sr-item:hover, .sr-item.active {
+      background: var(--surface-subtle);
+      border-color: var(--border);
+    }
 
-    .sr-title {
+    .sr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .sr-label {
       font-size: 13.5px;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text);
     }
 
-    .sr-meta {
-      font-size: 11.5px;
+    .sr-curie {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
       color: var(--text-muted);
-      margin-top: 2px;
-      font-family: ui-monospace, monospace;
-    }
-
-    .sr-badges {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
       flex-shrink: 0;
     }
 
-    /* Controls */
-    .controls {
+    .sr-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .sr-empty {
+      padding: 16px 12px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Topbar Right Actions */
+    .top-actions {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-left: auto;
-      flex-wrap: wrap;
+      flex-shrink: 0;
     }
 
     .seg {
@@ -244,212 +316,812 @@
     .seg button {
       border: none;
       background: transparent;
-      color: var(--text-muted);
+      padding: 6px 10px;
+      border-radius: 7px;
       font-size: 12.5px;
       font-weight: 600;
-      padding: 6px 11px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.15s;
+      color: var(--text-muted);
+      min-height: 32px;
+      transition: background 0.15s, color 0.15s;
     }
 
     .seg button.active {
-      background: var(--surface-solid);
-      color: var(--accent);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      height: 34px;
-      padding: 0 11px;
-      border-radius: 9px;
-      border: 1px solid var(--border);
-      background: var(--surface-solid);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
       color: var(--text);
+      padding: 7px 12px;
+      min-height: 36px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: var(--surface-subtle); }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    body.dark .btn-primary { color: #052e2b; }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-soft {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+    }
+
+    .mobile-only { display: none; }
+
+    /* Workspace Layout */
+    .workspace {
+      display: grid;
+      grid-template-columns: 332px 1fr 340px;
+      min-height: 0;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .workspace.left-collapsed {
+      grid-template-columns: 0 1fr 340px;
+    }
+
+    .workspace.right-collapsed {
+      grid-template-columns: 332px 1fr 0;
+    }
+
+    .workspace.left-collapsed.right-collapsed {
+      grid-template-columns: 0 1fr 0;
+    }
+
+    /* Side Panels */
+    .rail, .inspector {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      z-index: 25;
+    }
+
+    .rail { border-right: 1px solid var(--border); }
+    .inspector { border-left: 1px solid var(--border); }
+
+    .workspace.left-collapsed .rail,
+    .workspace.right-collapsed .inspector {
+      border: none;
+      pointer-events: none;
+    }
+
+    .rail-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .rail-tab {
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 8px 6px;
+      border-radius: 9px;
       font-size: 12.5px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-height: 38px;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
 
-    .btn:hover { border-color: var(--border-strong); background: var(--surface-subtle); }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .btn.primary:hover { filter: brightness(1.06); }
-    .btn.active-toggle { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .rail-tab:hover { background: var(--surface-subtle); color: var(--text); }
 
-    select.ctrl-select {
-      height: 34px;
-      border-radius: 9px;
+    .rail-tab.active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    .rail-body, .insp-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .tab-pane { display: none; flex-direction: column; gap: 14px; }
+    .tab-pane.active { display: flex; }
+
+    /* Cards & Sections inside panels */
+    .intro-card {
+      background: var(--surface-subtle);
       border: 1px solid var(--border);
-      background: var(--surface-solid);
+      border-radius: var(--radius-md);
+      padding: 12px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .intro-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .intro-title {
+      font-size: 13.5px;
+      font-weight: 700;
       color: var(--text);
+    }
+
+    .intro-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .micro-flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      background: var(--surface);
+      border: 1px solid var(--border);
       font-size: 12px;
       font-weight: 600;
-      padding: 0 8px;
-      cursor: pointer;
     }
 
-    /* Main Stage */
+    .mf-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+    }
+
+    .mf-pill.focus { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
+    .mf-pill.danger { background: var(--allergen-soft); border-color: var(--allergen-border); color: var(--allergen); }
+    .mf-arrow { color: var(--text-muted); font-size: 11.5px; }
+
+    .section-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .story-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .story-card {
+      text-align: left;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+
+    .story-card:hover {
+      border-color: var(--accent);
+      background: var(--surface-subtle);
+    }
+
+    .story-card.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .story-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .story-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .story-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Pills & Chips */
+    .chip-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      min-height: 34px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .chip:hover {
+      background: var(--surface-subtle);
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+
+    .chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    body.dark .chip.active { color: #052e2b; }
+
+    .chip.allergen.active {
+      background: var(--allergen);
+      border-color: var(--allergen);
+      color: #ffffff;
+    }
+
+    .chip.chronic.active {
+      background: var(--chronic);
+      border-color: var(--chronic);
+      color: #ffffff;
+    }
+
+    body.dark .chip.allergen.active,
+    body.dark .chip.chronic.active {
+      color: #0b1215;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+      color: var(--text-secondary);
+    }
+
+    .tag.allergen { background: var(--allergen-soft); border-color: var(--allergen-border); color: var(--allergen); }
+    .tag.chronic { background: var(--chronic-soft); border-color: var(--chronic-border); color: var(--chronic); }
+    .tag.ecode { background: var(--ecode-soft); border-color: var(--ecode-border); color: var(--ecode); }
+    .tag.path { background: var(--path-soft); border-color: var(--path-border); color: var(--path); }
+    .tag.ancestor { background: var(--ancestor-soft); border-color: transparent; color: var(--ancestor); }
+    .tag.focus { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
+
+    /* Form Controls in Lab & Path */
+    .field-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .text-input, .text-area {
+      width: 100%;
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      background: var(--surface-subtle);
+      padding: 9px 11px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .text-area {
+      min-height: 86px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .text-input:focus, .text-area:focus {
+      background: var(--surface);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+      outline: none;
+    }
+
+    /* Lab Result */
+    .verdict-box {
+      border-radius: var(--radius-md);
+      padding: 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .verdict-box.red { background: var(--allergen-soft); border-color: var(--allergen-border); }
+    .verdict-box.yellow { background: var(--chronic-soft); border-color: var(--chronic-border); }
+    .verdict-box.green { background: var(--path-soft); border-color: var(--path-border); }
+
+    .verdict-title {
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .verdict-box.red .verdict-title { color: var(--allergen); }
+    .verdict-box.yellow .verdict-title { color: var(--chronic); }
+    .verdict-box.green .verdict-title { color: var(--path); }
+
+    .verdict-stats {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trigger-item {
+      width: 100%;
+      text-align: left;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .trigger-item:hover {
+      border-color: var(--accent);
+      background: var(--surface-subtle);
+    }
+
+    .trigger-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .trigger-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .trigger-cta {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    /* Path Result Steps */
+    .path-summary {
+      padding: 11px 12px;
+      border-radius: var(--radius-md);
+      background: var(--path-soft);
+      border: 1px solid var(--path-border);
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .path-summary.err {
+      background: var(--allergen-soft);
+      border-color: var(--allergen-border);
+    }
+
+    .path-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .path-step {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 13px;
+    }
+
+    .path-step:hover { background: var(--surface-subtle); border-color: var(--accent); }
+    .path-step.lca { background: var(--path-soft); border-color: var(--path-border); }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--surface-subtle);
+      color: var(--text-secondary);
+      display: grid;
+      place-items: center;
+      font-size: 11.5px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .path-step.lca .step-num {
+      background: var(--path);
+      color: #ffffff;
+    }
+
+    /* Center Stage */
     .stage {
       position: relative;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
+      min-width: 0;
+      min-height: 0;
       background-color: var(--bg);
-      background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+      background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
       background-size: 22px 22px;
+      overflow: hidden;
     }
 
-    canvas#graphCanvas {
+    #graphCanvas {
       display: block;
       width: 100%;
       height: 100%;
       cursor: grab;
+      touch-action: none;
     }
 
-    canvas#graphCanvas.dragging { cursor: grabbing; }
-    canvas#graphCanvas.pointer { cursor: pointer; }
+    #graphCanvas.dragging { cursor: grabbing; }
+    #graphCanvas.pointer { cursor: pointer; }
 
-    /* Quick Domain Bar */
-    .quick-bar {
+    /* Floating Stage Overlays */
+    .stage-top {
       position: absolute;
       top: 12px;
-      left: 14px;
-      right: 370px;
+      left: 12px;
+      right: 12px;
       display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
       pointer-events: none;
       z-index: 15;
     }
 
-    .chip {
+    .stage-left-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: min(640px, calc(100% - 260px));
+      pointer-events: none;
+    }
+
+    .crumb-bar {
       pointer-events: auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: var(--surface-translucent);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      font-size: 12.5px;
+    }
+
+    .crumb-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 500;
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .crumb-btn:hover { background: var(--surface-subtle); color: var(--text); }
+
+    .crumb-btn.current {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .crumb-sep { color: var(--text-muted); font-size: 12px; }
+
+    .insight-banner {
+      pointer-events: auto;
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background: var(--surface-translucent);
+      border: 1px solid var(--accent-border);
+      box-shadow: var(--shadow-md);
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .insight-banner.visible { display: flex; }
+
+    .insight-body { flex: 1; min-width: 0; }
+    .insight-title { font-weight: 700; margin-bottom: 2px; color: var(--accent); }
+
+    .stage-controls {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .ctrl-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-translucent);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px 8px;
+      box-shadow: var(--shadow-sm);
+      font-size: 12.5px;
+    }
+
+    .ctrl-pill select {
+      border: none;
+      background: transparent;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .zoom-group {
+      pointer-events: auto;
+      position: absolute;
+      right: 12px;
+      bottom: 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--surface-translucent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      box-shadow: var(--shadow-sm);
+      z-index: 15;
+    }
+
+    .zoom-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: grid;
+      place-items: center;
+    }
+
+    .zoom-btn:hover { background: var(--surface-subtle); }
+
+    /* Bottom Legend & Hint */
+    .stage-bottom {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      z-index: 14;
+    }
+
+    .legend-bar {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: var(--surface-translucent);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .leg-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 500;
+    }
+
+    .leg-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .stage-hint {
+      pointer-events: auto;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: var(--surface-translucent);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Collapse toggles docked to stage edges */
+    .edge-toggle {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 18;
+      width: 24px;
+      height: 48px;
       border: 1px solid var(--border);
       background: var(--surface);
-      backdrop-filter: blur(10px);
       color: var(--text-muted);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .edge-toggle:hover { color: var(--text); background: var(--surface-subtle); }
+    .edge-toggle.left { left: 0; border-left: none; border-radius: 0 8px 8px 0; }
+    .edge-toggle.right { right: 0; border-right: none; border-radius: 8px 0 0 8px; }
+
+    /* Hover Tooltip */
+    .tooltip {
+      display: none;
+      position: absolute;
+      z-index: 35;
+      max-width: 290px;
+      padding: 10px 12px;
+      border-radius: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-md);
+      pointer-events: none;
+    }
+
+    .tt-title { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .tt-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+    .tt-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+
+    /* Inspector */
+    .insp-head {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .insp-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .curie-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px;
       font-weight: 600;
-      padding: 5px 10px;
-      border-radius: 999px;
-      cursor: pointer;
-      transition: all 0.14s;
+      padding: 4px 8px;
+      border-radius: 7px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-subtle);
+      color: var(--text-secondary);
       display: inline-flex;
       align-items: center;
       gap: 5px;
     }
 
-    .chip:hover { border-color: var(--accent); color: var(--accent); }
-    .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .chip .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .curie-pill:hover { border-color: var(--accent); color: var(--accent); }
 
-    /* Path Finder Panel */
-    .path-panel {
-      position: absolute;
-      top: 56px;
-      left: 14px;
-      width: 370px;
-      max-width: calc(100vw - 28px);
-      background: var(--surface);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      padding: 14px;
-      z-index: 25;
-      display: none;
-    }
-
-    .path-panel.open { display: block; }
-    .path-panel h3 { font-size: 13.5px; font-weight: 800; margin-bottom: 4px; }
-    .path-panel p { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
-
-    .path-inputs { display: grid; gap: 8px; margin-bottom: 10px; }
-    .path-inputs input {
-      width: 100%;
-      height: 36px;
-      padding: 0 10px;
-      border-radius: 9px;
-      border: 1px solid var(--border);
-      background: var(--surface-solid);
-      color: var(--text);
-      font-size: 13px;
-    }
-
-    .path-result {
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    /* Right Inspector Drawer */
-    .inspector {
-      position: absolute;
-      top: 12px;
-      right: 14px;
-      bottom: 14px;
-      width: 344px;
-      max-width: calc(100vw - 28px);
-      background: var(--surface);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      z-index: 20;
-      transition: transform 0.2s ease;
-    }
-
-    .inspector.collapsed { transform: translateX(calc(100% + 20px)); }
-
-    .insp-head {
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .curie-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: ui-monospace, monospace;
-      font-size: 11.5px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 7px;
-      background: var(--surface-subtle);
-      color: var(--accent);
-      border: 1px solid var(--border);
-      cursor: pointer;
-    }
-
-    .insp-title {
-      font-size: 17px;
+    .insp-name {
+      font-size: 18px;
       font-weight: 800;
-      margin-top: 7px;
-      line-height: 1.28;
-      word-break: break-word;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      color: var(--text);
     }
 
-    .insp-body {
-      padding: 14px 16px;
-      overflow-y: auto;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+    .plain-summary {
+      padding: 11px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
     }
+
+    .plain-summary.allergen { background: var(--allergen-soft); border-color: var(--allergen-border); }
+    .plain-summary.chronic { background: var(--chronic-soft); border-color: var(--chronic-border); }
+    .plain-summary.ecode { background: var(--ecode-soft); border-color: var(--ecode-border); }
 
     .insp-actions {
       display: grid;
@@ -457,215 +1129,245 @@
       gap: 8px;
     }
 
-    .sec-label {
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-faint);
-      margin-bottom: 6px;
-    }
-
-    .def-box {
+    .insp-def {
       font-size: 13px;
-      line-height: 1.5;
-      color: var(--text-muted);
+      color: var(--text-secondary);
+      line-height: 1.55;
       background: var(--surface-subtle);
-      padding: 10px 12px;
       border-radius: 10px;
+      padding: 10px 12px;
       border: 1px solid var(--border);
     }
 
-    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
-
-    .tag {
-      font-size: 11.5px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid transparent;
-    }
-
-    .tag.allergen { background: rgba(220, 38, 38, 0.12); color: var(--allergen); border-color: rgba(220, 38, 38, 0.25); }
-    .tag.chronic { background: rgba(217, 119, 6, 0.12); color: var(--chronic); border-color: rgba(217, 119, 6, 0.25); }
-    .tag.ecode { background: rgba(79, 70, 229, 0.12); color: var(--ecode); border-color: rgba(79, 70, 229, 0.25); font-family: ui-monospace, monospace; }
-    .tag.syn { background: var(--surface-subtle); color: var(--text-muted); border-color: var(--border); font-weight: 500; }
-
-    .lineage-list {
+    .lineage-list, .sub-list {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 5px;
     }
 
-    .lineage-step {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 9px;
-      border-radius: 8px;
-      font-size: 12.5px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: background 0.12s;
-    }
-
-    .lineage-step:hover { background: var(--surface-subtle); border-color: var(--border); }
-    .lineage-step.current { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
-    .lineage-step code { font-size: 10.5px; color: var(--text-faint); margin-left: auto; }
-
-    .child-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-height: 220px;
-      overflow-y: auto;
-    }
-
-    .child-row {
+    .node-row {
+      width: 100%;
+      text-align: left;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 6px 9px;
-      border-radius: 8px;
+      padding: 8px 10px;
+      border-radius: 9px;
       border: 1px solid var(--border);
-      background: var(--surface-solid);
-      font-size: 12.5px;
-      cursor: pointer;
-      transition: border-color 0.12s;
+      background: var(--surface);
+      font-size: 13px;
+      color: var(--text);
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .child-row:hover { border-color: var(--accent); }
-    .child-cnt {
-      font-size: 11px;
-      font-family: ui-monospace, monospace;
-      color: var(--text-faint);
-      background: var(--surface-subtle);
-      padding: 1px 6px;
-      border-radius: 999px;
+    .node-row:hover { background: var(--surface-subtle); border-color: var(--accent); }
+    .node-row.active { background: var(--accent-soft); border-color: var(--accent-border); font-weight: 700; }
+
+    .node-row-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
       flex-shrink: 0;
     }
 
-    /* Bottom-left Legend & Zoom HUD */
-    .hud-bottom {
-      position: absolute;
-      left: 14px;
-      bottom: 14px;
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      z-index: 15;
-      pointer-events: none;
-    }
-
-    .legend {
-      pointer-events: auto;
-      background: var(--surface);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px 12px;
-      box-shadow: var(--shadow);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      font-size: 11.5px;
-      color: var(--text-muted);
-    }
-
-    .leg-item { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
-    .leg-dot { width: 9px; height: 9px; border-radius: 50%; }
-
-    .zoom-controls {
-      pointer-events: auto;
-      display: flex;
-      flex-direction: column;
-      background: var(--surface);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-    }
-
-    .zoom-controls button {
-      width: 34px;
-      height: 32px;
-      border: none;
-      border-bottom: 1px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .zoom-controls button:last-child { border-bottom: none; font-size: 11px; }
-    .zoom-controls button:hover { background: var(--surface-subtle); color: var(--accent); }
-
-    /* Hover Tooltip */
-    .tooltip {
-      position: absolute;
-      pointer-events: none;
-      background: var(--surface-solid);
-      border: 1px solid var(--border-strong);
-      border-radius: 10px;
-      padding: 8px 10px;
-      box-shadow: var(--shadow);
-      font-size: 12px;
-      max-width: 280px;
-      z-index: 40;
+    /* Loading & Toast */
+    .stage-loader {
       display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-md);
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 30;
     }
 
-    .tooltip .tt-label { font-weight: 800; color: var(--text); margin-bottom: 2px; }
-    .tooltip .tt-curie { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent); }
-    .tooltip .tt-hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+    .stage-loader.visible { display: flex; align-items: center; gap: 8px; }
 
-    /* Toast */
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid var(--border-strong);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .toast {
-      position: absolute;
-      bottom: 64px;
+      position: fixed;
       left: 50%;
-      transform: translateX(-50%);
-      background: #0f172a;
-      color: #f8fafc;
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 12.5px;
-      font-weight: 600;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+      bottom: 24px;
+      transform: translate(-50%, 16px);
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s;
-      z-index: 50;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 9px 15px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 100;
     }
 
-    .toast.show { opacity: 1; }
+    body.dark .toast { background: #eef5f2; color: #0b1215; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-    .reopen-insp {
-      position: absolute;
-      top: 12px;
-      right: 14px;
-      z-index: 18;
+    /* Beginner Guide Modal */
+    .modal-backdrop {
       display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.50);
+      z-index: 80;
+      place-items: center;
+      padding: 16px;
     }
 
-    .reopen-insp.visible { display: inline-flex; }
+    .modal-backdrop.open { display: grid; }
 
-    @media (max-width: 900px) {
-      .quick-bar { right: 14px; }
-      .inspector {
-        top: auto;
-        left: 10px;
-        right: 10px;
-        bottom: 10px;
-        width: auto;
-        height: 44vh;
+    .modal-card {
+      width: 100%;
+      max-width: 680px;
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .guide-step {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .guide-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+    }
+
+    body.dark .guide-num { color: #052e2b; }
+
+    .guide-step h3 { font-size: 14px; font-weight: 700; }
+    .guide-step p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+    .modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Mobile & Tablet Responsive */
+    @media (max-width: 1120px) {
+      .workspace {
+        grid-template-columns: 1fr;
       }
-      .inspector.collapsed { transform: translateY(calc(100% + 20px)); }
-      .hud-bottom { bottom: auto; top: 56px; }
+
+      .workspace.left-collapsed,
+      .workspace.right-collapsed,
+      .workspace.left-collapsed.right-collapsed {
+        grid-template-columns: 1fr;
+      }
+
+      .rail, .inspector {
+        position: fixed;
+        top: 60px;
+        bottom: 0;
+        width: min(360px, 92vw);
+        max-width: 92vw;
+        box-shadow: var(--shadow-md);
+        transition: transform 0.2s ease;
+        pointer-events: auto;
+      }
+
+      .rail {
+        left: 0;
+        transform: translateX(-104%);
+        border-right: 1px solid var(--border);
+      }
+
+      .rail.mobile-open { transform: translateX(0); }
+
+      .inspector {
+        right: 0;
+        transform: translateX(104%);
+        border-left: 1px solid var(--border);
+      }
+
+      .inspector.mobile-open { transform: translateX(0); }
+
+      .edge-toggle { display: none; }
+      .mobile-only { display: inline-flex; }
+      .stage-left-stack { max-width: calc(100% - 12px); }
+      .stage-hint { display: none; }
+    }
+
+    @media (max-width: 700px) {
+      .topbar {
+        flex-wrap: wrap;
+        padding: 8px 10px;
+        gap: 8px;
+      }
+
+      .brand-sub { display: none; }
+      .search-wrap { order: 3; flex: 1 1 100%; max-width: none; }
+      .top-actions { gap: 6px; }
+      .btn { min-height: 40px; padding: 6px 10px; font-size: 12.5px; }
+      .guide-grid { grid-template-columns: 1fr; }
+      .stage-top { flex-direction: column; align-items: stretch; gap: 6px; top: 8px; left: 8px; right: 8px; }
+      .crumb-bar { flex-wrap: nowrap; overflow-x: auto; padding: 5px 8px; }
+      .insight-banner { padding: 7px 10px; font-size: 12px; }
+      .stage-controls { justify-content: flex-start; }
+      .legend-bar { max-width: calc(100vw - 68px); font-size: 11.5px; gap: 7px; }
+      .rail, .inspector { top: 108px; }
     }
   </style>
 </head>
@@ -674,644 +1376,1141 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">FO</div>
-        <div>
-          <div class="brand-title">FoodOn Ontology Graph</div>
-          <div class="brand-sub" id="dbStatsLabel">Loading FoodOn graph...</div>
+        <div class="brand-text">
+          <div class="brand-title" data-i18n="brandTitle">NutriViet FoodOn Explorer</div>
+          <div class="brand-sub" id="dbStats">33,688 khái niệm · 742 mã E-code</div>
         </div>
       </div>
 
       <div class="search-wrap">
-        <div class="search-box">
-          <span aria-hidden="true" style="color:var(--text-faint);font-size:14px;">&#128269;</span>
-          <input
-            id="searchInput"
-            type="text"
-            autocomplete="off"
-            placeholder="Search FoodOn node, synonym, CURIE (FOODON:00001256), or E-code (E621)..."
-            aria-label="Search FoodOn ontology nodes"
-          />
-          <span class="kbd">/</span>
-        </div>
-        <div class="search-results" id="searchResults" role="listbox"></div>
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input
+          id="searchInput"
+          class="search-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Tìm món ăn, nguyên liệu hoặc mã E-code (VD: butter, whey, E621, peanut)..."
+          aria-label="Tìm kiếm nguyên liệu FoodOn"
+        />
+        <span class="search-kbd">/</span>
+        <div id="searchResults" class="search-results" role="listbox"></div>
       </div>
 
-      <div class="controls">
-        <div class="seg" role="group" aria-label="Graph layout">
-          <button id="btnLayoutForce" class="active" type="button">Force Graph</button>
-          <button id="btnLayoutTree" type="button">Hierarchy Tree</button>
+      <div class="top-actions">
+        <button id="btnMobileLeft" class="btn mobile-only" type="button" data-i18n="btnMenu">Khám phá</button>
+        <button id="btnMobileRight" class="btn mobile-only" type="button" data-i18n="btnDetails">Chi tiết</button>
+        <div class="seg" role="group" aria-label="Language">
+          <button id="btnLangVi" class="active" type="button">VI</button>
+          <button id="btnLangEn" type="button">EN</button>
         </div>
-
-        <select id="depthSelect" class="ctrl-select" title="Descendant depth">
-          <option value="1">Depth: 1 hop</option>
-          <option value="2" selected>Depth: 2 hops</option>
-        </select>
-
-        <select id="limitSelect" class="ctrl-select" title="Max direct children">
-          <option value="14">Children: 14</option>
-          <option value="24" selected>Children: 24</option>
-          <option value="45">Children: 45</option>
-        </select>
-
-        <button id="btnPathToggle" class="btn" type="button">Find Path</button>
-        <button id="btnTheme" class="btn" type="button" title="Toggle light/dark canvas">Dark</button>
+        <button id="btnGuide" class="btn btn-soft" type="button" data-i18n="btnGuide">Hướng dẫn</button>
+        <button id="btnTheme" class="btn" type="button" data-i18n="btnThemeDark">Tối</button>
       </div>
     </header>
 
-    <main class="stage" id="stage">
-      <canvas id="graphCanvas"></canvas>
-
-      <div class="quick-bar" id="quickBar">
-        <button class="chip active" data-curie="FOODON:00001002">food product</button>
-        <button class="chip" data-curie="FOODON:03412972"><span class="dot" style="background:var(--ecode)"></span>food additive</button>
-        <button class="chip" data-allergen="milk"><span class="dot" style="background:var(--allergen)"></span>milk</button>
-        <button class="chip" data-allergen="peanuts"><span class="dot" style="background:var(--allergen)"></span>peanuts</button>
-        <button class="chip" data-allergen="seafood"><span class="dot" style="background:var(--allergen)"></span>seafood</button>
-        <button class="chip" data-allergen="gluten"><span class="dot" style="background:var(--allergen)"></span>gluten</button>
-        <button class="chip" data-allergen="soy"><span class="dot" style="background:var(--allergen)"></span>soy</button>
-        <button class="chip" data-allergen="tree_nuts"><span class="dot" style="background:var(--allergen)"></span>tree nuts</button>
-        <button class="chip" data-allergen="diabetes"><span class="dot" style="background:var(--chronic)"></span>sugar / diabetes</button>
-        <button class="chip" data-allergen="hypertension"><span class="dot" style="background:var(--chronic)"></span>sodium / salt</button>
-      </div>
-
-      <section class="path-panel" id="pathPanel" aria-label="Ontology Path Finder">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <h3>Find Connection Between 2 Nodes</h3>
-          <button id="btnClosePath" class="btn" style="height:26px;padding:0 8px;font-size:11px;" type="button">Close</button>
+    <div id="workspace" class="workspace">
+      <!-- Left Exploration Rail -->
+      <aside id="leftRail" class="rail" aria-label="Bảng khám phá FoodOn">
+        <div class="rail-tabs" role="tablist">
+          <button class="rail-tab active" data-tab="explore" role="tab" aria-selected="true" data-i18n="tabExplore">Khám phá</button>
+          <button class="rail-tab" data-tab="lab" role="tab" aria-selected="false" data-i18n="tabLab">Quét nhãn</button>
+          <button class="rail-tab" data-tab="path" role="tab" aria-selected="false" data-i18n="tabPath">Tìm đường</button>
         </div>
-        <p>Trace the exact FoodOn <code>subClassOf</code> path through their Lowest Common Ancestor (LCA).</p>
-        <div class="path-inputs">
-          <input id="pathFrom" type="text" value="butter" placeholder="Start node (e.g. butter, E621, FOODON:03310351)" />
-          <input id="pathTo" type="text" value="whey protein" placeholder="Target node (e.g. whey protein, salt, shrimp)" />
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button id="btnRunPath" class="btn primary" style="flex:1;justify-content:center;" type="button">Trace Connection</button>
-          <button id="btnExamplePath" class="btn" type="button" title="Try E621 to salt">E621 ↔ Salt</button>
-        </div>
-        <div class="path-result" id="pathResult"></div>
-      </section>
 
-      <button class="btn reopen-insp" id="btnReopenInsp" type="button">Inspector</button>
+        <div class="rail-body">
+          <!-- Tab 1: Beginner-First Explore -->
+          <div id="paneExplore" class="tab-pane active">
+            <div class="intro-card" id="welcomeCard">
+              <div class="intro-head">
+                <div class="intro-title" data-i18n="introTitle">FoodOn là gì? (Hiểu trong 15 giây)</div>
+              </div>
+              <p class="intro-desc" data-i18n="introDesc">
+                FoodOn là bản đồ gia phả thực phẩm quốc tế. Mỗi mũi tên nối từ món cụ thể lên nhóm cha của nó, giúp NutriViet tự động phát hiện chất gây dị ứng ẩn trên nhãn bao bì.
+              </p>
+              <div class="micro-flow" aria-label="Ví dụ phân cấp FoodOn">
+                <span class="mf-pill">butter</span>
+                <span class="mf-arrow" data-i18n="arrowMeans">→ thuộc nhóm →</span>
+                <span class="mf-pill focus">dairy food product</span>
+                <span class="mf-arrow">→</span>
+                <span class="mf-pill danger" data-i18n="milkAlert">Dị ứng Milk</span>
+              </div>
+            </div>
 
-      <aside class="inspector" id="inspector" aria-label="Node inspector">
-        <div class="insp-head">
-          <div style="min-width:0;flex:1;">
-            <span class="curie-pill" id="inspCurie" title="Click to copy CURIE">—</span>
-            <h2 class="insp-title" id="inspTitle">Select a FoodOn node</h2>
+            <div>
+              <div class="section-title">
+                <span data-i18n="storiesHeading">Ví dụ trực quan (bấm để xem ngay)</span>
+              </div>
+              <div class="story-list" id="storyList">
+                <button class="story-card" data-story="milk-whey" type="button">
+                  <div class="story-top">
+                    <span class="story-name" data-i18n="story1Title">Dị ứng sữa: Tại sao phải tránh Bơ &amp; Whey?</span>
+                    <span class="tag path">6 hops</span>
+                  </div>
+                  <span class="story-sub" data-i18n="story1Sub">Xem đường nối trực tiếp từ butter đến whey protein qua nhóm cha chung dairy food product.</span>
+                </button>
+
+                <button class="story-card" data-story="msg-salt" type="button">
+                  <div class="story-top">
+                    <span class="story-name" data-i18n="story2Title">Mã phụ gia E621 (Bột ngọt) là chất gì?</span>
+                    <span class="tag ecode">E621</span>
+                  </div>
+                  <span class="story-sub" data-i18n="story2Sub">Xem vì sao bột ngọt (MSG) thuộc nhánh muối natri và cảnh báo người tăng huyết áp.</span>
+                </button>
+
+                <button class="story-card" data-story="peanut-tree" type="button">
+                  <div class="story-top">
+                    <span class="story-name" data-i18n="story3Title">Cây họ Đậu phộng (Peanut) gồm những gì?</span>
+                    <span class="tag allergen">Allergen</span>
+                  </div>
+                  <span class="story-sub" data-i18n="story3Sub">Mở nhánh các chế phẩm từ đậu phộng dễ ẩn mình trong bánh kẹo và nước sốt.</span>
+                </button>
+
+                <button class="story-card" data-story="sugar-diabetes" type="button">
+                  <div class="story-top">
+                    <span class="story-name" data-i18n="story4Title">Nhóm Đường (Sugar) &amp; người tiểu đường</span>
+                    <span class="tag chronic">Diabetes</span>
+                  </div>
+                  <span class="story-sub" data-i18n="story4Sub">Xem phân loại tinh chất carbohydrate và cảnh báo bệnh nền gắn trên FoodOn.</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-title">
+                <span data-i18n="quickHeading">Khám phá nhanh theo nhóm</span>
+              </div>
+              <div class="chip-wrap" id="quickChips">
+                <button class="chip active" data-curie="FOODON:00001256" type="button" data-i18n="qDairy">Sữa &amp; Dairy</button>
+                <button class="chip" data-curie="FOODON:00001002" type="button" data-i18n="qRoot">Gốc FoodOn</button>
+                <button class="chip" data-curie="FOODON:03412972" type="button" data-i18n="qAdditive">Phụ gia thực phẩm</button>
+                <button class="chip" data-allergen="peanuts" type="button" data-i18n="qPeanuts">Đậu phộng</button>
+                <button class="chip" data-allergen="gluten" type="button" data-i18n="qGluten">Gluten / Lúa mì</button>
+                <button class="chip" data-allergen="soy" type="button" data-i18n="qSoy">Đậu nành</button>
+                <button class="chip" data-allergen="seafood" type="button" data-i18n="qSeafood">Hải sản</button>
+                <button class="chip" data-allergen="eggs" type="button" data-i18n="qEggs">Trứng</button>
+                <button class="chip" data-allergen="tree_nuts" type="button" data-i18n="qTreeNuts">Hạt cây</button>
+                <button class="chip" data-allergen="sesame" type="button" data-i18n="qSesame">Mè / Vừng</button>
+              </div>
+            </div>
           </div>
-          <button id="btnCloseInsp" class="btn" style="height:28px;padding:0 9px;font-size:12px;" type="button">✕</button>
-        </div>
-        <div class="insp-body" id="inspBody">
-          <div class="insp-actions">
-            <button id="btnFocusNode" class="btn primary" style="justify-content:center;" type="button">Focus Branch</button>
-            <button id="btnExpandNode" class="btn" style="justify-content:center;" type="button">Expand Children</button>
+
+          <!-- Tab 2: Live Label Simulator -->
+          <div id="paneLab" class="tab-pane">
+            <div class="intro-card">
+              <div class="intro-title" data-i18n="labTitle">Thử quét nhãn thực phẩm thực tế</div>
+              <p class="intro-desc" data-i18n="labDesc">
+                Chọn hồ sơ dị ứng/bệnh nền của bạn rồi bấm phân tích. Bấm vào từng thành phần bị cảnh báo để nhảy thẳng lên đồ thị FoodOn xem lý do.
+              </p>
+            </div>
+
+            <div>
+              <span class="field-label" data-i18n="labAllergens">Tôi bị dị ứng với:</span>
+              <div class="chip-wrap" id="labAllergenChips">
+                <button class="chip allergen active" data-code="milk" type="button">Milk (Sữa)</button>
+                <button class="chip allergen active" data-code="peanuts" type="button">Peanuts (Đậu phộng)</button>
+                <button class="chip allergen active" data-code="gluten" type="button">Gluten (Lúa mì)</button>
+                <button class="chip allergen" data-code="soy" type="button">Soy (Đậu nành)</button>
+                <button class="chip allergen" data-code="seafood" type="button">Seafood (Hải sản)</button>
+                <button class="chip allergen" data-code="eggs" type="button">Eggs (Trứng)</button>
+              </div>
+            </div>
+
+            <div>
+              <span class="field-label" data-i18n="labChronics">Lưu ý bệnh nền:</span>
+              <div class="chip-wrap" id="labChronicChips">
+                <button class="chip chronic active" data-code="diabetes" type="button">Diabetes (Tiểu đường)</button>
+                <button class="chip chronic active" data-code="hypertension" type="button">Hypertension (Huyết áp)</button>
+              </div>
+            </div>
+
+            <div>
+              <span class="field-label" data-i18n="labSamples">Nhãn mẫu (bấm để điền nhanh):</span>
+              <div class="chip-wrap" id="labSampleBtns">
+                <button class="chip" data-sample="biscuit" type="button" data-i18n="sampleBiscuit">Bánh quy bơ</button>
+                <button class="chip" data-sample="noodle" type="button" data-i18n="sampleNoodle">Mì gói hải sản</button>
+                <button class="chip" data-sample="oat" type="button" data-i18n="sampleOat">Sữa yến mạch an toàn</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="field-label" for="labTextarea" data-i18n="labInputLabel">Thành phần trên bao bì:</label>
+              <textarea id="labTextarea" class="text-area">Ingredients: Wheat flour, sugar, butter, whey powder, soy lecithin (E322), monosodium glutamate (E621), salt, may contain traces of peanuts.</textarea>
+            </div>
+
+            <button id="btnRunLab" class="btn btn-primary" type="button" data-i18n="btnRunLab">Phân tích nhãn bằng FoodOn</button>
+
+            <div id="labResult"></div>
           </div>
-          <div>
-            <div class="sec-label">Official FoodOn Definition</div>
-            <div class="def-box" id="inspDef">—</div>
-          </div>
-          <div id="inspTagsWrap" style="display:none;">
-            <div class="sec-label">Ontology Classifications &amp; Codes</div>
-            <div class="tags" id="inspTags"></div>
-          </div>
-          <div id="inspSynWrap" style="display:none;">
-            <div class="sec-label">Official English Synonyms</div>
-            <div class="tags" id="inspSyns"></div>
-          </div>
-          <div>
-            <div class="sec-label">Ancestor Lineage (Root → Node)</div>
-            <div class="lineage-list" id="inspLineage"></div>
-          </div>
-          <div>
-            <div class="sec-label" id="inspChildrenLabel">Direct Subclasses</div>
-            <div class="child-list" id="inspChildren"></div>
+
+          <!-- Tab 3: 2-Node Path Tracer -->
+          <div id="panePath" class="tab-pane">
+            <div class="intro-card">
+              <div class="intro-title" data-i18n="pathTitle">Tìm mối liên hệ giữa 2 nguyên liệu</div>
+              <p class="intro-desc" data-i18n="pathDesc">
+                Nhập 2 tên thực phẩm hoặc mã E-code (bằng tiếng Anh chuẩn nhãn) để xem chúng gặp nhau ở nhóm cha chung nào trên bản đồ FoodOn.
+              </p>
+            </div>
+
+            <div>
+              <label class="field-label" for="pathFrom" data-i18n="pathFromLabel">Nguyên liệu A</label>
+              <input id="pathFrom" class="text-input" type="text" value="butter" placeholder="VD: butter, E621, cheese" />
+            </div>
+
+            <div>
+              <label class="field-label" for="pathTo" data-i18n="pathToLabel">Nguyên liệu B</label>
+              <input id="pathTo" class="text-input" type="text" value="whey protein" placeholder="VD: whey protein, salt, yogurt" />
+            </div>
+
+            <button id="btnRunPath" class="btn btn-primary" type="button" data-i18n="btnRunPath">Vẽ đường kết nối</button>
+
+            <div>
+              <span class="field-label" data-i18n="pathExamples">Thử nhanh các cặp thú vị:</span>
+              <div class="chip-wrap" id="pathPresetWrap">
+                <button class="chip" data-from="butter" data-to="whey protein" type="button">butter ↔ whey protein</button>
+                <button class="chip" data-from="E621" data-to="salt" type="button">E621 ↔ salt</button>
+                <button class="chip" data-from="cheese" data-to="yogurt" type="button">cheese ↔ yogurt</button>
+              </div>
+            </div>
+
+            <div id="pathResult"></div>
           </div>
         </div>
       </aside>
 
-      <div class="hud-bottom">
-        <div class="zoom-controls" aria-label="Zoom controls">
-          <button id="btnZoomIn" type="button" title="Zoom in">+</button>
-          <button id="btnZoomOut" type="button" title="Zoom out">−</button>
-          <button id="btnFit" type="button" title="Fit graph to view">Fit</button>
-        </div>
-        <div class="legend">
-          <span class="leg-item"><span class="leg-dot" style="background:var(--focus)"></span>Focus</span>
-          <span class="leg-item"><span class="leg-dot" style="background:var(--ancestor)"></span>Ancestor</span>
-          <span class="leg-item"><span class="leg-dot" style="background:var(--allergen)"></span>Allergen</span>
-          <span class="leg-item"><span class="leg-dot" style="background:var(--chronic)"></span>Chronic</span>
-          <span class="leg-item"><span class="leg-dot" style="background:var(--ecode)"></span>E-Code</span>
-          <span class="leg-item"><span class="leg-dot" style="background:var(--standard)"></span>Concept</span>
-          <span style="border-left:1px solid var(--border-strong);padding-left:10px;font-family:ui-monospace,monospace;" id="graphCounter">0 nodes · 0 edges</span>
-        </div>
-      </div>
+      <!-- Center Graph Stage -->
+      <main class="stage" aria-label="Bản đồ tương tác FoodOn">
+        <canvas id="graphCanvas"></canvas>
 
-      <div class="tooltip" id="tooltip">
-        <div class="tt-label" id="ttLabel"></div>
-        <div class="tt-curie" id="ttCurie"></div>
-        <div class="tt-hint" id="ttHint">Click to inspect · Double-click to expand</div>
-      </div>
+        <button id="btnToggleLeft" class="edge-toggle left" type="button" title="Thu gọn / mở bảng trái" aria-label="Thu gọn hoặc mở bảng khám phá">‹</button>
+        <button id="btnToggleRight" class="edge-toggle right" type="button" title="Thu gọn / mở bảng chi tiết" aria-label="Thu gọn hoặc mở bảng chi tiết">›</button>
 
-      <div class="toast" id="toast"></div>
-    </main>
+        <div class="stage-top">
+          <div class="stage-left-stack">
+            <nav id="crumbBar" class="crumb-bar" aria-label="Đường dẫn phân cấp"></nav>
+            <div id="insightBanner" class="insight-banner" role="status">
+              <div class="insight-body">
+                <div id="insightTitle" class="insight-title"></div>
+                <div id="insightText"></div>
+              </div>
+              <button id="btnCloseInsight" class="btn btn-icon" type="button" aria-label="Đóng ghi chú">✕</button>
+            </div>
+          </div>
+
+          <div class="stage-controls">
+            <div class="seg" role="group" aria-label="Chế độ bố cục">
+              <button id="btnLayoutTree" class="active" type="button" data-i18n="layoutTree">Cây phân cấp</button>
+              <button id="btnLayoutForce" type="button" data-i18n="layoutForce">Mạng lưới</button>
+            </div>
+
+            <div class="ctrl-pill">
+              <label for="depthSelect" data-i18n="lblDepth">Độ sâu</label>
+              <select id="depthSelect">
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+
+            <div class="ctrl-pill">
+              <label for="limitSelect" data-i18n="lblBranches">Nhánh</label>
+              <select id="limitSelect">
+                <option value="12" selected>12</option>
+                <option value="20">20</option>
+                <option value="36">36</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="zoom-group" aria-label="Điều khiển phóng to thu nhỏ">
+          <button id="btnZoomIn" class="zoom-btn" type="button" title="Phóng to" aria-label="Phóng to">+</button>
+          <button id="btnZoomOut" class="zoom-btn" type="button" title="Thu nhỏ" aria-label="Thu nhỏ">−</button>
+          <button id="btnFit" class="zoom-btn" type="button" title="Vừa màn hình" aria-label="Căn vừa màn hình">⊡</button>
+        </div>
+
+        <div class="stage-bottom">
+          <div class="legend-bar" aria-label="Chú giải màu sắc">
+            <span class="leg-item"><span class="leg-dot" style="background:var(--focus)"></span><span data-i18n="legFocus">Đang chọn</span></span>
+            <span class="leg-item"><span class="leg-dot" style="background:var(--ancestor)"></span><span data-i18n="legAncestor">Nhóm cha</span></span>
+            <span class="leg-item"><span class="leg-dot" style="background:var(--allergen)"></span><span data-i18n="legAllergen">Dị ứng</span></span>
+            <span class="leg-item"><span class="leg-dot" style="background:var(--chronic)"></span><span data-i18n="legChronic">Bệnh nền</span></span>
+            <span class="leg-item"><span class="leg-dot" style="background:var(--ecode)"></span><span data-i18n="legEcode">Phụ gia E-code</span></span>
+            <span class="leg-item"><span class="leg-dot" style="background:var(--path)"></span><span data-i18n="legPath">Đường nối</span></span>
+          </div>
+          <div class="stage-hint" data-i18n="stageHint">Kéo để di chuyển · Cuộn để phóng to · Click xem chi tiết · Double-click mở thêm nhánh</div>
+        </div>
+
+        <div id="stageLoader" class="stage-loader" aria-live="polite">
+          <span class="spinner"></span>
+          <span data-i18n="loadingText">Đang tải bản đồ FoodOn...</span>
+        </div>
+
+        <div id="tooltip" class="tooltip" role="tooltip">
+          <div id="ttTitle" class="tt-title"></div>
+          <div id="ttSub" class="tt-sub"></div>
+          <div id="ttDesc" class="tt-desc"></div>
+        </div>
+      </main>
+
+      <!-- Right Inspector Panel -->
+      <aside id="inspector" class="inspector" aria-label="Chi tiết khái niệm FoodOn">
+        <div class="insp-head">
+          <div class="insp-top-row">
+            <button id="inspCurie" class="curie-pill" type="button" title="Bấm để sao chép mã chuẩn">—</button>
+            <button id="btnCloseMobileRight" class="btn btn-icon mobile-only" type="button" aria-label="Đóng bảng chi tiết">✕</button>
+          </div>
+          <h1 id="inspName" class="insp-name">—</h1>
+          <div id="inspTags" class="chip-wrap"></div>
+        </div>
+
+        <div class="insp-body">
+          <div id="inspSummary" class="plain-summary"></div>
+
+          <div class="insp-actions">
+            <button id="btnFocusNode" class="btn btn-primary" type="button" data-i18n="btnFocusNode">Tập trung nhánh này</button>
+            <button id="btnExpandNode" class="btn" type="button" data-i18n="btnExpandNode">Mở thêm nhánh con</button>
+          </div>
+          <button id="btnUseInPath" class="btn" type="button" data-i18n="btnUseInPath">Dùng làm điểm đầu Tìm đường</button>
+
+          <div>
+            <div class="section-title"><span data-i18n="secDef">Định nghĩa chuẩn (FoodOn / ChEBI)</span></div>
+            <div id="inspDef" class="insp-def">—</div>
+          </div>
+
+          <div id="synSection">
+            <div class="section-title"><span data-i18n="secSyn">Tên gọi khác thường gặp trên nhãn</span></div>
+            <div id="inspSyn" class="chip-wrap"></div>
+          </div>
+
+          <div>
+            <div class="section-title"><span data-i18n="secLineage">Gia phả phân cấp (từ gốc đến đây)</span></div>
+            <div id="inspLineage" class="lineage-list"></div>
+          </div>
+
+          <div>
+            <div class="section-title">
+              <span data-i18n="secChildren">Các món thuộc nhóm này</span>
+              <span id="inspChildCount" class="node-row-meta">0</span>
+            </div>
+            <input id="childFilterInput" class="text-input" type="text" placeholder="Lọc nhanh nhánh con..." style="margin-bottom:8px;padding:7px 10px;" />
+            <div id="inspChildren" class="sub-list"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
+
+  <!-- Beginner Guide Modal -->
+  <div id="guideModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="guideModalTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="guideModalTitle" class="modal-title" data-i18n="guideTitle">Hướng dẫn nhanh cho người mới</h2>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:3px;" data-i18n="guideSubtitle">Hiểu cách NutriViet đọc nhãn thực phẩm và tra cây FoodOn chỉ trong 30 giây.</p>
+        </div>
+        <button id="btnCloseGuide" class="btn btn-icon" type="button" aria-label="Đóng hướng dẫn">✕</button>
+      </div>
+
+      <div class="guide-grid">
+        <div class="guide-step">
+          <div class="guide-num">1</div>
+          <h3 data-i18n="g1Title">FoodOn là bản đồ gia phả món ăn</h3>
+          <p data-i18n="g1Text">Thay vì chỉ nhớ vài từ khóa rời rạc, NutriViet nối hơn 33.600 khái niệm theo quan hệ Cha–Con. Ví dụ: "butter" và "whey" đều nối lên nhóm cha "dairy food product" (sản phẩm từ sữa).</p>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">2</div>
+          <h3 data-i18n="g2Title">Đọc màu sắc &amp; chiều mũi tên</h3>
+          <p data-i18n="g2Text">Mũi tên đi từ món cụ thể lên nhóm lớn hơn. Chấm đỏ cảnh báo chất gây dị ứng, chấm vàng nhắc bệnh nền (tiểu đường, huyết áp), chấm xanh dương là mã phụ gia quốc tế (E-code).</p>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">3</div>
+          <h3 data-i18n="g3Title">Thao tác cực đơn giản</h3>
+          <p data-i18n="g3Text">Click 1 lần vào chấm tròn để đọc chi tiết bên phải. Double-click để bung thêm các món con. Kéo nền để di chuyển, cuộn chuột để phóng to/nhỏ, hoặc nhấn phím "/" để tìm nhanh.</p>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">4</div>
+          <h3 data-i18n="g4Title">Thử ngay với nhãn thực phẩm thật</h3>
+          <p data-i18n="g4Text">Chuyển sang tab "Quét nhãn" ở cột trái, dán danh sách thành phần bất kỳ (hoặc chọn mẫu sẵn), rồi bấm vào từng chất bị cảnh báo để xem bằng chứng trên đồ thị.</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btnGuideDemoStory" class="btn btn-soft" type="button" data-i18n="gBtnStory">Xem ví dụ Bơ ↔ Whey</button>
+        <button id="btnGuideDemoLab" class="btn btn-soft" type="button" data-i18n="gBtnLab">Mở thử quét nhãn</button>
+        <button id="btnGuideDone" class="btn btn-primary" type="button" data-i18n="gBtnStart">Bắt đầu khám phá</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
     (() => {
-      const canvas = document.getElementById('graphCanvas');
-      const ctx = canvas.getContext('2d');
-      const stage = document.getElementById('stage');
+      const I18N = {
+        vi: {
+          brandTitle: 'NutriViet FoodOn Explorer',
+          searchPlaceholder: 'Tìm món ăn, nguyên liệu hoặc mã E-code (VD: butter, whey, E621, peanut)...',
+          btnMenu: 'Khám phá',
+          btnDetails: 'Chi tiết',
+          btnGuide: 'Hướng dẫn',
+          btnThemeDark: 'Tối',
+          btnThemeLight: 'Sáng',
+          tabExplore: 'Khám phá',
+          tabLab: 'Quét nhãn',
+          tabPath: 'Tìm đường',
+          introTitle: 'FoodOn là gì? (Hiểu trong 15 giây)',
+          introDesc: 'FoodOn là bản đồ gia phả thực phẩm quốc tế. Mỗi mũi tên nối từ món cụ thể lên nhóm cha của nó, giúp NutriViet tự động phát hiện chất gây dị ứng ẩn trên nhãn bao bì.',
+          arrowMeans: '→ thuộc nhóm →',
+          milkAlert: 'Dị ứng Milk',
+          storiesHeading: 'Ví dụ trực quan (bấm để xem ngay)',
+          story1Title: 'Dị ứng sữa: Tại sao phải tránh Bơ & Whey?',
+          story1Sub: 'Xem đường nối trực tiếp từ butter đến whey protein qua nhóm cha chung dairy food product.',
+          story2Title: 'Mã phụ gia E621 (Bột ngọt) là chất gì?',
+          story2Sub: 'Xem vì sao bột ngọt (MSG) thuộc nhánh muối natri và cảnh báo người tăng huyết áp.',
+          story3Title: 'Cây họ Đậu phộng (Peanut) gồm những gì?',
+          story3Sub: 'Mở nhánh các chế phẩm từ đậu phộng dễ ẩn mình trong bánh kẹo và nước sốt.',
+          story4Title: 'Nhóm Đường (Sugar) & người tiểu đường',
+          story4Sub: 'Xem phân loại tinh chất carbohydrate và cảnh báo bệnh nền gắn trên FoodOn.',
+          quickHeading: 'Khám phá nhanh theo nhóm',
+          qDairy: 'Sữa & Dairy',
+          qRoot: 'Gốc FoodOn',
+          qAdditive: 'Phụ gia thực phẩm',
+          qPeanuts: 'Đậu phộng',
+          qGluten: 'Gluten / Lúa mì',
+          qSoy: 'Đậu nành',
+          qSeafood: 'Hải sản',
+          qEggs: 'Trứng',
+          qTreeNuts: 'Hạt cây',
+          qSesame: 'Mè / Vừng',
+          labTitle: 'Thử quét nhãn thực phẩm thực tế',
+          labDesc: 'Chọn hồ sơ dị ứng/bệnh nền của bạn rồi bấm phân tích. Bấm vào từng thành phần bị cảnh báo để nhảy thẳng lên đồ thị FoodOn xem lý do.',
+          labAllergens: 'Tôi bị dị ứng với:',
+          labChronics: 'Lưu ý bệnh nền:',
+          labSamples: 'Nhãn mẫu (bấm để điền nhanh):',
+          sampleBiscuit: 'Bánh quy bơ',
+          sampleNoodle: 'Mì gói hải sản',
+          sampleOat: 'Sữa yến mạch an toàn',
+          labInputLabel: 'Thành phần trên bao bì:',
+          btnRunLab: 'Phân tích nhãn bằng FoodOn',
+          pathTitle: 'Tìm mối liên hệ giữa 2 nguyên liệu',
+          pathDesc: 'Nhập 2 tên thực phẩm hoặc mã E-code (bằng tiếng Anh chuẩn nhãn) để xem chúng gặp nhau ở nhóm cha chung nào trên bản đồ FoodOn.',
+          pathFromLabel: 'Nguyên liệu A',
+          pathToLabel: 'Nguyên liệu B',
+          btnRunPath: 'Vẽ đường kết nối',
+          pathExamples: 'Thử nhanh các cặp thú vị:',
+          layoutTree: 'Cây phân cấp',
+          layoutForce: 'Mạng lưới',
+          lblDepth: 'Độ sâu',
+          lblBranches: 'Nhánh',
+          legFocus: 'Đang chọn',
+          legAncestor: 'Nhóm cha',
+          legAllergen: 'Dị ứng',
+          legChronic: 'Bệnh nền',
+          legEcode: 'Phụ gia E-code',
+          legPath: 'Đường nối',
+          stageHint: 'Kéo để di chuyển · Cuộn để phóng to · Click xem chi tiết · Double-click mở thêm nhánh',
+          loadingText: 'Đang tải bản đồ FoodOn...',
+          btnFocusNode: 'Tập trung nhánh này',
+          btnExpandNode: 'Mở thêm nhánh con',
+          btnUseInPath: 'Dùng làm điểm đầu Tìm đường',
+          secDef: 'Định nghĩa chuẩn (FoodOn / ChEBI)',
+          secSyn: 'Tên gọi khác thường gặp trên nhãn',
+          secLineage: 'Gia phả phân cấp (từ gốc đến đây)',
+          secChildren: 'Các món thuộc nhóm này',
+          childFilterPlaceholder: 'Lọc nhanh nhánh con...',
+          guideTitle: 'Hướng dẫn nhanh cho người mới',
+          guideSubtitle: 'Hiểu cách NutriViet đọc nhãn thực phẩm và tra cây FoodOn chỉ trong 30 giây.',
+          g1Title: 'FoodOn là bản đồ gia phả món ăn',
+          g1Text: 'Thay vì chỉ nhớ vài từ khóa rời rạc, NutriViet nối hơn 33.600 khái niệm theo quan hệ Cha–Con. Ví dụ: "butter" và "whey" đều nối lên nhóm cha "dairy food product" (sản phẩm từ sữa).',
+          g2Title: 'Đọc màu sắc & chiều mũi tên',
+          g2Text: 'Mũi tên đi từ món cụ thể lên nhóm lớn hơn. Chấm đỏ cảnh báo chất gây dị ứng, chấm vàng nhắc bệnh nền (tiểu đường, huyết áp), chấm xanh dương là mã phụ gia quốc tế (E-code).',
+          g3Title: 'Thao tác cực đơn giản',
+          g3Text: 'Click 1 lần vào chấm tròn để đọc chi tiết bên phải. Double-click để bung thêm các món con. Kéo nền để di chuyển, cuộn chuột để phóng to/nhỏ, hoặc nhấn phím "/" để tìm nhanh.',
+          g4Title: 'Thử ngay với nhãn thực phẩm thật',
+          g4Text: 'Chuyển sang tab "Quét nhãn" ở cột trái, dán danh sách thành phần bất kỳ (hoặc chọn mẫu sẵn), rồi bấm vào từng chất bị cảnh báo để xem bằng chứng trên đồ thị.',
+          gBtnStory: 'Xem ví dụ Bơ ↔ Whey',
+          gBtnLab: 'Mở thử quét nhãn',
+          gBtnStart: 'Bắt đầu khám phá',
+          dbStatsFmt: (c, e) => `${c.toLocaleString()} khái niệm · ${e.toLocaleString()} mã E-code`,
+          noDefFallback: (parent) => parent
+            ? `Nhánh chi tiết trong FoodOn (không có mô tả riêng — kế thừa bản chất từ nhóm cha "${parent}").`
+            : 'Khái niệm thuộc hệ thống chuẩn thực phẩm quốc tế FoodOn.',
+          noChildren: 'Đây là nhánh lá (không có món con trực tiếp nào bên dưới).',
+          noResults: 'Không tìm thấy khái niệm phù hợp. Thử từ khóa tiếng Anh như milk, butter, peanut, E621...',
+          subclassesCount: (n) => `${n} nhánh con`,
+          copied: (id) => `Đã sao chép mã ${id}`,
+          expandedToast: (n, label) => n > 0 ? `Đã mở thêm ${n} nhánh con của ${label}` : `${label} đã hiển thị hết nhánh con`,
+          verdictRed: 'NGUY CƠ CAO — Phát hiện chất gây dị ứng',
+          verdictYellow: 'CẦN LƯU Ý — Liên quan bệnh nền / phụ gia',
+          verdictGreen: 'AN TOÀN — Không phát hiện chất cảnh báo',
+          clickToInspectGraph: 'Xem trên bản đồ FoodOn →',
+          lcaBadge: 'Tổ tiên chung',
+          allergenWarn: (list) => `⚠️ <strong>Cảnh báo dị ứng (${list})</strong>: NutriViet sẽ bật báo đỏ nếu người dùng dị ứng nhóm này.`,
+          chronicWarn: (list) => `🩺 <strong>Lưu ý bệnh nền (${list})</strong>: Liên quan đến chế độ ăn cần kiểm soát.`,
+          ecodeInfo: (list) => `🧪 <strong>Phụ gia quốc tế (${list})</strong>: Được định danh bằng mã E-code / INS chuẩn trên nhãn bao bì.`,
+          plainInfo: (parent, count) => parent
+            ? `📂 Thuộc nhóm cha <strong>${parent}</strong> và hiện có <strong>${count}</strong> nhánh con trực tiếp trong bản đồ FoodOn.`
+            : `📂 Đây là nút gốc phân loại trong bản đồ FoodOn với <strong>${count}</strong> nhánh con trực tiếp.`,
+          ttHint: 'Click xem chi tiết · Double-click mở thêm nhánh',
+          storyInsight: {
+            'milk-whey': {
+              title: 'Tại sao người dị ứng sữa phải tránh cả Bơ lẫn Whey?',
+              text: 'Nhìn vào đường nối màu xanh lá: "butter" (bơ) và "whey food product" (đạm whey) đều bắt nguồn từ cùng một nhóm cha là "dairy food product" (sản phẩm từ sữa). Nhờ cây FoodOn, NutriViet phát hiện rủi ro ngay cả khi bao bì chỉ ghi "whey".'
+            },
+            'msg-salt': {
+              title: 'Vì sao bột ngọt E621 cảnh báo người tăng huyết áp?',
+              text: 'Mã phụ gia E621 (monosodium glutamate) nằm trong cây hóa học ChEBI trực tiếp thuộc nhánh "organic sodium salt" → "salt" (muối natri). Vì vậy NutriViet tự động nhắc nhở bệnh nền huyết áp và gout.'
+            },
+            'peanut-tree': {
+              title: 'Bản đồ họ Đậu phộng (Peanut)',
+              text: 'Mọi chế phẩm nằm dưới nút "peanut" (như bơ đậu phộng, dầu đậu phộng, đậu phộng rang) đều thừa hưởng cờ dị ứng đỏ "peanuts". Bạn có thể double-click vào bất kỳ nút nào để bung tiếp.'
+            },
+            'sugar-diabetes': {
+              title: 'Phân loại Đường (Sugar) & cảnh báo Tiểu đường',
+              text: 'Nút "sugar" nằm trong nhánh tinh chất carbohydrate và gắn nhãn lưu ý bệnh nền "diabetes". Khi quét nhãn có đường hoặc dẫn xuất, NutriViet sẽ bật cảnh báo vàng phù hợp.'
+            }
+          }
+        },
+        en: {
+          brandTitle: 'NutriViet FoodOn Explorer',
+          searchPlaceholder: 'Search foods, ingredients, or E-codes (e.g. butter, whey, E621, peanut)...',
+          btnMenu: 'Explore',
+          btnDetails: 'Details',
+          btnGuide: 'Guide',
+          btnThemeDark: 'Dark',
+          btnThemeLight: 'Light',
+          tabExplore: 'Explore',
+          tabLab: 'Label Lab',
+          tabPath: 'Path Finder',
+          introTitle: 'What is FoodOn? (15-second intro)',
+          introDesc: 'FoodOn is an international food family tree. Each arrow points from a specific item up to its broader parent group, helping NutriViet catch hidden allergens on packaging labels.',
+          arrowMeans: '→ is a kind of →',
+          milkAlert: 'Milk allergen',
+          storiesHeading: 'Guided examples (click to try)',
+          story1Title: 'Milk allergy: Why avoid both Butter & Whey?',
+          story1Sub: 'Trace the live ontology bridge between butter and whey protein via dairy food product.',
+          story2Title: 'What is additive E621 (MSG)?',
+          story2Sub: 'See why E621 sits inside the sodium salt branch and triggers a hypertension advisory.',
+          story3Title: 'Explore the Peanut allergen family',
+          story3Sub: 'Inspect peanut-derived foods that commonly hide in snacks and sauces.',
+          story4Title: 'Sugar & Diabetes advisory branch',
+          story4Sub: 'View carbohydrate isolate lineage and chronic-condition tags in FoodOn.',
+          quickHeading: 'Quick topic jumps',
+          qDairy: 'Milk & Dairy',
+          qRoot: 'FoodOn Root',
+          qAdditive: 'Food Additives',
+          qPeanuts: 'Peanuts',
+          qGluten: 'Gluten / Wheat',
+          qSoy: 'Soybean',
+          qSeafood: 'Seafood',
+          qEggs: 'Eggs',
+          qTreeNuts: 'Tree Nuts',
+          qSesame: 'Sesame',
+          labTitle: 'Live Packaging Label Simulator',
+          labDesc: 'Pick your allergy or health profile, analyze real ingredients, and click any flagged item to inspect its proof on the FoodOn graph.',
+          labAllergens: 'Allergies to avoid:',
+          labChronics: 'Health conditions:',
+          labSamples: 'Sample labels (one-click fill):',
+          sampleBiscuit: 'Butter Biscuit',
+          sampleNoodle: 'Seafood Noodles',
+          sampleOat: 'Safe Oat Drink',
+          labInputLabel: 'Packaging ingredients text:',
+          btnRunLab: 'Analyze with FoodOn',
+          pathTitle: 'Find how 2 ingredients are related',
+          pathDesc: 'Enter any two foods or E-codes to find their shared parent concept (lowest common ancestor) in the FoodOn ontology.',
+          pathFromLabel: 'Ingredient A',
+          pathToLabel: 'Ingredient B',
+          btnRunPath: 'Trace connection',
+          pathExamples: 'Try interesting pairs:',
+          layoutTree: 'Hierarchy Tree',
+          layoutForce: 'Force Graph',
+          lblDepth: 'Depth',
+          lblBranches: 'Limit',
+          legFocus: 'Focused',
+          legAncestor: 'Parent group',
+          legAllergen: 'Allergen',
+          legChronic: 'Health note',
+          legEcode: 'E-code additive',
+          legPath: 'Traced path',
+          stageHint: 'Drag to pan · Scroll to zoom · Click to inspect · Double-click to expand children',
+          loadingText: 'Loading FoodOn graph...',
+          btnFocusNode: 'Focus this branch',
+          btnExpandNode: 'Expand children',
+          btnUseInPath: 'Use as Path Finder start',
+          secDef: 'Official definition (FoodOn / ChEBI)',
+          secSyn: 'Alternative names seen on labels',
+          secLineage: 'Ancestor hierarchy (root → current)',
+          secChildren: 'Direct sub-items in this group',
+          childFilterPlaceholder: 'Filter direct sub-items...',
+          guideTitle: 'Quick start for first-time visitors',
+          guideSubtitle: 'Understand how NutriViet reads labels and navigates the FoodOn graph in 30 seconds.',
+          g1Title: 'FoodOn is a food family tree',
+          g1Text: 'Instead of memorizing isolated keywords, NutriViet connects 33,600+ food concepts in parent-child trees. For instance, both "butter" and "whey" connect to "dairy food product".',
+          g2Title: 'Reading colors & arrow directions',
+          g2Text: 'Arrows point from a specific food up to its parent category. Red marks allergens, amber marks chronic health notes, and blue marks E-code additives.',
+          g3Title: 'Simple canvas controls',
+          g3Text: 'Single-click any node to inspect details on the right. Double-click to expand more children. Drag to pan, scroll to zoom, or press "/" to search instantly.',
+          g4Title: 'Try a real packaging label',
+          g4Text: 'Open the "Label Lab" tab on the left, paste an ingredient list (or pick a preset), and click any triggered warning to jump directly to its graph proof.',
+          gBtnStory: 'Try Butter ↔ Whey demo',
+          gBtnLab: 'Open Label Lab',
+          gBtnStart: 'Start exploring',
+          dbStatsFmt: (c, e) => `${c.toLocaleString()} concepts · ${e.toLocaleString()} E-codes`,
+          noDefFallback: (parent) => parent
+            ? `Specific FoodOn leaf/subclass (inherits its core classification from parent "${parent}").`
+            : 'Standard concept in the international FoodOn food ontology.',
+          noChildren: 'Leaf concept (no direct sub-items below this node).',
+          noResults: 'No matching concepts found. Try English food names like milk, butter, peanut, or E621.',
+          subclassesCount: (n) => `${n} sub-items`,
+          copied: (id) => `Copied ${id}`,
+          expandedToast: (n, label) => n > 0 ? `Expanded ${n} more sub-items under ${label}` : `All sub-items of ${label} are already shown`,
+          verdictRed: 'HIGH RISK — Allergen detected',
+          verdictYellow: 'CAUTION — Health note / additive detected',
+          verdictGreen: 'SAFE — No warnings triggered',
+          clickToInspectGraph: 'Inspect on FoodOn graph →',
+          lcaBadge: 'Shared parent',
+          allergenWarn: (list) => `⚠️ <strong>Allergen alert (${list})</strong>: NutriViet raises a red alert for profiles avoiding this group.`,
+          chronicWarn: (list) => `🩺 <strong>Health advisory (${list})</strong>: Relevant for chronic condition dietary tracking.`,
+          ecodeInfo: (list) => `🧪 <strong>Food additive (${list})</strong>: Indexed by international E-code / INS label identifier.`,
+          plainInfo: (parent, count) => parent
+            ? `📂 Classified under parent group <strong>${parent}</strong> with <strong>${count}</strong> direct sub-items in FoodOn.`
+            : `📂 Top-level classification node in FoodOn with <strong>${count}</strong> direct sub-items.`,
+          ttHint: 'Click to inspect · Double-click to expand',
+          storyInsight: {
+            'milk-whey': {
+              title: 'Why must a milk-allergic person avoid both Butter and Whey?',
+              text: 'Follow the green path: "butter" and "whey food product" meet at the shared parent "dairy food product". FoodOn catches hidden dairy derivatives even when a label never writes the word "milk".'
+            },
+            'msg-salt': {
+              title: 'Why does E621 (MSG) flag hypertension?',
+              text: 'Additive E621 (monosodium glutamate) links in ChEBI directly through "organic sodium salt" → "salt". That ontology lineage automatically informs hypertension and gout advisories.'
+            },
+            'peanut-tree': {
+              title: 'Peanut allergen hierarchy',
+              text: 'Products branching beneath "peanut" inherit the red peanut allergen classification. Double-click any node on the canvas to expand deeper sub-items.'
+            },
+            'sugar-diabetes': {
+              title: 'Sugar classification & Diabetes guidance',
+              text: '"sugar" sits inside the carbohydrate extract/isolate hierarchy and carries the "diabetes" chronic advisory tag used by NutriViet label evaluation.'
+            }
+          }
+        }
+      };
 
-      // Graph state
+      const LABEL_SAMPLES = {
+        biscuit: 'Ingredients: Wheat flour, sugar, butter, whey powder, soy lecithin (E322), monosodium glutamate (E621), salt, may contain traces of peanuts.',
+        noodle: 'Ingredients: Wheat flour, palm oil, salt, monosodium glutamate (E621), shrimp powder, soy sauce, sugar, garlic powder.',
+        oat: 'Ingredients: Water, oat grain, sunflower oil, sea salt, calcium carbonate.'
+      };
+
       const state = {
+        lang: 'vi',
+        layout: 'tree',
         nodes: [],
-        nodesMap: new Map(),
+        nodeMap: new Map(),
         edges: [],
-        edgeSet: new Set(),
-        focusId: 'FOODON:00001002',
+        focusId: 'FOODON:00001256',
         selectedId: null,
         hoveredId: null,
-        layout: 'force', // 'force' | 'tree'
+        lineage: [],
+        childrenPreview: [],
         pathNodeIds: new Set(),
         pathEdgeKeys: new Set(),
-        expandOffsets: new Map(),
-        // Camera
+        lcaId: null,
+        dbStats: { total_concepts: 33688, total_ecodes: 742 },
         camX: 0,
         camY: 0,
-        zoom: 1,
         targetCamX: 0,
         targetCamY: 0,
+        zoom: 1,
         targetZoom: 1,
-        // Pointer interaction
+        width: 800,
+        height: 600,
+        dpr: Math.min(window.devicePixelRatio || 1, 2),
+        alpha: 0,
         isPanning: false,
         dragNode: null,
         pointerDownPos: null,
         lastPointerPos: null,
         movedSinceDown: false,
-        alpha: 1.0,
-        lastClickTime: 0,
         lastClickNodeId: null,
-        width: 1200,
-        height: 800,
+        lastClickTime: 0,
+        searchResults: [],
+        activeResultIdx: -1
       };
 
-      const cssVar = (name) => getComputedStyle(document.body).getPropertyValue(name).trim();
+      const $ = (id) => document.getElementById(id);
+      const canvas = $('graphCanvas');
+      const ctx = canvas.getContext('2d');
+      const workspace = $('workspace');
 
+      function t(key) { return I18N[state.lang][key]; }
+
+      function esc(str) {
+        return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[m]));
+      }
+
+      let toastTimer = null;
       function showToast(msg) {
-        const el = document.getElementById('toast');
+        const el = $('toast');
         el.textContent = msg;
         el.classList.add('show');
-        clearTimeout(showToast._t);
-        showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+      }
+
+      function setLoading(on) {
+        $('stageLoader').classList.toggle('visible', on);
+      }
+
+      function showInsight(title, text) {
+        $('insightTitle').textContent = title;
+        $('insightText').textContent = text;
+        $('insightBanner').classList.add('visible');
+        requestAnimationFrame(() => fitToView(false));
+      }
+
+      function hideInsight() {
+        $('insightBanner').classList.remove('visible');
+        requestAnimationFrame(() => fitToView(false));
+      }
+
+      function applyLanguage() {
+        document.documentElement.lang = state.lang;
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+          const key = el.getAttribute('data-i18n');
+          if (I18N[state.lang][key]) el.textContent = I18N[state.lang][key];
+        });
+        $('searchInput').placeholder = t('searchPlaceholder');
+        $('childFilterInput').placeholder = t('childFilterPlaceholder');
+        $('btnTheme').textContent = document.body.classList.contains('dark') ? t('btnThemeLight') : t('btnThemeDark');
+        $('dbStats').textContent = t('dbStatsFmt')(state.dbStats.total_concepts || 33688, state.dbStats.total_ecodes || 742);
+        $('btnLangVi').classList.toggle('active', state.lang === 'vi');
+        $('btnLangEn').classList.toggle('active', state.lang === 'en');
+        if (state.selectedId && state.nodeMap.has(state.selectedId)) {
+          renderInspector(state.nodeMap.get(state.selectedId));
+        }
+      }
+
+      function switchRailTab(name) {
+        document.querySelectorAll('.rail-tab').forEach((b) => {
+          const active = b.dataset.tab === name;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', String(active));
+        });
+        $('paneExplore').classList.toggle('active', name === 'explore');
+        $('paneLab').classList.toggle('active', name === 'lab');
+        $('panePath').classList.toggle('active', name === 'path');
+      }
+
+      function getCssVar(name) {
+        return getComputedStyle(document.body).getPropertyValue(name).trim();
       }
 
       function nodeColor(n) {
-        if (state.pathNodeIds.size > 0 && state.pathNodeIds.has(n.id)) return cssVar('--path');
-        if (n.id === state.focusId || n.role === 'focus') return cssVar('--focus');
-        if (n.allergens && n.allergens.length) return cssVar('--allergen');
-        if (n.chronics && n.chronics.length) return cssVar('--chronic');
-        if (n.ecodes && n.ecodes.length) return cssVar('--ecode');
-        if (n.role === 'ancestor') return cssVar('--ancestor');
-        if (n.role === 'sibling') return cssVar('--sibling');
-        return cssVar('--standard');
+        if (state.pathNodeIds.size && state.pathNodeIds.has(n.id)) {
+          if (n.id === state.lcaId) return getCssVar('--path');
+          if (n.allergens && n.allergens.length) return getCssVar('--allergen');
+          return getCssVar('--path');
+        }
+        if (n.id === state.focusId) return getCssVar('--focus');
+        if (n.allergens && n.allergens.length) return getCssVar('--allergen');
+        if (n.ecodes && n.ecodes.length) return getCssVar('--ecode');
+        if (n.chronics && n.chronics.length) return getCssVar('--chronic');
+        if (n.role === 'ancestor' || (typeof n.depth === 'number' && n.depth < 0)) return getCssVar('--ancestor');
+        if (n.role === 'sibling') return getCssVar('--sibling');
+        return getCssVar('--standard');
       }
 
       function nodeRadius(n) {
-        if (n.id === state.focusId) return 15;
-        if (n.role === 'ancestor') return 11;
-        const boost = Math.min(7, Math.sqrt(n.child_count || 0) * 0.9);
-        return Math.round(7.5 + boost);
+        if (n.id === state.focusId || n.id === state.lcaId) return 18;
+        if (state.pathNodeIds.has(n.id)) return 14;
+        if (n.role === 'ancestor' || (typeof n.depth === 'number' && n.depth < 0)) return 13;
+        if ((n.child_count || 0) > 15) return 13;
+        if ((n.child_count || 0) > 0) return 11;
+        return 9;
       }
 
-      function screenToWorld(sx, sy) {
-        return {
-          x: (sx - state.width / 2) / state.zoom + state.camX,
-          y: (sy - state.height / 2) / state.zoom + state.camY,
-        };
+      function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        state.width = Math.max(300, rect.width);
+        state.height = Math.max(260, rect.height);
+        state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(state.width * state.dpr);
+        canvas.height = Math.round(state.height * state.dpr);
       }
 
       function worldToScreen(wx, wy) {
         return {
           x: (wx - state.camX) * state.zoom + state.width / 2,
-          y: (wy - state.camY) * state.zoom + state.height / 2,
+          y: (wy - state.camY) * state.zoom + state.height / 2
         };
       }
 
-      function resizeCanvas() {
-        const rect = stage.getBoundingClientRect();
-        state.width = Math.max(300, rect.width);
-        state.height = Math.max(300, rect.height);
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = Math.round(state.width * dpr);
-        canvas.height = Math.round(state.height * dpr);
-        canvas.style.width = state.width + 'px';
-        canvas.style.height = state.height + 'px';
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      function screenToWorld(sx, sy) {
+        return {
+          x: (sx - state.width / 2) / state.zoom + state.camX,
+          y: (sy - state.height / 2) / state.zoom + state.camY
+        };
       }
 
-      function updateCounters() {
-        document.getElementById('graphCounter').textContent =
-          `${state.nodes.length} nodes · ${state.edges.length} edges`;
-      }
-
-      // Compute clean layered hierarchy positions (root on top -> ancestors -> focus -> children -> grandchildren)
-      function computeTreeLayout() {
-        const layers = new Map();
-        // Assign layer by walking parent links from roots inside current subgraph
-        const depthMemo = new Map();
-        const visiting = new Set();
-
-        function getDepth(id) {
-          if (depthMemo.has(id)) return depthMemo.get(id);
-          if (visiting.has(id)) return 0;
-          visiting.add(id);
-          const n = state.nodesMap.get(id);
-          let d = 0;
-          if (n && n.parent_id && state.nodesMap.has(n.parent_id) && n.parent_id !== id) {
-            d = getDepth(n.parent_id) + 1;
-          }
-          visiting.delete(id);
-          depthMemo.set(id, d);
-          return d;
-        }
-
-        for (const n of state.nodes) {
-          const d = getDepth(n.id);
-          n.treeLayer = d;
-          if (!layers.has(d)) layers.set(d, []);
-          layers.get(d).push(n);
-        }
-
-        const sortedLayers = Array.from(layers.keys()).sort((a, b) => a - b);
-        const layerHeight = 132;
-        const totalH = (sortedLayers.length - 1) * layerHeight;
-
-        sortedLayers.forEach((layerIdx, rowIdx) => {
-          const arr = layers.get(layerIdx);
-          // Group by parent x position so edges cross minimally
-          arr.sort((a, b) => {
-            const pa = state.nodesMap.get(a.parent_id);
-            const pb = state.nodesMap.get(b.parent_id);
-            const pax = pa ? pa.tx : 0;
-            const pbx = pb ? pb.tx : 0;
-            if (pax !== pbx) return pax - pbx;
-            if (a.id === state.focusId) return -1;
-            if (b.id === state.focusId) return 1;
-            return (b.child_count || 0) - (a.child_count || 0);
-          });
-          const spacing = Math.max(128, Math.min(190, 1450 / Math.max(1, arr.length)));
-          const totalW = (arr.length - 1) * spacing;
-          arr.forEach((n, i) => {
-            n.tx = -totalW / 2 + i * spacing;
-            n.ty = -totalH / 2 + rowIdx * layerHeight;
-          });
-        });
-      }
-
-      function initPositionsForNewGraph() {
-        computeTreeLayout();
-        if (state.layout === 'tree') {
-          for (const n of state.nodes) {
-            n.x = n.tx;
-            n.y = n.ty;
-            n.vx = 0;
-            n.vy = 0;
-          }
-        } else {
-          // Concentric radial seed around focus node so Force Graph opens crisp & balanced on frame 1
-          const focus = state.nodesMap.get(state.focusId);
-          const ancestors = state.nodes.filter((n) => n.role === 'ancestor').sort((a, b) => b.depth - a.depth);
-          const children = state.nodes.filter((n) => n.role === 'child');
-          const siblings = state.nodes.filter((n) => n.role === 'sibling');
-          const grandchildren = state.nodes.filter((n) => n.role === 'grandchild');
-          const others = state.nodes.filter((n) => !['focus', 'ancestor', 'child', 'sibling', 'grandchild'].includes(n.role));
-
-          if (focus) { focus.x = 0; focus.y = 0; }
-          ancestors.forEach((n, idx) => {
-            n.x = (idx % 2 === 0 ? -1 : 1) * Math.min(28, idx * 8);
-            n.y = -(idx + 1) * 125;
-          });
-          const r1 = Math.max(175, Math.min(270, children.length * 10));
-          children.forEach((n, idx) => {
-            const ang = (idx / Math.max(1, children.length)) * Math.PI * 2 + 0.35;
-            n.x = Math.cos(ang) * r1;
-            n.y = Math.sin(ang) * r1 + 35;
-          });
-          siblings.forEach((n, idx) => {
-            const side = idx % 2 === 0 ? -1 : 1;
-            n.x = side * (170 + Math.floor(idx / 2) * 75);
-            n.y = -115 - (idx % 2) * 28;
-          });
-          const byParent = new Map();
-          grandchildren.forEach((n) => {
-            if (!byParent.has(n.parent_id)) byParent.set(n.parent_id, []);
-            byParent.get(n.parent_id).push(n);
-          });
-          byParent.forEach((arr, pid) => {
-            const p = state.nodesMap.get(pid) || { x: 0, y: 120 };
-            const baseAng = Math.atan2(p.y, p.x);
-            arr.forEach((n, i) => {
-              const spread = (i - (arr.length - 1) / 2) * 0.34;
-              const dist = 135;
-              n.x = p.x + Math.cos(baseAng + spread) * dist;
-              n.y = p.y + Math.sin(baseAng + spread) * dist;
-            });
-          });
-          others.forEach((n, idx) => {
-            const ang = (idx / Math.max(1, others.length)) * Math.PI * 2;
-            n.x = Math.cos(ang) * 240;
-            n.y = Math.sin(ang) * 240;
-          });
-          for (const n of state.nodes) { n.vx = 0; n.vy = 0; }
-        }
-        state.alpha = 0.65;
-        fitToView(true);
-      }
-
-      function fitToView(immediate = false) {
+      function fitToView(instant = false) {
         if (!state.nodes.length) return;
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         for (const n of state.nodes) {
-          const x = state.layout === 'tree' ? n.tx : n.x;
-          const y = state.layout === 'tree' ? n.ty : n.y;
+          const x = state.layout === 'tree' ? (n.tx ?? n.x) : n.x;
+          const y = state.layout === 'tree' ? (n.ty ?? n.y) : n.y;
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
           if (y > maxY) maxY = y;
         }
-        const inspOpen = !document.getElementById('inspector').classList.contains('collapsed') && state.width > 900;
-        const rightMargin = inspOpen ? 370 : 60;
-        const availW = Math.max(260, state.width - rightMargin - 60);
-        const availH = Math.max(240, state.height - 150);
-        const spanW = Math.max(240, maxX - minX + 180);
-        const spanH = Math.max(200, maxY - minY + 160);
-        const z = Math.max(0.28, Math.min(1.18, Math.min(availW / spanW, availH / spanH)));
-        const cx = (minX + maxX) / 2 + (inspOpen ? 165 / z : 0);
-        const cy = (minY + maxY) / 2;
-
-        state.targetZoom = z;
-        state.targetCamX = cx;
-        state.targetCamY = cy;
-        if (immediate) {
-          state.zoom = z;
-          state.camX = cx;
-          state.camY = cy;
+        const stageTopEl = document.querySelector('.stage-top');
+        const topHud = stageTopEl ? Math.min(260, stageTopEl.getBoundingClientRect().height + 24) : 130;
+        const bottomHud = 64;
+        const availW = Math.max(220, state.width - 72);
+        const availH = Math.max(180, state.height - topHud - bottomHud);
+        const padX = 120;
+        const padY = 64;
+        const spanX = Math.max(240, (maxX - minX) + padX * 2);
+        const spanY = Math.max(180, (maxY - minY) + padY * 2);
+        const targetZ = Math.max(0.34, Math.min(1.18, Math.min(availW / spanX, availH / spanY)));
+        state.targetZoom = targetZ;
+        state.targetCamX = (minX + maxX) / 2;
+        const verticalShiftPx = (topHud - bottomHud) / 2;
+        state.targetCamY = (minY + maxY) / 2 - (verticalShiftPx / targetZ);
+        if (instant) {
+          state.zoom = state.targetZoom;
+          state.camX = state.targetCamX;
+          state.camY = state.targetCamY;
         }
       }
 
-      // Physics step for Force Graph & smooth easing for Tree DAG
-      function stepSimulation() {
-        // Smooth camera interpolation
-        state.camX += (state.targetCamX - state.camX) * 0.14;
-        state.camY += (state.targetCamY - state.camY) * 0.14;
-        state.zoom += (state.targetZoom - state.zoom) * 0.14;
+      function computeTreeLayout() {
+        if (!state.nodes.length) return;
 
-        if (state.layout === 'tree') {
+        // Path-dedicated readable bridge layout
+        if (state.pathNodeIds.size > 0 && state.nodes.length <= 24) {
+          const ordered = state.nodes.slice();
+          const lcaIdx = ordered.findIndex((n) => n.id === state.lcaId);
+          if (lcaIdx >= 0 && ordered.length > 2) {
+            const leftArm = ordered.slice(0, lcaIdx);
+            const rightArm = ordered.slice(lcaIdx + 1);
+            const lca = ordered[lcaIdx];
+            lca.tx = 0; lca.ty = -140;
+            const stepX = 215;
+            const stepY = 86;
+            leftArm.forEach((n, i) => {
+              const dist = leftArm.length - i;
+              n.tx = -dist * stepX;
+              n.ty = -140 + dist * stepY;
+            });
+            rightArm.forEach((n, i) => {
+              const dist = i + 1;
+              n.tx = dist * stepX;
+              n.ty = -140 + dist * stepY;
+            });
+          } else {
+            const gap = 210;
+            const startX = -((ordered.length - 1) * gap) / 2;
+            ordered.forEach((n, i) => {
+              n.tx = startX + i * gap;
+              n.ty = (i % 2 === 0 ? -28 : 28);
+            });
+          }
           for (const n of state.nodes) {
-            if (n === state.dragNode) continue;
-            n.x += (n.tx - n.x) * 0.16;
-            n.y += (n.ty - n.y) * 0.16;
+            if (typeof n.x !== 'number' || Number.isNaN(n.x)) { n.x = n.tx; n.y = n.ty; }
           }
           return;
         }
 
-        if (state.alpha < 0.008 && !state.dragNode) return;
-        const nodes = state.nodes;
-        const count = nodes.length;
-        const repulsion = count > 80 ? 3200 : 4800;
-        const springLen = count > 80 ? 105 : 128;
-        const springK = 0.045;
+        const focus = state.nodeMap.get(state.focusId) || state.nodes[0];
+        const ancestors = state.nodes
+          .filter((n) => n.id !== focus.id && (n.role === 'ancestor' || (typeof n.depth === 'number' && n.depth < 0)))
+          .sort((a, b) => (a.depth ?? -1) - (b.depth ?? -1));
+        const siblings = state.nodes.filter((n) => n.id !== focus.id && n.role === 'sibling');
+        const usedIds = new Set([focus.id, ...ancestors.map((n) => n.id), ...siblings.map((n) => n.id)]);
+        const descendants = state.nodes.filter((n) => !usedIds.has(n.id));
 
-        // Pairwise repulsion
-        for (let i = 0; i < count; i++) {
-          const a = nodes[i];
-          for (let j = i + 1; j < count; j++) {
-            const b = nodes[j];
-            let dx = b.x - a.x;
-            let dy = b.y - a.y;
-            let distSq = dx * dx + dy * dy + 0.01;
-            if (distSq > 160000) continue;
-            const dist = Math.sqrt(distSq);
-            const f = (repulsion / distSq) * state.alpha;
-            const fx = (dx / dist) * f;
-            const fy = (dy / dist) * f;
-            a.vx -= fx; a.vy -= fy;
-            b.vx += fx; b.vy += fy;
+        // Group descendants by depth (1, 2, ...)
+        const byDepth = new Map();
+        for (const n of descendants) {
+          const d = Math.max(1, typeof n.depth === 'number' && n.depth > 0 ? n.depth : 1);
+          if (!byDepth.has(d)) byDepth.set(d, []);
+          byDepth.get(d).push(n);
+        }
+
+        focus.tx = 0;
+        focus.ty = 0;
+
+        // Place ancestors cleanly stacked above focus (closest parent closest to focus)
+        const ascFromFocus = ancestors.slice().sort((a, b) => (b.depth ?? -1) - (a.depth ?? -1));
+        ascFromFocus.forEach((n, i) => {
+          n.tx = 0;
+          n.ty = -94 * (i + 1);
+        });
+
+        // Place siblings neatly to the right/left of focus so labels never overlap
+        siblings.forEach((n, i) => {
+          const side = i % 2 === 0 ? 1 : -1;
+          const slot = Math.floor(i / 2) + 1;
+          n.tx = side * (250 + (slot - 1) * 220);
+          n.ty = -14 + ((slot - 1) % 2) * 34;
+        });
+
+        // Place depth 1..N children in crisp multi-row grids so text pills never touch
+        let curY = 128;
+        const maxPerRow = 4;
+        const colSpacing = 245;
+        const rowSpacing = 88;
+        const depths = Array.from(byDepth.keys()).sort((a, b) => a - b);
+
+        for (const d of depths) {
+          const list = byDepth.get(d);
+          list.sort((a, b) => String(a.parent_id || '').localeCompare(String(b.parent_id || '')) || String(a.label).localeCompare(String(b.label)));
+          const rows = Math.ceil(list.length / maxPerRow);
+          for (let r = 0; r < rows; r++) {
+            const slice = list.slice(r * maxPerRow, (r + 1) * maxPerRow);
+            const totalW = (slice.length - 1) * colSpacing;
+            slice.forEach((n, idx) => {
+              n.tx = -totalW / 2 + idx * colSpacing;
+              n.ty = curY;
+            });
+            curY += rowSpacing;
+          }
+          curY += 34;
+        }
+
+        for (const n of state.nodes) {
+          if (typeof n.x !== 'number' || Number.isNaN(n.x)) {
+            n.x = n.tx;
+            n.y = n.ty;
           }
         }
+      }
 
-        // Spring attraction along edges + gentle hierarchical vertical cue
-        for (const e of state.edges) {
-          const s = state.nodesMap.get(e.source);
-          const t = state.nodesMap.get(e.target);
-          if (!s || !t) continue;
-          const dx = t.x - s.x;
-          const dy = t.y - s.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const force = (dist - springLen) * springK * state.alpha;
-          const fx = (dx / dist) * force;
-          const fy = (dy / dist) * force;
-          s.vx += fx; s.vy += fy;
-          t.vx -= fx; t.vy -= fy;
-          // Mild bias: parent slightly above child so ontology direction feels natural
-          s.vy += 0.22 * state.alpha;
-          t.vy -= 0.22 * state.alpha;
+      function stepPhysics() {
+        if (state.layout === 'tree') {
+          for (const n of state.nodes) {
+            if (n === state.dragNode) continue;
+            n.x += ((n.tx ?? 0) - n.x) * 0.16;
+            n.y += ((n.ty ?? 0) - n.y) * 0.16;
+          }
+          return;
+        }
+        if (state.alpha < 0.008) return;
+        const nodes = state.nodes;
+        const repulsion = 7800;
+        const springLen = 148;
+        const springK = 0.036;
+
+        for (let i = 0; i < nodes.length; i++) {
+          const a = nodes[i];
+          a.vx = (a.vx || 0) * 0.80;
+          a.vy = (a.vy || 0) * 0.80;
+          for (let j = i + 1; j < nodes.length; j++) {
+            const b = nodes[j];
+            let dx = a.x - b.x;
+            let dy = a.y - b.y;
+            let d2 = dx * dx + dy * dy + 16;
+            const d = Math.sqrt(d2);
+            const f = (repulsion / d2) * state.alpha;
+            const fx = (dx / d) * f;
+            const fy = (dy / d) * f;
+            a.vx += fx; a.vy += fy;
+            b.vx = (b.vx || 0) - fx; b.vy = (b.vy || 0) - fy;
+          }
+          // Gentle centering pull
+          a.vx -= a.x * 0.0022 * state.alpha;
+          a.vy -= a.y * 0.0022 * state.alpha;
         }
 
-        // Gentle centering gravity
+        for (const e of state.edges) {
+          const s = state.nodeMap.get(e.source);
+          const tg = state.nodeMap.get(e.target);
+          if (!s || !tg) continue;
+          const dx = tg.x - s.x;
+          const dy = tg.y - s.y;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
+          const diff = (d - springLen) * springK * state.alpha;
+          const fx = (dx / d) * diff;
+          const fy = (dy / d) * diff;
+          s.vx += fx; s.vy += fy;
+          tg.vx -= fx; tg.vy -= fy;
+        }
+
         for (const n of nodes) {
-          if (n === state.dragNode) {
-            n.vx = 0; n.vy = 0;
+          if (n === state.dragNode) continue;
+          if (n.id === state.focusId) {
+            n.x += (0 - n.x) * 0.06;
+            n.y += (0 - n.y) * 0.06;
             continue;
           }
-          n.vx += (0 - n.x) * 0.0028 * state.alpha;
-          n.vy += (0 - n.y) * 0.0028 * state.alpha;
-          n.vx *= 0.80;
-          n.vy *= 0.80;
-          n.x += Math.max(-24, Math.min(24, n.vx));
-          n.y += Math.max(-24, Math.min(24, n.vy));
+          n.x += Math.max(-18, Math.min(18, n.vx || 0));
+          n.y += Math.max(-18, Math.min(18, n.vy || 0));
         }
-
-        state.alpha *= 0.985;
+        state.alpha *= 0.975;
       }
 
-      function getConnectedSet(nodeId) {
-        const set = new Set();
-        if (!nodeId) return set;
-        set.add(nodeId);
-        // Highlight full ancestor chain and direct children inside graph
-        let curr = nodeId;
-        const guard = new Set();
-        while (curr && !guard.has(curr)) {
-          guard.add(curr);
-          set.add(curr);
-          const n = state.nodesMap.get(curr);
-          curr = n && n.parent_id && state.nodesMap.has(n.parent_id) ? n.parent_id : null;
-        }
-        for (const e of state.edges) {
-          if (e.target === nodeId) set.add(e.source);
-          if (e.source === nodeId) set.add(e.target);
-        }
-        return set;
-      }
+      function drawArrow(x1, y1, x2, y2, rTarget, color, lineWidth, isHighlight) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 1) return;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const ex = x2 - ux * (rTarget + 5);
+        const ey = y2 - uy * (rTarget + 5);
 
-      function drawArrowHead(x, y, angle, size, color) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-size, -size * 0.52);
-        ctx.lineTo(-size, size * 0.52);
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+
+        const headLen = isHighlight ? 9 : 7;
+        const angle = Math.atan2(dy, dx);
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - headLen * Math.cos(angle - Math.PI / 6), ey - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(ex - headLen * Math.cos(angle + Math.PI / 6), ey - headLen * Math.sin(angle + Math.PI / 6));
         ctx.closePath();
         ctx.fillStyle = color;
         ctx.fill();
-        ctx.restore();
+      }
+
+      function drawRoundedRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
       }
 
       function render() {
-        stepSimulation();
-        ctx.clearRect(0, 0, state.width, state.height);
-
-        const activeId = state.hoveredId;
-        const connected = activeId ? getConnectedSet(activeId) : null;
-        const hasPath = state.pathNodeIds.size > 0;
-        const edgeDefault = cssVar('--edge');
-        const edgeHi = cssVar('--edge-hi');
-        const pathColor = cssVar('--path');
-        const labelBg = cssVar('--label-bg');
-        const textColor = cssVar('--text');
-        const mutedColor = cssVar('--text-muted');
+        stepPhysics();
+        state.camX += (state.targetCamX - state.camX) * 0.14;
+        state.camY += (state.targetCamY - state.camY) * 0.14;
+        state.zoom += (state.targetZoom - state.zoom) * 0.14;
 
         ctx.save();
-        ctx.translate(state.width / 2, state.height / 2);
-        ctx.scale(state.zoom, state.zoom);
-        ctx.translate(-state.camX, -state.camY);
+        ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+        ctx.clearRect(0, 0, state.width, state.height);
 
-        // 1. Draw Edges (child -> parent subClassOf)
-        for (const e of state.edges) {
-          const s = state.nodesMap.get(e.source);
-          const t = state.nodesMap.get(e.target);
-          if (!s || !t) continue;
-          const ek = `${e.source}->${e.target}`;
-          const isPathEdge = hasPath && state.pathEdgeKeys.has(ek);
-          const isHi = !hasPath && connected && connected.has(e.source) && connected.has(e.target);
-          const dimmed = (hasPath && !isPathEdge) || (!hasPath && connected && !isHi);
+        const edgeDefault = getCssVar('--edge');
+        const edgeHi = getCssVar('--edge-hi');
+        const pathColor = getCssVar('--path');
+        const textColor = getCssVar('--text');
+        const labelBg = getCssVar('--label-bg');
+        const borderCol = getCssVar('--border');
 
-          ctx.beginPath();
-          const tr = nodeRadius(t) + 3;
-          const sr = nodeRadius(s) + 2;
-          let arrowAngle;
-          let ax, ay;
-
-          if (state.layout === 'tree') {
-            const midY = (s.y + t.y) / 2;
-            const dx = t.x - s.x;
-            const dy = t.y - s.y;
-            const len = Math.hypot(dx, dy) || 1;
-            const sy = s.y - Math.sign(s.y - t.y || 1) * sr;
-            const ty = t.y + Math.sign(s.y - t.y || 1) * tr;
-            ctx.moveTo(s.x, sy);
-            ctx.bezierCurveTo(s.x, midY, t.x, midY, t.x, ty);
-            ax = t.x;
-            ay = ty;
-            arrowAngle = Math.atan2(ty - midY, 0.001);
-          } else {
-            const dx = t.x - s.x;
-            const dy = t.y - s.y;
-            const dist = Math.hypot(dx, dy) || 1;
-            const sx = s.x + (dx / dist) * sr;
-            const sy = s.y + (dy / dist) * sr;
-            const tx = t.x - (dx / dist) * tr;
-            const ty = t.y - (dy / dist) * tr;
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(tx, ty);
-            ax = tx;
-            ay = ty;
-            arrowAngle = Math.atan2(dy, dx);
+        // Determine hover neighborhood for crisp visual emphasis (keep all nodes crisp when idle)
+        const activeId = state.hoveredId;
+        const connectedToActive = new Set();
+        if (activeId) {
+          connectedToActive.add(activeId);
+          for (const e of state.edges) {
+            if (e.source === activeId) connectedToActive.add(e.target);
+            if (e.target === activeId) connectedToActive.add(e.source);
           }
-
-          ctx.strokeStyle = isPathEdge
-            ? pathColor
-            : isHi
-              ? edgeHi
-              : edgeDefault;
-          ctx.lineWidth = isPathEdge ? 3.2 : isHi ? 2.1 : 1.15;
-          ctx.globalAlpha = dimmed ? 0.18 : 1;
-          ctx.stroke();
-
-          if (state.zoom > 0.42 || isPathEdge || isHi) {
-            drawArrowHead(ax, ay, arrowAngle, isPathEdge ? 8.5 : 6.2, ctx.strokeStyle);
-          }
-          ctx.globalAlpha = 1;
         }
 
-        // 2. Draw Nodes
+        // Draw edges
+        for (const e of state.edges) {
+          const s = state.nodeMap.get(e.source);
+          const tg = state.nodeMap.get(e.target);
+          if (!s || !tg) continue;
+          const p1 = worldToScreen(s.x, s.y);
+          const p2 = worldToScreen(tg.x, tg.y);
+          const edgeKey = `${e.source}->${e.target}`;
+          const isPath = state.pathEdgeKeys.has(edgeKey) || state.pathEdgeKeys.has(`${e.target}->${e.source}`);
+          const isAdj = activeId && (e.source === activeId || e.target === activeId);
+          const col = isPath ? pathColor : isAdj ? edgeHi : edgeDefault;
+          const lw = isPath ? 3 : isAdj ? 2.2 : 1.3;
+          const rT = nodeRadius(tg) * Math.max(0.75, Math.min(1.2, state.zoom));
+          ctx.globalAlpha = (!activeId || isAdj || isPath) ? 1 : 0.42;
+          drawArrow(p1.x, p1.y, p2.x, p2.y, rT, col, lw, isPath || isAdj);
+        }
+        ctx.globalAlpha = 1;
+
+        // Draw nodes & crisp pill labels
         for (const n of state.nodes) {
-          const r = nodeRadius(n);
+          const p = worldToScreen(n.x, n.y);
+          if (p.x < -160 || p.x > state.width + 160 || p.y < -120 || p.y > state.height + 120) continue;
+
+          const baseR = nodeRadius(n);
+          const r = baseR * Math.max(0.75, Math.min(1.25, state.zoom));
           const col = nodeColor(n);
           const isFocus = n.id === state.focusId;
           const isSel = n.id === state.selectedId;
           const isHov = n.id === state.hoveredId;
-          const isPathNode = hasPath && state.pathNodeIds.has(n.id);
-          const dimmed = (hasPath && !isPathNode) || (!hasPath && connected && !connected.has(n.id));
+          const isLca = n.id === state.lcaId;
+          const dimmed = activeId && !connectedToActive.has(n.id) && !state.pathNodeIds.has(n.id) && !isFocus;
 
-          ctx.globalAlpha = dimmed ? 0.24 : 1;
+          ctx.globalAlpha = dimmed ? 0.45 : 1;
 
-          // Outer glow ring for focus / selected / path
-          if (isFocus || isSel || isHov || isPathNode) {
+          if (isFocus || isSel || isHov || isLca) {
             ctx.beginPath();
-            ctx.arc(n.x, n.y, r + (isFocus ? 6.5 : 4.5), 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, r + 6, 0, Math.PI * 2);
             ctx.fillStyle = col;
-            ctx.globalAlpha = dimmed ? 0.1 : 0.18;
+            ctx.globalAlpha = dimmed ? 0.12 : 0.18;
             ctx.fill();
-            ctx.globalAlpha = dimmed ? 0.24 : 1;
+            ctx.globalAlpha = dimmed ? 0.45 : 1;
           }
 
-          // Node body
           ctx.beginPath();
-          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           ctx.fillStyle = col;
           ctx.fill();
-          ctx.lineWidth = isSel || isFocus ? 2.6 : 1.6;
-          ctx.strokeStyle = document.body.classList.contains('dark') ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = (isSel || isFocus || isLca) ? 2.6 : 1.6;
+          ctx.strokeStyle = getCssVar('--surface');
           ctx.stroke();
 
-          // Tiny "+" indicator if node has unexpanded children
-          if ((n.child_count || 0) > 0 && r >= 8.5) {
+          // Small '+' badge if node has unexpanded children
+          if ((n.child_count || 0) > 0 && r >= 9) {
             ctx.fillStyle = '#ffffff';
-            ctx.font = `700 ${Math.max(8, Math.round(r * 0.72))}px ui-monospace, monospace`;
+            ctx.font = `700 ${Math.max(9, Math.round(r * 0.72))}px Inter, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            const badge = n.child_count > 99 ? '99+' : String(n.child_count);
-            ctx.fillText(badge, n.x, n.y + 0.5);
+            const badgeText = isLca ? '★' : (n.ecodes && n.ecodes.length ? 'E' : (n.child_count > 99 ? '99' : String(n.child_count)));
+            ctx.fillText(badgeText, p.x, p.y + 0.5);
           }
 
-          // Label rendering (always show for focus/ancestors/selected/hovered/path or when zoomed in)
-          const showLabel =
-            isFocus || isSel || isHov || isPathNode || n.role === 'ancestor' ||
-            state.zoom >= 0.62 || state.nodes.length <= 36;
-
+          // Node label pill
+          const showLabel = state.zoom >= 0.42 || isFocus || isSel || isHov || isLca || state.pathNodeIds.has(n.id);
           if (showLabel) {
-            const raw = n.label.length > 30 ? n.label.slice(0, 29) + '…' : n.label;
-            const fontSize = isFocus ? 12.5 : n.role === 'ancestor' ? 11.5 : 10.8;
-            ctx.font = `${isFocus || isSel || isPathNode ? 700 : 600} ${fontSize}px Inter, system-ui, sans-serif`;
-            const tw = ctx.measureText(raw).width;
-            const padX = 5;
-            const boxH = fontSize + 6;
-            const lx = n.x - tw / 2 - padX;
-            const ly = n.y + r + 5;
+            const rawLabel = n.label || n.id;
+            const maxChars = (isFocus || isSel || isHov || isLca) ? 34 : 24;
+            const text = rawLabel.length > maxChars ? rawLabel.slice(0, maxChars - 1) + '…' : rawLabel;
+            const fontSize = (isFocus || isLca) ? 12.5 : 11.5;
+            ctx.font = `${(isFocus || isSel || isLca) ? 700 : 600} ${fontSize}px Inter, sans-serif`;
+            const tw = ctx.measureText(text).width;
+            const px = 7;
+            const py = 4;
+            const bw = tw + px * 2;
+            const bh = fontSize + py * 2;
+            const bx = p.x - bw / 2;
+            const by = p.y + r + 5;
 
+            drawRoundedRect(bx, by, bw, bh, 6);
             ctx.fillStyle = labelBg;
-            ctx.beginPath();
-            ctx.roundRect(lx, ly, tw + padX * 2, boxH, 5);
             ctx.fill();
+            ctx.lineWidth = (isFocus || isSel || isLca) ? 1.4 : 1;
+            ctx.strokeStyle = (isFocus || isSel || isLca) ? col : borderCol;
+            ctx.stroke();
 
-            ctx.fillStyle = isFocus || isSel || isHov || isPathNode ? textColor : mutedColor;
+            ctx.fillStyle = textColor;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(raw, n.x, ly + boxH / 2 + 0.5);
+            ctx.fillText(text, p.x, by + bh / 2 + 0.5);
           }
-
           ctx.globalAlpha = 1;
         }
 
@@ -1319,345 +2518,705 @@
         requestAnimationFrame(render);
       }
 
-      // Hit-test node at screen coordinates
       function findNodeAt(sx, sy) {
-        const w = screenToWorld(sx, sy);
         for (let i = state.nodes.length - 1; i >= 0; i--) {
           const n = state.nodes[i];
-          const r = nodeRadius(n) + 5 / state.zoom;
-          if (Math.hypot(w.x - n.x, w.y - n.y) <= r) return n;
+          const p = worldToScreen(n.x, n.y);
+          const hitR = nodeRadius(n) * Math.max(0.85, Math.min(1.25, state.zoom)) + 7;
+          if (Math.hypot(sx - p.x, sy - p.y) <= hitR) return n;
         }
         return null;
       }
 
-      // Data Loading
-      async function loadNeighborhood({ curie = '', allergen = '' } = {}) {
-        const depth = document.getElementById('depthSelect').value;
-        const limit = document.getElementById('limitSelect').value;
-        const qs = new URLSearchParams({ child_depth: depth, max_children: limit, ancestor_hops: '10' });
-        if (curie) qs.set('curie', curie);
-        if (allergen) qs.set('allergen', allergen);
+      function renderBreadcrumbs() {
+        const bar = $('crumbBar');
+        bar.innerHTML = '';
+        const chain = state.lineage.length
+          ? state.lineage.slice()
+          : (state.focusId && state.nodeMap.has(state.focusId) ? [state.nodeMap.get(state.focusId)] : []);
 
-        const res = await fetch('/api/v1/foodon/graph?' + qs.toString());
-        const data = await res.json();
-        if (!data.success) {
-          showToast(data.message || 'Could not load FoodOn node');
-          return;
-        }
-
-        state.pathNodeIds.clear();
-        state.pathEdgeKeys.clear();
-        state.expandOffsets.clear();
-        state.nodes = data.nodes.map((n) => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }));
-        state.nodesMap = new Map(state.nodes.map((n) => [n.id, n]));
-        state.edges = data.edges;
-        state.edgeSet = new Set(data.edges.map((e) => `${e.source}->${e.target}`));
-        state.focusId = data.focus.id;
-        state.selectedId = data.focus.id;
-
-        if (data.db_stats) {
-          document.getElementById('dbStatsLabel').textContent =
-            `${data.db_stats.total_concepts.toLocaleString()} nodes · ${data.db_stats.total_edges.toLocaleString()} edges · Pure FoodOn EN`;
-        }
-
-        updateCounters();
-        initPositionsForNewGraph();
-        renderInspector(data.focus, data.lineage, data.children_preview);
-      }
-
-      async function expandNodeInGraph(curie) {
-        const prevOffset = state.expandOffsets.get(curie) || 0;
-        const res = await fetch(`/api/v1/foodon/graph/expand?curie=${encodeURIComponent(curie)}&limit=20&offset=${prevOffset}`);
-        const data = await res.json();
-        if (!data.success) return;
-
-        const anchor = state.nodesMap.get(curie) || { x: 0, y: 0 };
-        let addedCount = 0;
-
-        for (const raw of data.nodes) {
-          if (!state.nodesMap.has(raw.id)) {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 110 + Math.random() * 60;
-            const nodeObj = {
-              ...raw,
-              x: anchor.x + Math.cos(angle) * dist,
-              y: anchor.y + Math.sin(angle) * dist,
-              vx: 0, vy: 0, tx: anchor.x, ty: anchor.y,
-            };
-            state.nodes.push(nodeObj);
-            state.nodesMap.set(raw.id, nodeObj);
-            addedCount++;
+        chain.forEach((item, idx) => {
+          const id = item.id || item.curie;
+          const label = item.label || item.label_en || id;
+          if (idx > 0) {
+            const sep = document.createElement('span');
+            sep.className = 'crumb-sep';
+            sep.textContent = '›';
+            bar.appendChild(sep);
           }
-        }
-
-        for (const e of data.edges) {
-          const k = `${e.source}->${e.target}`;
-          if (!state.edgeSet.has(k) && state.nodesMap.has(e.source) && state.nodesMap.has(e.target)) {
-            state.edgeSet.add(k);
-            state.edges.push(e);
-          }
-        }
-
-        state.expandOffsets.set(curie, prevOffset + data.children.length);
-        computeTreeLayout();
-        state.alpha = 0.85;
-        updateCounters();
-
-        if (addedCount > 0) {
-          showToast(`Expanded +${addedCount} connected nodes for ${data.node.label}`);
-        } else if (data.total_children === 0) {
-          showToast(`"${data.node.label}" is a leaf node (0 subclasses)`);
-        } else {
-          showToast(`All ${data.total_children} subclasses of "${data.node.label}" are already visible`);
-        }
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'crumb-btn' + (id === state.focusId ? ' current' : '');
+          btn.textContent = label;
+          btn.title = `${label} (${id})`;
+          btn.addEventListener('click', () => loadNeighborhood({ curie: id }));
+          bar.appendChild(btn);
+        });
       }
 
-      async function runPathFinder(fromRef, toRef) {
-        const resEl = document.getElementById('pathResult');
-        resEl.textContent = 'Tracing FoodOn ontology path...';
-        const res = await fetch(`/api/v1/foodon/graph/path?from=${encodeURIComponent(fromRef)}&to=${encodeURIComponent(toRef)}`);
-        const data = await res.json();
-        if (!data.success) {
-          resEl.innerHTML = `<span style="color:var(--allergen);font-weight:700;">${escapeHtml(data.message || 'Node not found')}</span>`;
-          return;
-        }
-        if (!data.connected) {
-          resEl.innerHTML = `<span style="color:var(--chronic);font-weight:700;">Not connected in the FoodOn parent hierarchy.</span><br>${escapeHtml(data.message || '')}`;
-          return;
-        }
-
-        // Render the connected path right on the graph!
-        state.nodes = data.path_nodes.map((n) => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }));
-        state.nodesMap = new Map(state.nodes.map((n) => [n.id, n]));
-        state.edges = data.edges;
-        state.edgeSet = new Set(data.edges.map((e) => `${e.source}->${e.target}`));
-        state.focusId = data.lca_id;
-        state.selectedId = data.lca_id;
-        state.pathNodeIds = new Set(data.path_nodes.map((n) => n.id));
-        state.pathEdgeKeys = new Set(data.edges.map((e) => `${e.source}->${e.target}`));
-
-        updateCounters();
-        initPositionsForNewGraph();
-
-        resEl.innerHTML = `
-          <div style="color:var(--path);font-weight:800;margin-bottom:4px;">Connected in ${data.hops} hops!</div>
-          <div><strong>Lowest Common Ancestor:</strong> <code>${escapeHtml(data.lca_id)}</code> (${escapeHtml(data.lca_label)})</div>
-          <div style="margin-top:4px;">${data.path_nodes.map((n) => `<strong>${escapeHtml(n.label)}</strong>`).join(' ↔ ')}</div>
-        `;
-        inspectNodeById(data.lca_id);
-      }
-
-      async function inspectNodeById(curie) {
-        state.selectedId = curie;
-        const n = state.nodesMap.get(curie);
-        if (!n) return;
-        document.getElementById('inspector').classList.remove('collapsed');
-        document.getElementById('btnReopenInsp').classList.remove('visible');
-
-        // Fetch full lineage & children preview without resetting the canvas
-        const res = await fetch(`/api/v1/foodon/graph?curie=${encodeURIComponent(curie)}&child_depth=1&max_children=1&siblings=0`);
-        const data = await res.json();
-        if (data.success) {
-          renderInspector(data.focus, data.lineage, data.children_preview);
-        } else {
-          renderInspector(n, [], []);
-        }
-      }
-
-      function escapeHtml(s) {
-        return String(s || '')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-      }
-
-      function renderInspector(node, lineage, childrenPreview) {
-        document.getElementById('inspCurie').textContent = node.id;
-        document.getElementById('inspTitle').textContent = node.label;
-        document.getElementById('inspDef').textContent = node.definition
-          ? node.definition
-          : 'No official IAO_0000115 definition text in FoodOn OWL for this concept.';
+      function renderInspector(node) {
+        if (!node) return;
+        state.selectedId = node.id;
+        $('inspCurie').textContent = node.id;
+        $('inspName').textContent = node.label || node.id;
 
         // Tags
-        const tagsEl = document.getElementById('inspTags');
-        tagsEl.innerHTML = '';
-        const addTag = (txt, cls) => {
-          const sp = document.createElement('span');
-          sp.className = 'tag ' + cls;
-          sp.textContent = txt;
-          tagsEl.appendChild(sp);
-        };
-        (node.ecodes || []).forEach((e) => addTag(e, 'ecode'));
-        (node.allergens || []).forEach((a) => addTag('Allergen: ' + a, 'allergen'));
-        (node.chronics || []).forEach((c) => addTag('Chronic: ' + c, 'chronic'));
-        if (node.food_type) addTag(node.food_type, 'syn');
-        document.getElementById('inspTagsWrap').style.display = tagsEl.children.length ? 'block' : 'none';
+        const tags = $('inspTags');
+        tags.innerHTML = '';
+        (node.allergens || []).forEach((a) => {
+          tags.innerHTML += `<span class="tag allergen">Allergen: ${esc(a)}</span>`;
+        });
+        (node.chronics || []).forEach((c) => {
+          tags.innerHTML += `<span class="tag chronic">Health: ${esc(c)}</span>`;
+        });
+        (node.ecodes || []).forEach((e) => {
+          tags.innerHTML += `<span class="tag ecode">${esc(e)}</span>`;
+        });
+        if (node.food_type) {
+          node.food_type.split(',').map((s) => s.trim()).filter(Boolean).forEach((ft) => {
+            tags.innerHTML += `<span class="tag">${esc(ft)}</span>`;
+          });
+        }
+
+        // Plain-language summary for beginners
+        const summaryEl = $('inspSummary');
+        summaryEl.className = 'plain-summary';
+        const parts = [];
+        if (node.allergens && node.allergens.length) {
+          summaryEl.classList.add('allergen');
+          parts.push(t('allergenWarn')(esc(node.allergens.join(', '))));
+        }
+        if (node.ecodes && node.ecodes.length) {
+          if (!summaryEl.classList.contains('allergen')) summaryEl.classList.add('ecode');
+          parts.push(t('ecodeInfo')(esc(node.ecodes.join(', '))));
+        }
+        if (node.chronics && node.chronics.length) {
+          if (!summaryEl.classList.contains('allergen') && !summaryEl.classList.contains('ecode')) summaryEl.classList.add('chronic');
+          parts.push(t('chronicWarn')(esc(node.chronics.join(', '))));
+        }
+        parts.push(t('plainInfo')(esc(node.parent_label || ''), node.child_count || 0));
+        summaryEl.innerHTML = parts.join('<div style="height:6px"></div>');
+
+        // Definition
+        $('inspDef').textContent = node.definition
+          ? node.definition
+          : t('noDefFallback')(node.parent_label || '');
 
         // Synonyms
-        const synsEl = document.getElementById('inspSyns');
-        synsEl.innerHTML = '';
-        (node.synonyms || []).forEach((s) => {
-          const sp = document.createElement('span');
-          sp.className = 'tag syn';
-          sp.textContent = s;
-          synsEl.appendChild(sp);
-        });
-        document.getElementById('inspSynWrap').style.display = synsEl.children.length ? 'block' : 'none';
+        const syns = (node.synonyms || []).filter((s) => s && s.toLowerCase() !== (node.label || '').toLowerCase());
+        $('synSection').style.display = syns.length ? 'block' : 'none';
+        $('inspSyn').innerHTML = syns.slice(0, 18).map((s) => `<span class="tag">${esc(s)}</span>`).join('');
 
-        // Ancestor Lineage
-        const linEl = document.getElementById('inspLineage');
+        // Lineage list (root -> current)
+        const linEl = $('inspLineage');
         linEl.innerHTML = '';
-        (lineage || []).forEach((step, idx) => {
-          const div = document.createElement('div');
-          div.className = 'lineage-step' + (step.id === node.id ? ' current' : '');
-          div.style.paddingLeft = (9 + Math.min(idx, 6) * 10) + 'px';
-          div.innerHTML = `<span>${idx === 0 ? '●' : '↳'} ${escapeHtml(step.label)}</span><code>${escapeHtml(step.id)}</code>`;
-          div.onclick = () => loadNeighborhood({ curie: step.id });
-          linEl.appendChild(div);
+        const lin = state.lineage.length ? state.lineage.slice() : [node];
+        lin.forEach((item, idx) => {
+          const id = item.id || item.curie;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'node-row' + (id === node.id ? ' active' : '');
+          btn.innerHTML = `<span>${idx + 1}. ${esc(item.label || id)}</span><span class="node-row-meta">${esc(id)}</span>`;
+          btn.addEventListener('click', () => loadNeighborhood({ curie: id }));
+          linEl.appendChild(btn);
         });
 
         // Children list
-        const chLabel = document.getElementById('inspChildrenLabel');
-        chLabel.textContent = `Direct Subclasses (${node.child_count || 0})`;
-        const chEl = document.getElementById('inspChildren');
-        chEl.innerHTML = '';
-        if (!childrenPreview || !childrenPreview.length) {
-          chEl.innerHTML = '<div style="font-size:12px;color:var(--text-faint);">Leaf concept (no direct subclasses).</div>';
-        } else {
-          childrenPreview.forEach((ch) => {
-            const row = document.createElement('div');
-            row.className = 'child-row';
-            row.innerHTML = `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ch.label)}</span><span class="child-cnt">${ch.child_count}</span>`;
-            row.onclick = () => loadNeighborhood({ curie: ch.id });
-            chEl.appendChild(row);
-          });
-        }
+        const directChildren = state.nodes.filter((n) => n.parent_id === node.id);
+        const childSource = directChildren.length ? directChildren : (node.id === state.focusId ? state.childrenPreview : []);
+        $('inspChildCount').textContent = t('subclassesCount')(node.child_count || childSource.length);
+        renderChildList(childSource, $('childFilterInput').value);
       }
 
-      // Search with debounce & keyboard navigation
-      const searchInput = document.getElementById('searchInput');
-      const searchResults = document.getElementById('searchResults');
-      let searchTimer = null;
-      let currentResults = [];
-      let activeResultIdx = -1;
+      function renderChildList(list, query = '') {
+        const container = $('inspChildren');
+        const q = query.trim().toLowerCase();
+        const filtered = q
+          ? list.filter((c) => (c.label || '').toLowerCase().includes(q) || (c.id || '').toLowerCase().includes(q))
+          : list;
 
-      function closeSearch() {
-        searchResults.classList.remove('open');
-        activeResultIdx = -1;
-      }
-
-      async function doSearch(q) {
-        const clean = q.trim();
-        if (!clean) {
-          closeSearch();
+        container.innerHTML = '';
+        if (!filtered.length) {
+          container.innerHTML = `<div style="font-size:12.5px;color:var(--text-muted);padding:6px 2px;">${esc(t('noChildren'))}</div>`;
           return;
         }
-        const res = await fetch(`/api/v1/foodon/search?q=${encodeURIComponent(clean)}&limit=14`);
-        const data = await res.json();
-        currentResults = data.results || [];
-        activeResultIdx = currentResults.length ? 0 : -1;
-
-        if (!currentResults.length) {
-          searchResults.innerHTML = `<div class="sr-item"><div class="sr-meta">No FoodOn node matching "${escapeHtml(clean)}"</div></div>`;
-          searchResults.classList.add('open');
-          return;
-        }
-
-        searchResults.innerHTML = currentResults.map((r, i) => {
-          const badges = [
-            ...(r.ecodes || []).slice(0, 2).map((e) => `<span class="tag ecode">${escapeHtml(e.toUpperCase())}</span>`),
-            ...(r.allergens || []).slice(0, 2).map((a) => `<span class="tag allergen">${escapeHtml(a)}</span>`),
-            ...(r.chronics || []).slice(0, 1).map((c) => `<span class="tag chronic">${escapeHtml(c)}</span>`),
-          ].join('');
-          return `
-            <div class="sr-item ${i === 0 ? 'active' : ''}" data-idx="${i}" role="option">
-              <div style="min-width:0;">
-                <div class="sr-title">${escapeHtml(r.label_en)}</div>
-                <div class="sr-meta">${escapeHtml(r.curie)}${r.matched_term && r.matched_term.toLowerCase() !== r.label_en.toLowerCase() ? ' · matched: ' + escapeHtml(r.matched_term) : ''}</div>
-              </div>
-              <div class="sr-badges">${badges}</div>
-            </div>
-          `;
-        }).join('');
-
-        searchResults.querySelectorAll('.sr-item').forEach((el) => {
-          el.addEventListener('click', () => {
-            const idx = Number(el.dataset.idx);
-            const item = currentResults[idx];
-            if (item) {
-              searchInput.value = item.label_en;
-              closeSearch();
-              clearActiveQuickChips();
-              loadNeighborhood({ curie: item.curie });
-            }
-          });
+        filtered.slice(0, 40).forEach((c) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'node-row';
+          const badge = (c.allergens && c.allergens.length)
+            ? `<span class="tag allergen">${esc(c.allergens[0])}</span>`
+            : (c.ecodes && c.ecodes.length)
+              ? `<span class="tag ecode">${esc(c.ecodes[0])}</span>`
+              : `<span class="node-row-meta">${c.child_count || 0}</span>`;
+          btn.innerHTML = `<span>${esc(c.label || c.id)}</span>${badge}`;
+          btn.addEventListener('click', () => loadNeighborhood({ curie: c.id }));
+          container.appendChild(btn);
         });
-
-        searchResults.classList.add('open');
       }
 
-      searchInput.addEventListener('input', (e) => {
+      async function loadNeighborhood(opts = {}) {
+        setLoading(true);
+        state.pathNodeIds.clear();
+        state.pathEdgeKeys.clear();
+        state.lcaId = null;
+
+        const depth = $('depthSelect').value;
+        const limit = $('limitSelect').value;
+        const params = new URLSearchParams({
+          ancestor_hops: '8',
+          child_depth: depth,
+          max_children: limit,
+          siblings: '1'
+        });
+        if (opts.curie) params.set('curie', opts.curie);
+        if (opts.allergen) params.set('allergen', opts.allergen);
+
+        try {
+          const res = await fetch('/api/v1/foodon/graph?' + params.toString());
+          const data = await res.json();
+          if (!data.success || !data.nodes) {
+            showToast(data.error || 'Could not load FoodOn node');
+            return;
+          }
+          if (data.db_stats) {
+            state.dbStats = data.db_stats;
+            $('dbStats').textContent = t('dbStatsFmt')(data.db_stats.total_concepts || 33688, data.db_stats.total_ecodes || 742);
+          }
+
+          state.focusId = data.focus ? data.focus.id : data.nodes[0].id;
+          state.lineage = data.lineage || [];
+          state.childrenPreview = data.children_preview || [];
+          state.nodes = data.nodes.map((n, idx) => ({
+            ...n,
+            x: (idx % 5 - 2) * 80,
+            y: Math.floor(idx / 5) * 60
+          }));
+          state.nodeMap = new Map(state.nodes.map((n) => [n.id, n]));
+          state.edges = data.edges || [];
+
+          computeTreeLayout();
+          for (const n of state.nodes) { n.x = n.tx; n.y = n.ty; }
+          state.alpha = 0.85;
+          fitToView(true);
+
+          renderBreadcrumbs();
+          const focusNode = state.nodeMap.get(state.focusId) || state.nodes[0];
+          $('childFilterInput').value = '';
+          renderInspector(focusNode);
+          if (!opts.keepInsight) hideInsight();
+        } catch (err) {
+          showToast('Network error loading FoodOn graph');
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function expandNodeInGraph(curie) {
+        const node = state.nodeMap.get(curie);
+        if (!node) return;
+        setLoading(true);
+        try {
+          const res = await fetch('/api/v1/foodon/graph/expand?curie=' + encodeURIComponent(curie) + '&limit=24');
+          const data = await res.json();
+          if (!data.success) return;
+          let added = 0;
+          const baseDepth = typeof node.depth === 'number' ? node.depth : 0;
+          for (const cn of (data.nodes || [])) {
+            if (!state.nodeMap.has(cn.id)) {
+              const item = {
+                ...cn,
+                depth: cn.id === curie ? baseDepth : baseDepth + 1,
+                x: node.x + (Math.random() - 0.5) * 140,
+                y: node.y + 110
+              };
+              state.nodes.push(item);
+              state.nodeMap.set(item.id, item);
+              added++;
+            }
+          }
+          const existingEdges = new Set(state.edges.map((e) => `${e.source}->${e.target}`));
+          for (const ed of (data.edges || [])) {
+            const k = `${ed.source}->${ed.target}`;
+            if (!existingEdges.has(k)) {
+              state.edges.push(ed);
+              existingEdges.add(k);
+            }
+          }
+          if (state.layout === 'tree') computeTreeLayout();
+          state.alpha = 0.75;
+          fitToView(false);
+          renderInspector(node);
+          showToast(t('expandedToast')(added, node.label || curie));
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function runPathFinder(fromVal, toVal, customInsight = null) {
+        const a = (fromVal || '').trim();
+        const b = (toVal || '').trim();
+        if (!a || !b) return;
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/v1/foodon/graph/path?from=${encodeURIComponent(a)}&to=${encodeURIComponent(b)}`);
+          const data = await res.json();
+          const out = $('pathResult');
+
+          if (!data.success || !data.connected) {
+            out.innerHTML = `<div class="path-summary err">${esc(data.message || 'No shared path found between these two items.')}</div>`;
+            return;
+          }
+
+          const pathNodes = data.path_nodes || [];
+          state.pathNodeIds = new Set(pathNodes.map((n) => n.id));
+          state.pathEdgeKeys = new Set((data.edges || []).map((e) => `${e.source}->${e.target}`));
+          state.lcaId = data.lca_id || null;
+          state.focusId = data.lca_id || (pathNodes[0] && pathNodes[0].id);
+          state.nodes = pathNodes.map((n) => ({ ...n }));
+          state.nodeMap = new Map(state.nodes.map((n) => [n.id, n]));
+          state.edges = data.edges || [];
+          state.lineage = data.lca_id && state.nodeMap.has(data.lca_id) ? [state.nodeMap.get(data.lca_id)] : [];
+
+          computeTreeLayout();
+          for (const n of state.nodes) { n.x = n.tx; n.y = n.ty; }
+          state.alpha = 0.65;
+          fitToView(true);
+          renderBreadcrumbs();
+          if (state.focusId && state.nodeMap.has(state.focusId)) {
+            renderInspector(state.nodeMap.get(state.focusId));
+          }
+
+          const lcaText = data.lca_label ? `${data.lca_label} (${data.lca_id})` : 'FoodOn';
+          const summaryMsg = state.lang === 'vi'
+            ? `Tìm thấy cầu nối dài <strong>${data.hops} bước</strong>! Nhóm cha chung: <strong>${esc(lcaText)}</strong>.`
+            : `Connected in <strong>${data.hops} hops</strong>! Shared parent: <strong>${esc(lcaText)}</strong>.`;
+
+          out.innerHTML = `<div class="path-summary">${summaryMsg}</div><div class="path-steps" style="margin-top:8px;">` +
+            pathNodes.map((n, i) => {
+              const isLca = n.id === data.lca_id;
+              return `<button type="button" class="path-step${isLca ? ' lca' : ''}" data-jump="${esc(n.id)}">
+                <span class="step-num">${isLca ? '★' : i + 1}</span>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.label)}</span>
+                ${isLca ? `<span class="tag path">${esc(t('lcaBadge'))}</span>` : `<span class="node-row-meta">${esc(n.id)}</span>`}
+              </button>`;
+            }).join('') + '</div>';
+
+          out.querySelectorAll('[data-jump]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const id = btn.getAttribute('data-jump');
+              if (state.nodeMap.has(id)) {
+                renderInspector(state.nodeMap.get(id));
+                const n = state.nodeMap.get(id);
+                state.targetCamX = n.x;
+                state.targetCamY = n.y;
+                state.targetZoom = Math.max(state.zoom, 1.0);
+              }
+            });
+          });
+
+          if (customInsight) {
+            showInsight(customInsight.title, customInsight.text);
+          } else {
+            showInsight(
+              `${a} ↔ ${b} (${data.hops} hops)`,
+              state.lang === 'vi'
+                ? `Hai nguyên liệu này cùng thuộc nhóm cha "${data.lca_label}". Bấm vào từng nút trên đồ thị hoặc cột trái để kiểm tra chi tiết.`
+                : `Both items connect through shared parent "${data.lca_label}". Click any node to inspect its full FoodOn details.`
+            );
+          }
+        } catch (err) {
+          showToast('Error tracing path');
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function runLabelLab() {
+        const rawText = $('labTextarea').value.trim();
+        if (!rawText) return;
+        const allergens = Array.from(document.querySelectorAll('#labAllergenChips .chip.active')).map((c) => c.dataset.code);
+        const chronics = Array.from(document.querySelectorAll('#labChronicChips .chip.active')).map((c) => c.dataset.code);
+
+        const out = $('labResult');
+        out.innerHTML = `<div class="intro-card" style="text-align:center;">${esc(t('loadingText'))}</div>`;
+
+        try {
+          const res = await fetch('/api/v1/foodon/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              raw_text: rawText,
+              allergens,
+              chronics,
+              scan_derivatives: true,
+              warn_traces: true
+            })
+          });
+          const data = await res.json();
+          const v = String(data.verdict || 'GREEN').toUpperCase();
+          const cls = v === 'RED' ? 'red' : v === 'YELLOW' ? 'yellow' : 'green';
+          const vTitle = v === 'RED' ? t('verdictRed') : v === 'YELLOW' ? t('verdictYellow') : t('verdictGreen');
+          const reds = data.red_triggers || [];
+          const yellows = data.yellow_triggers || [];
+          const adds = data.detected_additives || [];
+
+          let html = `<div class="verdict-box ${cls}">
+            <div class="verdict-title"><span>${esc(vTitle)}</span><span>${data.latency_ms || 0} ms</span></div>
+            <div class="verdict-stats">${data.tokens_analyzed || 0} tokens · ${reds.length} allergen · ${yellows.length} caution · ${adds.length} E-codes</div>
+          </div>`;
+
+          const items = [];
+          reds.forEach((r) => items.push({
+            kind: 'allergen',
+            badge: `Allergen: ${r.allergen_name || r.allergen_code}`,
+            token: r.token,
+            label: r.label_en || r.matched_en,
+            curie: r.curie,
+            lineage: r.lineage || ''
+          }));
+          yellows.forEach((y) => items.push({
+            kind: 'chronic',
+            badge: `Health: ${y.chronic_name || y.chronic_code}`,
+            token: y.token,
+            label: y.label_en || y.matched_en,
+            curie: y.curie,
+            lineage: y.lineage || ''
+          }));
+          adds.forEach((a) => items.push({
+            kind: 'ecode',
+            badge: a.code,
+            token: a.title || a.label_en,
+            label: a.label_en || a.title,
+            curie: a.curie,
+            lineage: a.lineage || ''
+          }));
+
+          if (items.length) {
+            html += `<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">` +
+              items.map((it, idx) => `<button type="button" class="trigger-item" data-lab-idx="${idx}">
+                <div class="trigger-head">
+                  <span>${esc(it.token)}</span>
+                  <span class="tag ${it.kind}">${esc(it.badge)}</span>
+                </div>
+                <div class="trigger-sub">${esc(it.label)} (${esc(it.curie)})</div>
+                <div class="trigger-cta">${esc(t('clickToInspectGraph'))}</div>
+              </button>`).join('') + `</div>`;
+          }
+          out.innerHTML = html;
+          out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+          out.querySelectorAll('[data-lab-idx]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const it = items[Number(btn.getAttribute('data-lab-idx'))];
+              if (!it || !it.curie) return;
+              closeMobileDrawers();
+              loadNeighborhood({ curie: it.curie, keepInsight: true }).then(() => {
+                showInsight(
+                  `${it.token} → ${it.badge}`,
+                  state.lang === 'vi'
+                    ? `Thành phần "${it.token}" khớp với khái niệm "${it.label}" (${it.curie}) trên cây FoodOn. Quan sát đường gia phả phía trên để thấy nguồn gốc cảnh báo.`
+                    : `Label token "${it.token}" matched "${it.label}" (${it.curie}) in FoodOn. Inspect its ancestor lineage above to verify why it triggered.`
+                );
+              });
+            });
+          });
+        } catch (err) {
+          out.innerHTML = `<div class="path-summary err">Error calling /api/v1/foodon/evaluate</div>`;
+        }
+      }
+
+      // Live Search
+      let searchTimer = null;
+      async function doSearch(raw) {
+        const q = (raw || '').trim();
+        const box = $('searchResults');
+        if (q.length < 2) {
+          box.classList.remove('open');
+          state.searchResults = [];
+          return;
+        }
+        try {
+          const res = await fetch('/api/v1/foodon/search?q=' + encodeURIComponent(q) + '&lang=all&limit=12');
+          const data = await res.json();
+          const list = data.results || [];
+          state.searchResults = list;
+          state.activeResultIdx = list.length ? 0 : -1;
+
+          if (!list.length) {
+            box.innerHTML = `<div class="sr-empty">${esc(t('noResults'))}</div>`;
+          } else {
+            box.innerHTML = list.map((item, idx) => {
+              const badges = [
+                ...(item.allergens || []).map((a) => `<span class="tag allergen">${esc(a)}</span>`),
+                ...(item.ecodes || []).slice(0, 2).map((e) => `<span class="tag ecode">${esc(e)}</span>`),
+                ...(item.chronics || []).slice(0, 1).map((c) => `<span class="tag chronic">${esc(c)}</span>`)
+              ].join('');
+              return `<div class="sr-item${idx === 0 ? ' active' : ''}" data-idx="${idx}" role="option">
+                <div class="sr-top">
+                  <span class="sr-label">${esc(item.label_en || item.curie)}</span>
+                  <span class="sr-curie">${esc(item.curie)}</span>
+                </div>
+                <div class="sr-meta">${badges || esc(item.matched_term || '')}</div>
+              </div>`;
+            }).join('');
+
+            box.querySelectorAll('.sr-item').forEach((el) => {
+              el.addEventListener('click', () => pickSearchResult(Number(el.dataset.idx)));
+            });
+          }
+          box.classList.add('open');
+        } catch {
+          box.classList.remove('open');
+        }
+      }
+
+      function pickSearchResult(idx) {
+        const item = state.searchResults[idx];
+        if (!item) return;
+        $('searchInput').value = item.label_en || item.curie;
+        $('searchResults').classList.remove('open');
+        clearQuickChips();
+        loadNeighborhood({ curie: item.curie });
+      }
+
+      function clearQuickChips() {
+        document.querySelectorAll('#quickChips .chip').forEach((c) => c.classList.remove('active'));
+        document.querySelectorAll('#storyList .story-card').forEach((c) => c.classList.remove('active'));
+      }
+
+      function closeMobileDrawers() {
+        $('leftRail').classList.remove('mobile-open');
+        $('inspector').classList.remove('mobile-open');
+      }
+
+      function runStory(key) {
+        clearQuickChips();
+        const card = document.querySelector(`[data-story="${key}"]`);
+        if (card) card.classList.add('active');
+        closeMobileDrawers();
+        const insight = I18N[state.lang].storyInsight[key];
+        if (key === 'milk-whey') {
+          $('pathFrom').value = 'butter';
+          $('pathTo').value = 'whey protein';
+          runPathFinder('butter', 'whey protein', insight);
+        } else if (key === 'msg-salt') {
+          $('pathFrom').value = 'E621';
+          $('pathTo').value = 'salt';
+          runPathFinder('E621', 'salt', insight);
+        } else if (key === 'peanut-tree') {
+          loadNeighborhood({ allergen: 'peanuts', keepInsight: true }).then(() => showInsight(insight.title, insight.text));
+        } else if (key === 'sugar-diabetes') {
+          loadNeighborhood({ curie: 'FOODON:03420108', keepInsight: true }).then(() => showInsight(insight.title, insight.text));
+        }
+      }
+
+      // Event Wiring
+      $('btnLangVi').addEventListener('click', () => { state.lang = 'vi'; applyLanguage(); });
+      $('btnLangEn').addEventListener('click', () => { state.lang = 'en'; applyLanguage(); });
+
+      $('btnTheme').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        applyLanguage();
+      });
+
+      $('btnGuide').addEventListener('click', () => $('guideModal').classList.add('open'));
+      $('btnCloseGuide').addEventListener('click', () => $('guideModal').classList.remove('open'));
+      $('btnGuideDone').addEventListener('click', () => $('guideModal').classList.remove('open'));
+      $('guideModal').addEventListener('click', (e) => {
+        if (e.target === $('guideModal')) $('guideModal').classList.remove('open');
+      });
+      $('btnGuideDemoStory').addEventListener('click', () => {
+        $('guideModal').classList.remove('open');
+        switchRailTab('explore');
+        runStory('milk-whey');
+      });
+      $('btnGuideDemoLab').addEventListener('click', () => {
+        $('guideModal').classList.remove('open');
+        switchRailTab('lab');
+        $('leftRail').classList.add('mobile-open');
+        runLabelLab();
+      });
+
+      $('btnCloseInsight').addEventListener('click', hideInsight);
+
+      // Rail tabs
+      document.querySelectorAll('.rail-tab').forEach((tab) => {
+        tab.addEventListener('click', () => switchRailTab(tab.dataset.tab));
+      });
+
+      // Desktop collapse toggles
+      $('btnToggleLeft').addEventListener('click', () => {
+        const collapsed = workspace.classList.toggle('left-collapsed');
+        $('btnToggleLeft').textContent = collapsed ? '›' : '‹';
+        setTimeout(() => { resizeCanvas(); fitToView(false); }, 60);
+      });
+      $('btnToggleRight').addEventListener('click', () => {
+        const collapsed = workspace.classList.toggle('right-collapsed');
+        $('btnToggleRight').textContent = collapsed ? '‹' : '›';
+        setTimeout(() => { resizeCanvas(); fitToView(false); }, 60);
+      });
+
+      // Mobile drawer toggles
+      $('btnMobileLeft').addEventListener('click', () => {
+        $('inspector').classList.remove('mobile-open');
+        $('leftRail').classList.toggle('mobile-open');
+      });
+      $('btnMobileRight').addEventListener('click', () => {
+        $('leftRail').classList.remove('mobile-open');
+        $('inspector').classList.toggle('mobile-open');
+      });
+      $('btnCloseMobileRight').addEventListener('click', () => $('inspector').classList.remove('mobile-open'));
+
+      // Stories & Quick chips
+      document.querySelectorAll('#storyList .story-card').forEach((card) => {
+        card.addEventListener('click', () => runStory(card.dataset.story));
+      });
+      document.querySelectorAll('#quickChips .chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          clearQuickChips();
+          chip.classList.add('active');
+          closeMobileDrawers();
+          if (chip.dataset.curie) loadNeighborhood({ curie: chip.dataset.curie });
+          else if (chip.dataset.allergen) loadNeighborhood({ allergen: chip.dataset.allergen });
+        });
+      });
+
+      // Lab controls
+      document.querySelectorAll('#labAllergenChips .chip, #labChronicChips .chip').forEach((c) => {
+        c.addEventListener('click', () => c.classList.toggle('active'));
+      });
+      document.querySelectorAll('#labSampleBtns .chip').forEach((c) => {
+        c.addEventListener('click', () => {
+          $('labTextarea').value = LABEL_SAMPLES[c.dataset.sample] || '';
+          runLabelLab();
+        });
+      });
+      $('btnRunLab').addEventListener('click', runLabelLab);
+
+      // Path controls
+      $('btnRunPath').addEventListener('click', () => {
+        closeMobileDrawers();
+        runPathFinder($('pathFrom').value, $('pathTo').value);
+      });
+      document.querySelectorAll('#pathPresetWrap .chip').forEach((c) => {
+        c.addEventListener('click', () => {
+          $('pathFrom').value = c.dataset.from;
+          $('pathTo').value = c.dataset.to;
+          closeMobileDrawers();
+          runPathFinder(c.dataset.from, c.dataset.to);
+        });
+      });
+
+      // Stage controls
+      $('btnLayoutTree').addEventListener('click', () => {
+        state.layout = 'tree';
+        $('btnLayoutTree').classList.add('active');
+        $('btnLayoutForce').classList.remove('active');
+        computeTreeLayout();
+        fitToView(false);
+      });
+      $('btnLayoutForce').addEventListener('click', () => {
+        state.layout = 'force';
+        state.alpha = 0.85;
+        $('btnLayoutForce').classList.add('active');
+        $('btnLayoutTree').classList.remove('active');
+      });
+      $('depthSelect').addEventListener('change', () => loadNeighborhood({ curie: state.focusId }));
+      $('limitSelect').addEventListener('change', () => loadNeighborhood({ curie: state.focusId }));
+      $('btnZoomIn').addEventListener('click', () => { state.targetZoom = Math.min(2.6, state.targetZoom * 1.25); });
+      $('btnZoomOut').addEventListener('click', () => { state.targetZoom = Math.max(0.24, state.targetZoom * 0.8); });
+      $('btnFit').addEventListener('click', () => fitToView(false));
+
+      // Inspector actions
+      $('inspCurie').addEventListener('click', () => {
+        const curie = $('inspCurie').textContent;
+        if (curie && curie !== '—' && navigator.clipboard) {
+          navigator.clipboard.writeText(curie);
+          showToast(t('copied')(curie));
+        }
+      });
+      $('btnFocusNode').addEventListener('click', () => {
+        if (state.selectedId) {
+          closeMobileDrawers();
+          loadNeighborhood({ curie: state.selectedId });
+        }
+      });
+      $('btnExpandNode').addEventListener('click', () => {
+        if (state.selectedId) expandNodeInGraph(state.selectedId);
+      });
+      $('btnUseInPath').addEventListener('click', () => {
+        const n = state.nodeMap.get(state.selectedId);
+        if (!n) return;
+        $('pathFrom').value = n.label || n.id;
+        switchRailTab('path');
+        workspace.classList.remove('left-collapsed');
+        $('leftRail').classList.add('mobile-open');
+        $('inspector').classList.remove('mobile-open');
+        $('pathTo').focus();
+      });
+      $('childFilterInput').addEventListener('input', () => {
+        const n = state.nodeMap.get(state.selectedId);
+        if (!n) return;
+        const direct = state.nodes.filter((x) => x.parent_id === n.id);
+        renderChildList(direct.length ? direct : (n.id === state.focusId ? state.childrenPreview : []), $('childFilterInput').value);
+      });
+
+      // Search keyboard & blur
+      $('searchInput').addEventListener('input', (e) => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => doSearch(e.target.value), 160);
       });
-
-      searchInput.addEventListener('keydown', async (e) => {
-        if (e.key === 'Enter' && !searchResults.classList.contains('open')) {
+      $('searchInput').addEventListener('keydown', async (e) => {
+        const open = $('searchResults').classList.contains('open');
+        if (e.key === 'Enter' && !open) {
           e.preventDefault();
-          clearTimeout(searchTimer);
-          await doSearch(searchInput.value);
-          if (currentResults[0]) {
-            searchInput.value = currentResults[0].label_en;
-            closeSearch();
-            clearActiveQuickChips();
-            loadNeighborhood({ curie: currentResults[0].curie });
-          }
+          await doSearch($('searchInput').value);
+          if (state.searchResults[0]) pickSearchResult(0);
           return;
         }
-        if (!searchResults.classList.contains('open')) return;
+        if (!open) return;
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          activeResultIdx = Math.min(currentResults.length - 1, activeResultIdx + 1);
-          highlightSearchIdx();
+          state.activeResultIdx = Math.min(state.searchResults.length - 1, state.activeResultIdx + 1);
+          highlightSearch();
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          activeResultIdx = Math.max(0, activeResultIdx - 1);
-          highlightSearchIdx();
-        } else if (e.key === 'Enter' && activeResultIdx >= 0 && currentResults[activeResultIdx]) {
+          state.activeResultIdx = Math.max(0, state.activeResultIdx - 1);
+          highlightSearch();
+        } else if (e.key === 'Enter' && state.activeResultIdx >= 0) {
           e.preventDefault();
-          const item = currentResults[activeResultIdx];
-          searchInput.value = item.label_en;
-          closeSearch();
-          clearActiveQuickChips();
-          loadNeighborhood({ curie: item.curie });
+          pickSearchResult(state.activeResultIdx);
         } else if (e.key === 'Escape') {
-          closeSearch();
+          $('searchResults').classList.remove('open');
         }
       });
 
-      function highlightSearchIdx() {
-        searchResults.querySelectorAll('.sr-item').forEach((el, i) => {
-          el.classList.toggle('active', i === activeResultIdx);
-          if (i === activeResultIdx) el.scrollIntoView({ block: 'nearest' });
+      function highlightSearch() {
+        $('searchResults').querySelectorAll('.sr-item').forEach((el, i) => {
+          el.classList.toggle('active', i === state.activeResultIdx);
+          if (i === state.activeResultIdx) el.scrollIntoView({ block: 'nearest' });
         });
       }
 
       document.addEventListener('click', (e) => {
-        if (!e.target.closest('.search-wrap')) closeSearch();
+        if (!e.target.closest('.search-wrap')) $('searchResults').classList.remove('open');
       });
 
       document.addEventListener('keydown', (e) => {
-        if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+        const tag = document.activeElement && document.activeElement.tagName;
+        if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
           e.preventDefault();
-          searchInput.focus();
-          searchInput.select();
+          $('searchInput').focus();
+          $('searchInput').select();
+        } else if (e.key === 'Escape') {
+          $('guideModal').classList.remove('open');
+          $('searchResults').classList.remove('open');
         }
       });
 
-      // Canvas Pointer & Wheel Events
-      const tooltip = document.getElementById('tooltip');
-
+      // Canvas Pointer & Wheel
+      const tooltip = $('tooltip');
       canvas.addEventListener('pointerdown', (e) => {
         const rect = canvas.getBoundingClientRect();
         const sx = e.clientX - rect.left;
@@ -1665,7 +3224,6 @@
         state.pointerDownPos = { x: sx, y: sy };
         state.lastPointerPos = { x: sx, y: sy };
         state.movedSinceDown = false;
-
         const hit = findNodeAt(sx, sy);
         if (hit) {
           state.dragNode = hit;
@@ -1684,26 +3242,19 @@
 
         if (state.dragNode) {
           const w = screenToWorld(sx, sy);
-          state.dragNode.x = w.x;
-          state.dragNode.y = w.y;
-          state.dragNode.tx = w.x;
-          state.dragNode.ty = w.y;
+          state.dragNode.x = w.x; state.dragNode.y = w.y;
+          state.dragNode.tx = w.x; state.dragNode.ty = w.y;
           state.movedSinceDown = true;
           tooltip.style.display = 'none';
           return;
         }
-
         if (state.isPanning && state.lastPointerPos) {
-          const dx = (sx - state.lastPointerPos.x) / state.zoom;
-          const dy = (sy - state.lastPointerPos.y) / state.zoom;
-          state.camX -= dx;
-          state.camY -= dy;
+          state.camX -= (sx - state.lastPointerPos.x) / state.zoom;
+          state.camY -= (sy - state.lastPointerPos.y) / state.zoom;
           state.targetCamX = state.camX;
           state.targetCamY = state.camY;
           state.lastPointerPos = { x: sx, y: sy };
-          if (Math.hypot(sx - state.pointerDownPos.x, sy - state.pointerDownPos.y) > 4) {
-            state.movedSinceDown = true;
-          }
+          if (Math.hypot(sx - state.pointerDownPos.x, sy - state.pointerDownPos.y) > 4) state.movedSinceDown = true;
           tooltip.style.display = 'none';
           return;
         }
@@ -1712,12 +3263,15 @@
         state.hoveredId = hit ? hit.id : null;
         canvas.classList.toggle('pointer', Boolean(hit));
         if (hit) {
-          document.getElementById('ttLabel').textContent = hit.label;
-          document.getElementById('ttCurie').textContent =
-            `${hit.id} · ${hit.child_count || 0} subclasses` + (hit.ecodes && hit.ecodes.length ? ` · ${hit.ecodes[0]}` : '');
+          $('ttTitle').textContent = hit.label || hit.id;
+          const extras = [hit.id, t('subclassesCount')(hit.child_count || 0)];
+          if (hit.allergens && hit.allergens.length) extras.push('Allergen: ' + hit.allergens.join(', '));
+          if (hit.ecodes && hit.ecodes.length) extras.push(hit.ecodes[0]);
+          $('ttSub').textContent = extras.join(' · ');
+          $('ttDesc').textContent = hit.definition ? hit.definition.slice(0, 120) + (hit.definition.length > 120 ? '…' : '') : t('ttHint');
           tooltip.style.display = 'block';
-          tooltip.style.left = Math.min(state.width - 290, sx + 16) + 'px';
-          tooltip.style.top = Math.min(state.height - 95, sy + 14) + 'px';
+          tooltip.style.left = Math.min(state.width - 300, Math.max(10, sx + 16)) + 'px';
+          tooltip.style.top = Math.min(state.height - 110, Math.max(10, sy + 14)) + 'px';
         } else {
           tooltip.style.display = 'none';
         }
@@ -1733,9 +3287,7 @@
         state.isPanning = false;
         state.dragNode = null;
         canvas.classList.remove('dragging');
-        if (canvas.hasPointerCapture(e.pointerId)) {
-          canvas.releasePointerCapture(e.pointerId);
-        }
+        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
 
         if (wasClick && hit) {
           const now = Date.now();
@@ -1745,7 +3297,8 @@
           } else {
             state.lastClickNodeId = hit.id;
             state.lastClickTime = now;
-            inspectNodeById(hit.id);
+            renderInspector(hit);
+            if (window.innerWidth <= 1120) $('inspector').classList.add('mobile-open');
           }
         }
       });
@@ -1753,114 +3306,53 @@
       canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const factor = e.deltaY < 0 ? 1.15 : 0.87;
-        state.targetZoom = Math.max(0.22, Math.min(2.8, state.targetZoom * factor));
+        state.targetZoom = Math.max(0.24, Math.min(2.6, state.targetZoom * factor));
       }, { passive: false });
-
-      // Toolbar & Buttons
-      function clearActiveQuickChips() {
-        document.querySelectorAll('#quickBar .chip').forEach((c) => c.classList.remove('active'));
-      }
-
-      document.querySelectorAll('#quickBar .chip').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          clearActiveQuickChips();
-          chip.classList.add('active');
-          if (chip.dataset.curie) {
-            loadNeighborhood({ curie: chip.dataset.curie });
-          } else if (chip.dataset.allergen) {
-            loadNeighborhood({ allergen: chip.dataset.allergen });
-          }
-        });
-      });
-
-      document.getElementById('btnLayoutForce').addEventListener('click', () => {
-        state.layout = 'force';
-        state.alpha = 0.85;
-        document.getElementById('btnLayoutForce').classList.add('active');
-        document.getElementById('btnLayoutTree').classList.remove('active');
-      });
-
-      document.getElementById('btnLayoutTree').addEventListener('click', () => {
-        state.layout = 'tree';
-        computeTreeLayout();
-        fitToView(false);
-        document.getElementById('btnLayoutTree').classList.add('active');
-        document.getElementById('btnLayoutForce').classList.remove('active');
-      });
-
-      document.getElementById('depthSelect').addEventListener('change', () => {
-        loadNeighborhood({ curie: state.focusId });
-      });
-
-      document.getElementById('limitSelect').addEventListener('change', () => {
-        loadNeighborhood({ curie: state.focusId });
-      });
-
-      document.getElementById('btnTheme').addEventListener('click', (e) => {
-        const dark = document.body.classList.toggle('dark');
-        e.target.textContent = dark ? 'Light' : 'Dark';
-      });
-
-      document.getElementById('btnZoomIn').addEventListener('click', () => {
-        state.targetZoom = Math.min(2.8, state.targetZoom * 1.25);
-      });
-      document.getElementById('btnZoomOut').addEventListener('click', () => {
-        state.targetZoom = Math.max(0.22, state.targetZoom * 0.8);
-      });
-      document.getElementById('btnFit').addEventListener('click', () => fitToView(false));
-
-      document.getElementById('btnFocusNode').addEventListener('click', () => {
-        if (state.selectedId) loadNeighborhood({ curie: state.selectedId });
-      });
-      document.getElementById('btnExpandNode').addEventListener('click', () => {
-        if (state.selectedId) expandNodeInGraph(state.selectedId);
-      });
-
-      document.getElementById('inspCurie').addEventListener('click', () => {
-        const curie = document.getElementById('inspCurie').textContent;
-        if (curie && curie !== '—' && navigator.clipboard) {
-          navigator.clipboard.writeText(curie);
-          showToast('Copied ' + curie);
-        }
-      });
-
-      document.getElementById('btnCloseInsp').addEventListener('click', () => {
-        document.getElementById('inspector').classList.add('collapsed');
-        document.getElementById('btnReopenInsp').classList.add('visible');
-      });
-      document.getElementById('btnReopenInsp').addEventListener('click', () => {
-        document.getElementById('inspector').classList.remove('collapsed');
-        document.getElementById('btnReopenInsp').classList.remove('visible');
-      });
-
-      // Path Finder Controls
-      const pathPanel = document.getElementById('pathPanel');
-      const btnPathToggle = document.getElementById('btnPathToggle');
-      btnPathToggle.addEventListener('click', () => {
-        const open = pathPanel.classList.toggle('open');
-        btnPathToggle.classList.toggle('active-toggle', open);
-      });
-      document.getElementById('btnClosePath').addEventListener('click', () => {
-        pathPanel.classList.remove('open');
-        btnPathToggle.classList.remove('active-toggle');
-      });
-      document.getElementById('btnRunPath').addEventListener('click', () => {
-        runPathFinder(document.getElementById('pathFrom').value, document.getElementById('pathTo').value);
-      });
-      document.getElementById('btnExamplePath').addEventListener('click', () => {
-        document.getElementById('pathFrom').value = 'E621';
-        document.getElementById('pathTo').value = 'salt';
-        runPathFinder('E621', 'salt');
-      });
 
       window.addEventListener('resize', () => {
         resizeCanvas();
         fitToView(false);
       });
 
+      // Boot & URL deep-link support
       resizeCanvas();
+      applyLanguage();
       requestAnimationFrame(render);
-      loadNeighborhood({ curie: 'FOODON:00001002' });
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const qFrom = urlParams.get('from');
+      const qTo = urlParams.get('to');
+      const qCurie = urlParams.get('curie');
+      const qAllergen = urlParams.get('allergen');
+      const qSearch = urlParams.get('q');
+
+      if (qFrom && qTo) {
+        switchRailTab('path');
+        $('pathFrom').value = qFrom;
+        $('pathTo').value = qTo;
+        runPathFinder(qFrom, qTo);
+      } else if (qCurie) {
+        clearQuickChips();
+        loadNeighborhood({ curie: qCurie });
+      } else if (qAllergen) {
+        clearQuickChips();
+        loadNeighborhood({ allergen: qAllergen });
+      } else if (qSearch) {
+        $('searchInput').value = qSearch;
+        doSearch(qSearch).then(() => {
+          if (state.searchResults[0]) pickSearchResult(0);
+          else loadNeighborhood({ curie: 'FOODON:00001256' });
+        });
+      } else {
+        loadNeighborhood({ curie: 'FOODON:00001256', keepInsight: true }).then(() => {
+          showInsight(
+            state.lang === 'vi' ? 'Bắt đầu từ nhóm Sữa & Dairy (FOODON:00001256)' : 'Starting at Dairy Food Products (FOODON:00001256)',
+            state.lang === 'vi'
+              ? 'Các chấm đỏ phía dưới là chế phẩm từ sữa (bơ, phô mai, whey...). Bấm vào 1 chấm để đọc chi tiết bên phải, hoặc thử 4 ví dụ trực quan ở cột trái!'
+              : 'Red nodes below are dairy products (butter, cheese, whey...). Click any node to read its details on the right, or try a guided story on the left!'
+          );
+        });
+      }
     })();
   </script>
 </body>
