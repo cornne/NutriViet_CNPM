@@ -107,8 +107,31 @@ class _AmbientOrbsPainter extends CustomPainter {
   }
 }
 
-/// Wraps a scrollable page/list with zero-overscroll-stretch physics and zero
-/// offscreen backdrop layers for locked 120 Hz scrolling.
+/// Global 120 Hz scroll behavior using crisp springy [BouncingScrollPhysics]
+/// and disabling Android's stretch overscroll shader so every screen bounces
+/// cleanly at scroll boundaries instead of clamping dead-flat.
+class NutriVietScrollBehavior extends MaterialScrollBehavior {
+  const NutriVietScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
+    );
+  }
+}
+
+/// Wraps a scrollable page/list with smooth springy bounce physics and zero
+/// overscroll stretch shader passes for locked 120 Hz scrolling.
 class NutriVietGlassScrollArea extends StatelessWidget {
   final Widget child;
   final bool enabled;
@@ -122,7 +145,7 @@ class NutriVietGlassScrollArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScrollConfiguration(
-      behavior: const MaterialScrollBehavior().copyWith(overscroll: false),
+      behavior: const NutriVietScrollBehavior(),
       child: child,
     );
   }
@@ -138,6 +161,7 @@ class NutriVietGlassCard extends StatelessWidget {
   final Border? border;
   final VoidCallback? onTap;
   final bool elevated;
+  final bool isolateRepaint;
 
   const NutriVietGlassCard({
     super.key,
@@ -148,6 +172,7 @@ class NutriVietGlassCard extends StatelessWidget {
     this.border,
     this.onTap,
     this.elevated = true,
+    this.isolateRepaint = true,
   });
 
   @override
@@ -157,41 +182,44 @@ class NutriVietGlassCard extends StatelessWidget {
         ? Padding(padding: padding!, child: child)
         : child;
 
-    final Widget surface = RepaintBoundary(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: color ?? const Color(0xE8FFFFFF),
-          borderRadius: radius,
-          border: border ??
-              const Border.fromBorderSide(
-                BorderSide(color: Color(0xE0FFFFFF), width: 1.1),
-              ),
-          boxShadow: elevated
-              ? const [
-                  BoxShadow(
-                    color: Color(0x0D0F172A),
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ]
-              : null,
-        ),
-        child: onTap != null
-            ? Material(
-                type: MaterialType.transparency,
-                shape: RoundedRectangleBorder(borderRadius: radius),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  borderRadius: radius,
-                  splashColor: const Color(0x1410B981),
-                  highlightColor: const Color(0x38FFFFFF),
-                  onTap: onTap,
-                  child: innerContent,
+    final Widget decorated = DecoratedBox(
+      decoration: BoxDecoration(
+        // Crisp near-white opaque frosted surface lets Impeller skip alpha
+        // blending behind cards while preserving the luminous botanical aesthetic.
+        color: color ?? const Color(0xFFFAFDFB),
+        borderRadius: radius,
+        border: border ??
+            const Border.fromBorderSide(
+              BorderSide(color: Color(0xFFE6EFEA), width: 1.05),
+            ),
+        boxShadow: elevated
+            ? const [
+                BoxShadow(
+                  color: Color(0x0B0F172A),
+                  blurRadius: 5,
+                  offset: Offset(0, 2),
                 ),
-              )
-            : innerContent,
+              ]
+            : null,
       ),
+      child: onTap != null
+          ? Material(
+              type: MaterialType.transparency,
+              clipBehavior: Clip.none,
+              child: InkWell(
+                borderRadius: radius,
+                splashColor: const Color(0x1410B981),
+                highlightColor: const Color(0x28FFFFFF),
+                onTap: onTap,
+                child: innerContent,
+              ),
+            )
+          : innerContent,
     );
+
+    final Widget surface = isolateRepaint
+        ? RepaintBoundary(child: decorated)
+        : decorated;
 
     if (onTap == null) return surface;
 
