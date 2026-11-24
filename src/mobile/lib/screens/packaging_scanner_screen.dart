@@ -533,8 +533,8 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
     setState(() {
       _sentImageBytes = preparedBytes;
       _ocrProgressMessage = AppLocale.t(
-        'Đang gửi ảnh lên PaddleOCR-VL-1.6 ($kb KB)...',
-        'Uploading to PaddleOCR-VL-1.6 ($kb KB)...',
+        'Đang đọc nhãn bằng AI Vision ($kb KB)...',
+        'Scanning label with AI Vision ($kb KB)...',
       );
     });
 
@@ -570,12 +570,13 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
       if (hasIngredients && extracted.isNotEmpty) {
         HapticFeedback.mediumImpact();
         final pct = fuzzyScore > 0 ? ' ${(fuzzyScore * 100).round()}%' : '';
+        final engineLabel = (ocrRes['engine'] ?? 'AI Vision').toString().trim();
         setState(() {
           _ingredientsCtrl.text = extracted;
           _ocrNutritionStripped = nutritionDetected;
           _ocrMatchedHeader = matchedHeader;
           _ocrStatsBadge =
-              'PaddleOCR-VL-1.6 · ${secLabel}s · $kb KB${pct.isNotEmpty ? ' · Fuzzy$pct' : ''}';
+              '$engineLabel · ${secLabel}s · $kb KB${pct.isNotEmpty ? ' · Fuzzy$pct' : ''}';
           _stage = _ScannerStage.result;
           _ocrProgressMessage = null;
         });
