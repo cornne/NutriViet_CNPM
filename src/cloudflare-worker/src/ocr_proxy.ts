@@ -1,9 +1,13 @@
 import { Hono } from "hono";
 import { extractIngredientsSection } from "./ingredient_extractor";
+import {
+  AI_STUDIO_JOB_URL,
+  defaultOcrRouter,
+  PADDLE_OCR_MODEL,
+  sniffImageMimeType,
+} from "./ocr_router";
 import type { Env } from "./types";
 
-const AI_STUDIO_JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs";
-const OCR_MODEL = "PaddleOCR-VL-1.6";
 const SAFE_JOB_ID_RE = /^[A-Za-z0-9_-]{6,80}$/;
 
 /**
@@ -57,28 +61,38 @@ function resolveToken(env: Env, req: Request): string {
 
 export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
   /**
+   * GET /api/v1/ocr/providers
+   * Exposes the live fastest-to-slowest OCR failover chain, current rate-limit
+   * usage, and active cooldown recovery timers.
+   */
+  app.get("/api/v1/ocr/providers", async (c) => {
+    const providers = await defaultOcrRouter.getStatusSnapshot(c.env);
+    return c.json({
+      success: true,
+      strategy: "fastest_first_with_cooldown_failover",
+      providers,
+    });
+  });
+
+  /**
    * POST /api/v1/ocr/jobs
    * Accepts multipart image (`file`) or JSON `{ data_base64, filename }` and
-   * submits it to Baidu AI Studio PaddleOCR-VL-1.6 using the server secret.
+   * routes through the fastest available OCR provider (Kilo Particle-1 ->
+   * Cloudflare Workers AI Mistral-3.1 -> Baidu PaddleOCR-VL-1.6 ->
+   * Kilo Nemotron-VL -> Cloudflare Llama-4-Scout) with automatic rate-limit
+   * cooldown and recovery.
    */
   app.post("/api/v1/ocr/jobs", async (c) => {
-    const token = resolveToken(c.env, c.req.raw);
-    if (!token) {
-      return c.json(
-        {
-          success: false,
-          auth_error: true,
-          message: "PADDLEOCR_VL_TOKEN secret is not configured on Cloudflare Worker.",
-        },
-        503
-      );
-    }
+    const customToken = (c.req.header("X-PaddleOCR-Token") || "").trim();
+    const baiduToken = resolveToken(c.env, c.req.raw);
+    const preferredProvider = (c.req.query("provider") || "").trim();
 
     const ct = (c.req.header("content-type") || "").toLowerCase();
-    let fileBlob: Blob | null = null;
+    let imageBytes: Uint8Array | null = null;
     let fileName = "label.jpg";
     let useOrient = true;
     let useUnwarp = false;
+    let formProvider = "";
 
     try {
       if (ct.includes("multipart/form-data")) {
@@ -86,7 +100,7 @@ export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
         const uploaded = form.get("file");
         if (uploaded && typeof uploaded !== "string") {
           const f = uploaded as File;
-          fileBlob = f;
+          imageBytes = new Uint8Array(await f.arrayBuffer());
           fileName = f.name || "label.jpg";
         }
         const optRaw = form.get("optionalPayload");
@@ -103,6 +117,8 @@ export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
             // Keep safe defaults
           }
         }
+        const provField = form.get("provider");
+        if (typeof provField === "string") formProvider = provField.trim();
       } else {
         const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
         let b64 = String(body.data_base64 || "").trim();
@@ -113,7 +129,7 @@ export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
           const bin = atob(b64);
           const arr = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-          fileBlob = new Blob([arr], { type: "image/jpeg" });
+          imageBytes = arr;
           fileName = String(body.filename || "label.jpg");
         }
         if (typeof body.useDocOrientationClassify === "boolean") {
@@ -122,78 +138,92 @@ export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
         if (typeof body.useDocUnwarping === "boolean") {
           useUnwarp = body.useDocUnwarping;
         }
+        if (typeof body.provider === "string") formProvider = body.provider.trim();
       }
     } catch {
       return c.json({ success: false, message: "Invalid image upload payload." }, 400);
     }
 
-    if (!fileBlob || fileBlob.size === 0) {
+    if (!imageBytes || imageBytes.byteLength === 0) {
       return c.json({ success: false, message: "Missing image file." }, 400);
     }
-    if (fileBlob.size > 5 * 1024 * 1024) {
+    if (imageBytes.byteLength > 5 * 1024 * 1024) {
       return c.json({ success: false, message: "Image size exceeds 5MB limit." }, 400);
     }
 
-    const upstreamForm = new FormData();
-    upstreamForm.append("model", OCR_MODEL);
-    upstreamForm.append(
-      "optionalPayload",
-      JSON.stringify({
+    const mimeType = sniffImageMimeType(imageBytes, fileName);
+    const outcome = await defaultOcrRouter.routeImage(
+      c.env,
+      {
+        bytes: imageBytes,
+        mimeType,
+        fileName,
         useDocOrientationClassify: useOrient,
         useDocUnwarping: useUnwarp,
-        useChartRecognition: false,
-      })
+      },
+      {
+        baiduToken,
+        hasCustomBaiduToken: Boolean(customToken),
+        preferredProvider: preferredProvider || formProvider,
+      }
     );
-    upstreamForm.append("file", fileBlob, fileName);
 
-    const upstreamResp = await fetch(AI_STUDIO_JOB_URL, {
-      method: "POST",
-      headers: { Authorization: `bearer ${token}` },
-      body: upstreamForm,
-    });
+    if (outcome.kind === "sync_done") {
+      const fullCleanText = extractCleanOcrText(outcome.rawMarkdown);
+      const extracted = extractIngredientsSection(fullCleanText);
+      const lines = extracted.ingredients_text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
 
-    if (upstreamResp.status === 401 || upstreamResp.status === 403) {
-      return c.json(
-        {
-          success: false,
-          auth_error: true,
-          message: `AI Studio token rejected (HTTP ${upstreamResp.status}).`,
-        },
-        upstreamResp.status
-      );
+      return c.json({
+        success: true,
+        state: "done",
+        jobId: `sync-${outcome.providerId}-${Date.now()}`,
+        job_id: `sync-${outcome.providerId}-${Date.now()}`,
+        engine: outcome.engine,
+        provider_id: outcome.providerId,
+        latency_ms: outcome.latencyMs,
+        size_bytes: imageBytes.byteLength,
+        has_ingredients: extracted.has_ingredients,
+        text: extracted.ingredients_text,
+        raw_text: fullCleanText,
+        raw_markdown: outcome.rawMarkdown,
+        matched_header: extracted.matched_header,
+        fuzzy_score: extracted.fuzzy_score,
+        nutrition_detected: extracted.nutrition_detected,
+        reason: extracted.reason,
+        line_count: lines.length,
+        fallback_attempts: outcome.attempts,
+      });
     }
 
-    const upstreamText = await upstreamResp.text();
-    if (!upstreamResp.ok) {
-      return c.json(
-        {
-          success: false,
-          message: `Upstream PaddleOCR-VL-1.6 error (HTTP ${upstreamResp.status}).`,
-          detail: upstreamText.slice(0, 240),
-        },
-        502
-      );
+    if (outcome.kind === "async_job") {
+      return c.json({
+        success: true,
+        state: "pending",
+        jobId: outcome.jobId,
+        engine: outcome.engine,
+        provider_id: outcome.providerId,
+        latency_ms: outcome.latencyMs,
+        size_bytes: imageBytes.byteLength,
+        fallback_attempts: outcome.attempts,
+      });
     }
 
-    let parsed: Record<string, unknown> = {};
-    try {
-      parsed = JSON.parse(upstreamText) as Record<string, unknown>;
-    } catch {
-      return c.json({ success: false, message: "Invalid JSON from upstream OCR service." }, 502);
+    if (outcome.httpStatus === 429) {
+      c.header("Retry-After", String(outcome.retryAfterSec));
     }
-
-    const data = (parsed.data as Record<string, unknown>) || {};
-    const jobId = String(data.jobId || "").trim();
-    if (!jobId) {
-      return c.json({ success: false, message: "No jobId returned by PaddleOCR-VL-1.6." }, 502);
-    }
-
-    return c.json({
-      success: true,
-      jobId,
-      engine: OCR_MODEL,
-      size_bytes: fileBlob.size,
-    });
+    return c.json(
+      {
+        success: false,
+        auth_error: outcome.authError,
+        retry_after_seconds: outcome.retryAfterSec,
+        message: outcome.message,
+        fallback_attempts: outcome.attempts,
+      },
+      outcome.httpStatus
+    );
   });
 
   /**
@@ -297,7 +327,8 @@ export function registerOcrRoutes(app: Hono<{ Bindings: Env }>) {
       success: true,
       state: "done",
       job_id: jobId,
-      engine: OCR_MODEL,
+      engine: PADDLE_OCR_MODEL,
+      provider_id: "baidu-paddleocr",
       has_ingredients: extracted.has_ingredients,
       text: extracted.ingredients_text,
       raw_text: fullCleanText,
