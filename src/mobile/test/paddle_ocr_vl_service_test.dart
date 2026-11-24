@@ -291,6 +291,58 @@ Cảnh báo dị ứng: Chứa lúa mì, sữa, đậu phộng.
     expect(res['text'], contains('Milk Powder (12%)'));
   });
 
+  test('recognizeImage sync fast-path respects has_ingredients=false and omitted flag', () async {
+    final noIngClient = MockClient((http.Request req) async {
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'success': true,
+            'state': 'done',
+            'engine': 'Cloudflare Mistral-3.1',
+            'has_ingredients': false,
+            'text': 'Calories 200 kcal',
+            'nutrition_detected': true,
+            'reason': 'NO_INGREDIENTS_FOUND',
+          }),
+        ),
+        200,
+      );
+    });
+
+    final noIngRes = await PaddleOcrVlService.recognizeImage(
+      imageBytes: Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]),
+      tokenOverride: '',
+      client: noIngClient,
+    );
+    expect(noIngRes['success'], isTrue);
+    expect(noIngRes['has_ingredients'], isFalse);
+    expect(noIngRes['text'], isEmpty);
+    expect(noIngRes['reason'], 'NO_INGREDIENTS_FOUND');
+
+    final omittedFlagClient = MockClient((http.Request req) async {
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'success': true,
+            'state': 'done',
+            'engine': 'Kilo Particle-1',
+            'text': 'Sugar, Palm Oil, Soy Lecithin (E322)',
+          }),
+        ),
+        200,
+      );
+    });
+
+    final omittedRes = await PaddleOcrVlService.recognizeImage(
+      imageBytes: Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]),
+      tokenOverride: '',
+      client: omittedFlagClient,
+    );
+    expect(omittedRes['success'], isTrue);
+    expect(omittedRes['has_ingredients'], isTrue);
+    expect(omittedRes['text'], contains('Soy Lecithin (E322)'));
+  });
+
   test('PackagingScannerMath maps BoxFit.cover camera cutout and BoxFit.contain bounds accurately', () {
     // Modern tall phone (1096x2560) with 3:4 portrait camera preview
     final coverNorm = PackagingScannerMath.mapCoverFrameToImageNormRect(
