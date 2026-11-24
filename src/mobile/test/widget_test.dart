@@ -203,12 +203,18 @@ void main() {
 
     expect(find.text('Cài đặt'), findsOneWidget);
     expect(find.byType(NutriVietSettingsRowSkeleton), findsWidgets);
+    expect(find.text('Dị ứng & sức khỏe'), findsOneWidget);
+    expect(find.text('Hồ sơ gia đình'), findsOneWidget);
+    expect(find.text('Tình trạng của tôi'), findsNothing);
+    expect(find.text('Quản lý hồ sơ'), findsNothing);
+    expect(find.text('Quản lý dị ứng'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Ngôn ngữ'),
       200.0,
       scrollable: find.byType(Scrollable),
     );
     expect(find.text('Ngôn ngữ'), findsOneWidget);
+    expect(find.text('Chúc mừng huy hiệu'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await AppLocale.setLanguage('en');
@@ -224,12 +230,69 @@ void main() {
     );
 
     expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Allergies & health'), findsOneWidget);
+    expect(find.text('Family profiles'), findsOneWidget);
+    expect(find.text('My conditions'), findsNothing);
+    expect(find.text('Manage profiles'), findsNothing);
+    expect(find.text('Manage allergies'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Language'),
       200.0,
       scrollable: find.byType(Scrollable),
     );
     expect(find.text('Language'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('SettingsScreen summarizes health profile and manages family members in Guest mode', (
+    WidgetTester tester,
+  ) async {
+    await AppLocale.setLanguage('vi');
+    await LocalGuestStore.saveAllergens([
+      {'code': 'peanuts', 'name': 'Đậu phộng', 'severity': 'high'},
+    ]);
+    await LocalGuestStore.saveChronics([
+      {'code': 'diabetes', 'name': 'Tiểu đường'},
+    ]);
+
+    var callbackCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SettingsScreen(
+            userId: 0,
+            userName: 'Khách',
+            userEmail: '',
+            isGuest: true,
+            onProfileUpdated: () => callbackCount++,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 dị ứng · 1 bệnh nền'), findsOneWidget);
+    expect(find.text('Hồ sơ gia đình'), findsOneWidget);
+
+    await tester.tap(find.text('Hồ sơ gia đình'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thành viên (1)'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Bé An');
+    await tester.tap(find.text('Con cái'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Thêm thành viên'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thành viên (2)'), findsOneWidget);
+    expect(find.text('Bé An'), findsOneWidget);
+    expect(callbackCount, greaterThanOrEqualTo(1));
+
+    await tester.tap(find.byTooltip('Xóa thành viên'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thành viên (1)'), findsOneWidget);
+    expect(find.text('Bé An'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -455,25 +518,29 @@ void main() {
       memberName: 'Bé An',
       relationship: 'Con',
     );
-    final emptyMetrics = await LocalGuestStore.getMetrics();
-    expect(emptyMetrics['has_metrics'], isFalse);
-    expect(emptyMetrics['metrics'], isNull);
+    final defaultSettings = await LocalGuestStore.getSettings();
+    expect((defaultSettings['settings'] as Map)['scan_derivatives'], isTrue);
+    expect((defaultSettings['settings'] as Map)['warn_traces'], isTrue);
 
-    await LocalGuestStore.saveMetrics(
-      age: 26,
-      gender: 'female',
-      height: 162,
-      weight: 52,
-      activityLevel: 'moderate',
-    );
+    await LocalGuestStore.saveSettings({
+      'language': 'vi',
+      'notify_badges': true,
+      'notify_reminders': false,
+      'scan_derivatives': false,
+      'warn_traces': false,
+    });
 
     expect(await LocalGuestStore.hasLocalData(), isTrue);
     final alRes = await LocalGuestStore.getAllergens();
     expect((alRes['allergens'] as List).length, 1);
     final famRes = await LocalGuestStore.getFamilyMembers();
     expect((famRes['members'] as List).length, 2);
-    final mRes = await LocalGuestStore.getMetrics();
-    expect((mRes['metrics'] as Map)['age'], 26);
+    final savedSettings = await LocalGuestStore.getSettings();
+    expect((savedSettings['settings'] as Map)['scan_derivatives'], isFalse);
+    expect((savedSettings['settings'] as Map)['warn_traces'], isFalse);
+
+    // Guest has no Bearer token
+    expect(await AuthService.getToken(), isEmpty);
 
     // Logout removes only auth session keys so Guest local data can be synced on login
     await AuthService.logout();
@@ -482,6 +549,17 @@ void main() {
 
     await LocalGuestStore.clearAll();
     expect(await LocalGuestStore.hasLocalData(), isFalse);
+  });
+
+  test('AuthService.getToken returns Bearer token for signed-in accounts and empty for guests', () async {
+    SharedPreferences.setMockInitialValues({
+      'auth_token': 'nv_live_session_token_abc',
+      'is_guest': false,
+    });
+    expect(await AuthService.getToken(), 'nv_live_session_token_abc');
+
+    await AuthService.enterGuestMode();
+    expect(await AuthService.getToken(), isEmpty);
   });
 
   test('LocalGuestStore deleteScan and clearScans update local scan history accurately', () async {
@@ -685,6 +763,8 @@ void main() {
 
     expect(find.text('Cộng đồng'), findsWidgets);
     expect(find.text('Phụ gia'), findsNothing);
+    expect(find.text('Huy hiệu'), findsNothing);
+    expect(find.text('Badges'), findsNothing);
     expect(find.textContaining('miễn phí'), findsNothing);
     expect(find.textContaining('free scan'), findsNothing);
     expect(find.byIcon(PhosphorIconsDuotone.chatsCircle), findsNothing);
@@ -721,6 +801,64 @@ void main() {
     expect(snack.backgroundColor, Colors.transparent);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'NutriVietFloatingBottomBar aligns tab bar and scan orb on Android 16 edge-to-edge inset',
+    (WidgetTester tester) async {
+      int selected = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(434, 964),
+              padding: EdgeInsets.only(top: 41, bottom: 24),
+            ),
+            child: Scaffold(
+              body: Stack(
+                children: [
+                  const SizedBox.expand(),
+                  NutriVietFloatingBottomBar(
+                    selectedIndex: selected,
+                    onChanged: (i) => selected = i,
+                    onScanTap: () {},
+                    items: const [
+                      NutriVietBottomTabItem(
+                        icon: PhosphorIconsRegular.house,
+                        selectedIcon: PhosphorIconsFill.house,
+                        label: 'Trang chủ',
+                      ),
+                      NutriVietBottomTabItem(
+                        icon: PhosphorIconsRegular.usersThree,
+                        selectedIcon: PhosphorIconsFill.usersThree,
+                        label: 'Cộng đồng',
+                      ),
+                      NutriVietBottomTabItem(
+                        icon: PhosphorIconsRegular.clockCounterClockwise,
+                        selectedIcon: PhosphorIconsFill.clockCounterClockwise,
+                        label: 'Lịch sử',
+                      ),
+                      NutriVietBottomTabItem(
+                        icon: PhosphorIconsRegular.slidersHorizontal,
+                        selectedIcon: PhosphorIconsFill.slidersHorizontal,
+                        label: 'Cài đặt',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tabBarRect = tester.getRect(find.byType(LayoutBuilder));
+      final scanOrbRect = tester.getRect(find.byIcon(PhosphorIconsBold.scan));
+      // Vertical centers of the tab bar and scan orb must match within 2dp (no double bottomInset!)
+      expect((tabBarRect.center.dy - scanOrbRect.center.dy).abs(), lessThanOrEqualTo(2.0));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 void _noop() {}
