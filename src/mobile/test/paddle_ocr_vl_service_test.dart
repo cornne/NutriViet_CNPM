@@ -247,6 +247,50 @@ Cảnh báo dị ứng: Chứa lúa mì, sữa, đậu phộng.
     expect(res['reason'], 'NO_INGREDIENTS_FOUND');
   });
 
+  test('recognizeImage completes immediately on synchronous Worker fast-path with ZERO polling', () async {
+    int getPollCalls = 0;
+    final mockClient = MockClient((http.Request req) async {
+      if (req.method == 'POST' && req.url.toString() == PaddleOcrVlService.jobEndpoint) {
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'success': true,
+              'state': 'done',
+              'job_id': 'sync-kilo-particle-1-123',
+              'engine': 'Kilo Particle-1',
+              'provider_id': 'kilo-particle-1',
+              'has_ingredients': true,
+              'text': 'Water, Sugar, Milk Powder (12%), Soy Lecithin (E322).',
+              'raw_text': 'INGREDIENTS: Water, Sugar, Milk Powder (12%), Soy Lecithin (E322).',
+              'matched_header': 'INGREDIENTS',
+              'fuzzy_score': 1.0,
+              'nutrition_detected': false,
+              'reason': 'OK',
+              'line_count': 1,
+            }),
+          ),
+          200,
+        );
+      }
+      if (req.method == 'GET') getPollCalls++;
+      return http.Response('Unexpected poll', 500);
+    });
+
+    final res = await PaddleOcrVlService.recognizeImage(
+      imageBytes: Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]),
+      fileName: 'label.png',
+      tokenOverride: '',
+      client: mockClient,
+    );
+
+    expect(res['success'], isTrue);
+    expect(getPollCalls, 0);
+    expect(res['engine'], 'Kilo Particle-1');
+    expect(res['provider_id'], 'kilo-particle-1');
+    expect(res['has_ingredients'], isTrue);
+    expect(res['text'], contains('Milk Powder (12%)'));
+  });
+
   test('PackagingScannerMath maps BoxFit.cover camera cutout and BoxFit.contain bounds accurately', () {
     // Modern tall phone (1096x2560) with 3:4 portrait camera preview
     final coverNorm = PackagingScannerMath.mapCoverFrameToImageNormRect(
