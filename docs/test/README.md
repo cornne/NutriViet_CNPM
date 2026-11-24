@@ -6,5 +6,5 @@ This directory indexes NutriViet's automated test suites and quality verificatio
 
 | Layer | Location | Command | Tests |
 | :--- | :--- | :--- | :---: |
-| **Flutter Mobile** | [`src/mobile/test/`](../../src/mobile/test/) | `cd src/mobile && flutter analyze && flutter test` | **30** |
-| **Cloudflare Worker** | [`src/cloudflare-worker/test/`](../../src/cloudflare-worker/test/) | `cd src/cloudflare-worker && npm run typecheck && npm test` | **15** |
+| **Flutter Mobile** | [`src/mobile/test/`](../../src/mobile/test/) | `cd src/mobile && flutter analyze && flutter test` | **31** |
+| **Cloudflare Worker** | [`src/cloudflare-worker/test/`](../../src/cloudflare-worker/test/) | `cd src/cloudflare-worker && npm run typecheck && npm test` | **19** |
