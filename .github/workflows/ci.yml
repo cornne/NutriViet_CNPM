@@ -1,0 +1,42 @@
+name: NutriViet CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  cloudflare-worker:
+    name: Cloudflare Worker (TypeScript + Vitest + Bundle)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/cloudflare-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/cloudflare-worker/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  flutter-mobile:
+    name: Flutter Mobile (Analyze + Unit/Widget Tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
