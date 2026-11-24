@@ -25,6 +25,18 @@ class MainActivity : FlutterActivity() {
         requestHighestRefreshRate()
     }
 
+    override fun onResume() {
+        super.onResume()
+        requestHighestRefreshRate()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            requestHighestRefreshRate()
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.nutriviet/image_opt")
@@ -228,8 +240,16 @@ class MainActivity : FlutterActivity() {
             ?: return
 
         val params = window.attributes
+        var changed = false
         if (params.preferredDisplayModeId != bestMode.modeId) {
             params.preferredDisplayModeId = bestMode.modeId
+            changed = true
+        }
+        if (params.preferredRefreshRate != bestMode.refreshRate) {
+            params.preferredRefreshRate = bestMode.refreshRate
+            changed = true
+        }
+        if (changed) {
             window.attributes = params
         }
     }
