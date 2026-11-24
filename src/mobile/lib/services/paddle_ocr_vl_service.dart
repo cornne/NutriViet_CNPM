@@ -323,9 +323,11 @@ class PaddleOcrVlService {
           pollCount: 0,
         );
         final directText = (submitJson?['text'] ?? '').toString().trim();
-        final resolvedHasIngredients = submitJson?.containsKey('has_ingredients') == true
-            ? submitJson?['has_ingredients'] == true
-            : directText.isNotEmpty;
+        final rawHasIngredients = submitJson?['has_ingredients'];
+        final resolvedHasIngredients =
+            (submitJson != null && submitJson.containsKey('has_ingredients'))
+                ? (rawHasIngredients == true)
+                : directText.isNotEmpty;
         final nonEmptyLines = directText
             .split('\n')
             .map((e) => e.trim())
