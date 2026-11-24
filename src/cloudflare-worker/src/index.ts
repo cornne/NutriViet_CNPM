@@ -65,9 +65,12 @@ app.get("/health", async (c) => {
     status: "healthy",
     service: "NutriViet Cloudflare Workers API",
     runtime: "cloudflare-workers-d1",
-    version: "2.0.0",
+    version: "2.1.0",
     foodon_hybrid: true,
-    ocr_proxy: Boolean(c.env.PADDLEOCR_VL_TOKEN?.trim()),
+    ocr_proxy: true,
+    ocr_baidu_configured: Boolean(c.env.PADDLEOCR_VL_TOKEN?.trim()),
+    ocr_cf_ai_configured: Boolean(c.env.AI),
+    ocr_failover_router: true,
     email_verification:
       isEmailProviderConfigured(c.env) &&
       String(c.env.AUTO_VERIFY_EMAIL || "").toLowerCase() !== "true",
