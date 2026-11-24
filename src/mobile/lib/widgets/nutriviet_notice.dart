@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
@@ -128,73 +126,67 @@ class _NutriVietNoticeCard extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: style.tintBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: style.borderColor, width: 1.2),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: style.tintBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: style.borderColor, width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: style.badgeBg,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: PhosphorIcon(
+                  style.icon,
+                  color: style.accent,
+                  size: 19,
+                ),
+              ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.36,
+                ),
+              ),
+            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: onAction,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: style.badgeBg,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: PhosphorIcon(
-                      style.icon,
-                      color: style.accent,
-                      size: 19,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
                   child: Text(
-                    message,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.36,
+                    actionLabel!,
+                    style: TextStyle(
+                      color: style.accent,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-                if (actionLabel != null && onAction != null) ...[
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: onAction,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: style.badgeBg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        actionLabel!,
-                        style: TextStyle(
-                          color: style.accent,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+              ),
+            ],
+          ],
         ),
       ),
     );
