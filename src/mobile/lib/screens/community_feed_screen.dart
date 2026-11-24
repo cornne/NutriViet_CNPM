@@ -6,6 +6,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/community_service.dart';
+import '../services/paddle_ocr_vl_service.dart';
 import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
@@ -117,11 +118,19 @@ class CommunityFeedScreen extends StatefulWidget {
                   imageQuality: 78,
                 );
                 if (xfile == null) return;
-                final bytes = await xfile.readAsBytes();
+                final rawBytes = await xfile.readAsBytes();
+                final optimized = await PaddleOcrVlService.optimizeBytesForUpload(
+                  rawBytes,
+                  maxSide: 1280,
+                  targetMaxBytes: 220 * 1024,
+                );
                 if (!ctx.mounted) return;
+                final safeName = identical(optimized, rawBytes)
+                    ? xfile.name
+                    : '${xfile.name.replaceAll(RegExp(r'\.[^.]+$'), '')}.jpg';
                 setModalState(() {
-                  pickedBytes = bytes;
-                  pickedFilename = xfile.name;
+                  pickedBytes = optimized;
+                  pickedFilename = safeName;
                   errMsg = null;
                 });
               } catch (e) {
@@ -1108,6 +1117,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 height: 185,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                cacheWidth: 960,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.low,
                 errorBuilder: (_, __, ___) => Container(
                   height: 64,
                   color: const Color(0xFFF1F5F9),
@@ -1227,235 +1239,272 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       child: RefreshIndicator(
         onRefresh: _loadPosts,
         color: _brandGreen,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(20, 18, 20, widget.embedded ? 128 : 32),
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    AppLocale.t('Cộng đồng', 'Community'),
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                if (_isAdmin) ...[
-                  NutriVietPressScale(
-                    child: GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AdminModerationScreen(
-                              token: _token,
-                              currentUserId: _userId,
+        child: NutriVietGlassScrollArea(
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              AppLocale.t('Cộng đồng', 'Community'),
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                                letterSpacing: -0.5,
+                              ),
                             ),
                           ),
-                        );
-                        await _loadPosts();
-                      },
-                      child: const NutriVietGlassIconTile(
-                        icon: PhosphorIconsFill.shieldCheck,
-                        color: _brandPurple,
-                        size: 40,
+                          if (_isAdmin) ...[
+                            NutriVietPressScale(
+                              child: GestureDetector(
+                                onTap: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AdminModerationScreen(
+                                        token: _token,
+                                        currentUserId: _userId,
+                                      ),
+                                    ),
+                                  );
+                                  await _loadPosts();
+                                },
+                                child: const NutriVietGlassIconTile(
+                                  icon: PhosphorIconsFill.shieldCheck,
+                                  color: _brandPurple,
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          NutriVietGlassPillButton(
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            label: AppLocale.t('+ Đăng bài', '+ Share'),
+                            onPressed: () async {
+                              final created = await CommunityFeedScreen.openComposeSheet(
+                                context: context,
+                                user: widget.user,
+                              );
+                              if (created && mounted) {
+                                await _loadPosts();
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                NutriVietGlassPillButton(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  label: AppLocale.t('+ Đăng bài', '+ Share'),
-                  onPressed: () async {
-                    final created = await CommunityFeedScreen.openComposeSheet(
-                      context: context,
-                      user: widget.user,
-                    );
-                    if (created && mounted) {
-                      await _loadPosts();
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _searchCtrl,
-              onChanged: (val) {
-                _debounce?.cancel();
-                _debounce = Timer(const Duration(milliseconds: 320), _loadPosts);
-              },
-              style: const TextStyle(color: Color(0xFF111827)),
-              decoration: InputDecoration(
-                hintText: AppLocale.t(
-                  'Tìm sản phẩm, thương hiệu, thành phần...',
-                  'Search products, brands, ingredients...',
-                ),
-                prefixIcon: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: PhosphorIcon(
-                    PhosphorIconsRegular.magnifyingGlass,
-                    color: Color(0xFF6B7280),
-                    size: 19,
-                  ),
-                ),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const PhosphorIcon(PhosphorIconsBold.x, size: 16),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _loadPosts();
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _searchCtrl,
+                        onChanged: (val) {
+                          _debounce?.cancel();
+                          _debounce = Timer(const Duration(milliseconds: 320), _loadPosts);
                         },
-                      )
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  ...filters.map((f) {
-                    final active = _verdictFilter == f.$1;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () {
-                          if (_verdictFilter != f.$1) {
-                            setState(() => _verdictFilter = f.$1);
-                            _loadPosts();
-                          }
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 140),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
+                        style: const TextStyle(color: Color(0xFF111827)),
+                        decoration: InputDecoration(
+                          hintText: AppLocale.t(
+                            'Tìm sản phẩm, thương hiệu, thành phần...',
+                            'Search products, brands, ingredients...',
                           ),
-                          decoration: BoxDecoration(
-                            color: active
-                                ? _brandGreen
-                                : Colors.white.withValues(alpha: 0.78),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: active ? _brandGreen : const Color(0xFFD5E0DA),
+                          prefixIcon: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: PhosphorIcon(
+                              PhosphorIconsRegular.magnifyingGlass,
+                              color: Color(0xFF6B7280),
+                              size: 19,
                             ),
                           ),
-                          child: Text(
-                            f.$2,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: active ? Colors.white : const Color(0xFF1F2937),
+                          suffixIcon: _searchCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const PhosphorIcon(PhosphorIconsBold.x, size: 16),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    _loadPosts();
+                                  },
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ...filters.map((f) {
+                              final active = _verdictFilter == f.$1;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (_verdictFilter != f.$1) {
+                                      setState(() => _verdictFilter = f.$1);
+                                      _loadPosts();
+                                    }
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 140),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: active
+                                          ? _brandGreen
+                                          : Colors.white.withValues(alpha: 0.78),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: active ? _brandGreen : const Color(0xFFD5E0DA),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      f.$2,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: active ? Colors.white : const Color(0xFF1F2937),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                            if (_isAdmin)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() => _includeHidden = !_includeHidden);
+                                  _loadPosts();
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 140),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _includeHidden
+                                        ? _brandPurple
+                                        : Colors.white.withValues(alpha: 0.78),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: _includeHidden ? _brandPurple : const Color(0xFFD5E0DA),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    AppLocale.t('Gồm bài ẩn', 'Include hidden'),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _includeHidden ? Colors.white : _brandPurple,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_loading)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, widget.embedded ? 128 : 32),
+                  sliver: const SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        NutriVietShimmerBox(height: 156, borderRadius: 22),
+                        SizedBox(height: 12),
+                        NutriVietShimmerBox(height: 156, borderRadius: 22),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_error != null)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, widget.embedded ? 128 : 32),
+                  sliver: SliverToBoxAdapter(
+                    child: NutriVietGlassCard(
+                      cornerRadius: 22,
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: _dangerRed, fontSize: 13.5),
+                          ),
+                          const SizedBox(height: 12),
+                          NutriVietGlassPillButton(
+                            height: 40,
+                            label: AppLocale.t('Tải lại', 'Retry'),
+                            onPressed: _loadPosts,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (_posts.isEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, widget.embedded ? 128 : 32),
+                  sliver: SliverToBoxAdapter(
+                    child: NutriVietGlassCard(
+                      cornerRadius: 22,
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          const NutriVietGlassIconTile(
+                            icon: PhosphorIconsDuotone.sparkle,
+                            color: _brandGreen,
+                            size: 52,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            AppLocale.t(
+                              'Chưa có bài chia sẻ nào.',
+                              'No shared products yet.',
+                            ),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: Color(0xFF111827),
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  }),
-                  if (_isAdmin)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _includeHidden = !_includeHidden);
-                        _loadPosts();
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _includeHidden
-                              ? _brandPurple
-                              : Colors.white.withValues(alpha: 0.78),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: _includeHidden ? _brandPurple : const Color(0xFFD5E0DA),
+                          const SizedBox(height: 6),
+                          Text(
+                            AppLocale.t(
+                              'Hãy quét một nhãn sản phẩm hoặc bấm "+ Đăng bài" để chia sẻ cùng cộng đồng NutriViet.',
+                              'Scan a product label or tap "+ Share" to post to the NutriViet community.',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 13.5, color: Color(0xFF6B7280)),
                           ),
-                        ),
-                        child: Text(
-                          AppLocale.t('Gồm bài ẩn', 'Include hidden'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: _includeHidden ? Colors.white : _brandPurple,
-                          ),
-                        ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            if (_loading) ...[
-              const NutriVietShimmerBox(height: 156, borderRadius: 22),
-              const SizedBox(height: 12),
-              const NutriVietShimmerBox(height: 156, borderRadius: 22),
-            ] else if (_error != null) ...[
-              NutriVietGlassCard(
-                cornerRadius: 22,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: _dangerRed, fontSize: 13.5),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, widget.embedded ? 128 : 32),
+                  sliver: SliverList.builder(
+                    itemCount: _posts.length,
+                    itemBuilder: (context, i) => Padding(
+                      padding: EdgeInsets.only(bottom: i < _posts.length - 1 ? 12 : 0),
+                      child: _buildPostCard(i),
                     ),
-                    const SizedBox(height: 12),
-                    NutriVietGlassPillButton(
-                      height: 40,
-                      label: AppLocale.t('Tải lại', 'Retry'),
-                      onPressed: _loadPosts,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ] else if (_posts.isEmpty) ...[
-              NutriVietGlassCard(
-                cornerRadius: 22,
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    const NutriVietGlassIconTile(
-                      icon: PhosphorIconsDuotone.sparkle,
-                      color: _brandGreen,
-                      size: 52,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      AppLocale.t(
-                        'Chưa có bài chia sẻ nào.',
-                        'No shared products yet.',
-                      ),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      AppLocale.t(
-                        'Hãy quét một nhãn sản phẩm hoặc bấm "+ Đăng bài" để chia sẻ cùng cộng đồng NutriViet.',
-                        'Scan a product label or tap "+ Share" to post to the NutriViet community.',
-                      ),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13.5, color: Color(0xFF6B7280)),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              for (int i = 0; i < _posts.length; i++) ...[
-                _buildPostCard(i),
-                if (i < _posts.length - 1) const SizedBox(height: 12),
-              ],
             ],
-          ],
+          ),
         ),
       ),
     );
