@@ -443,8 +443,8 @@ class PaddleOcrVlService {
         } else {
           emit(
             PaddleOcrStage.queued,
-            'Đang xếp hàng trên máy chủ AI Vision... (${sec}s)',
-            'Queued on AI Vision server... (${sec}s)',
+            'Đang khởi chạy đọc nhãn... (${sec}s)',
+            'Preparing label scan... (${sec}s)',
             pollCount: pollCount,
           );
         }
