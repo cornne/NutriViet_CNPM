@@ -29,6 +29,26 @@ export function randomUrlSafeToken(byteLen = 32): string {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+export async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(input));
+  return bytesToHex(new Uint8Array(digest));
+}
+
+export function randomNumericOtp(digits = 6): string {
+  let out = "";
+  const buf = new Uint8Array(16);
+  while (out.length < digits) {
+    crypto.getRandomValues(buf);
+    for (let i = 0; i < buf.length && out.length < digits; i++) {
+      // Rejection sampling (< 250) eliminates modulo bias on 0..9
+      if (buf[i] < 250) {
+        out += String(buf[i] % 10);
+      }
+    }
+  }
+  return out;
+}
+
 export async function hashPassword(
   password: string,
   salt?: string
