@@ -5,9 +5,20 @@ import { registerCommunityAndAdminRoutes } from "./community";
 import { isEmailProviderConfigured } from "./email";
 import { D1FoodOnEngine, splitRawIngredients } from "./foodon";
 import { registerOcrRoutes } from "./ocr_proxy";
+import { extractClientIp, SlidingWindowRateLimiter, type RateLimitRule } from "./rate_limit";
 import type { Env } from "./types";
 
 const app = new Hono<{ Bindings: Env }>();
+const rateLimiter = new SlidingWindowRateLimiter(512);
+
+const RATE_LIMIT_RULES: Record<string, RateLimitRule> = {
+  "POST:/api/v1/auth/login": { bucket: "auth-login", limit: 15, windowMs: 60_000 },
+  "POST:/api/v1/auth/register": { bucket: "auth-register", limit: 8, windowMs: 60_000 },
+  "POST:/api/v1/auth/forgot-password": { bucket: "auth-forgot", limit: 5, windowMs: 60_000 },
+  "POST:/api/v1/auth/reset-password": { bucket: "auth-reset", limit: 8, windowMs: 60_000 },
+  "POST:/api/v1/auth/resend-verification": { bucket: "auth-resend", limit: 5, windowMs: 60_000 },
+  "POST:/api/v1/ocr/jobs": { bucket: "ocr-submit", limit: 20, windowMs: 60_000 },
+};
 
 // Global CORS (matches NutriViet Flutter Mobile + Web Explorer)
 app.use(
@@ -18,6 +29,35 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Auth-Token", "X-PaddleOCR-Token"],
   })
 );
+
+// Baseline HTTP Security Headers + Per-Isolate Edge Rate Limiting on sensitive endpoints
+app.use("*", async (c, next) => {
+  const ruleKey = `${c.req.method.toUpperCase()}:${c.req.path}`;
+  const rule = RATE_LIMIT_RULES[ruleKey];
+  if (rule) {
+    const verdict = rateLimiter.check(rule, extractClientIp(c.req.raw));
+    if (!verdict.allowed) {
+      c.header("Retry-After", String(verdict.retryAfterSec));
+      c.header("X-Content-Type-Options", "nosniff");
+      c.header("X-Frame-Options", "DENY");
+      c.header("Referrer-Policy", "no-referrer");
+      return c.json(
+        {
+          success: false,
+          code: "RATE_LIMITED",
+          message: "Quá nhiều yêu cầu từ thiết bị này. Vui lòng thử lại sau ít phút.",
+          retry_after_seconds: verdict.retryAfterSec,
+        },
+        429
+      );
+    }
+  }
+  await next();
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+});
 
 // Health & Root Info
 app.get("/health", async (c) => {
@@ -137,8 +177,13 @@ app.post("/api/v1/foodon/evaluate", async (c) => {
   const chronics = Array.isArray(body.chronics)
     ? body.chronics.map((x) => String(x || "").trim()).filter(Boolean)
     : [];
+  const scanDerivatives = body.scan_derivatives !== false;
+  const warnTraces = body.warn_traces !== false;
 
-  const res = await eng.evaluatePackagingLabel(ingredients, allergens, chronics);
+  const res = await eng.evaluatePackagingLabel(ingredients, allergens, chronics, {
+    scanDerivatives,
+    warnTraces,
+  });
   return c.json(res);
 });
 
