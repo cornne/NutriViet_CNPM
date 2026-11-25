@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
@@ -45,21 +48,40 @@ class _HomeScreenState extends State<HomeScreen> {
   // Real data from Backend SQLite DB & FoodOn Hybrid Engine (or LocalGuestStore for Guest)
   List<Map<String, dynamic>> _allergens = [];
   List<Map<String, dynamic>> _familyMembers = [];
-  String _selectedMemberName = '';
 
   List<Map<String, dynamic>> _scans = [];
   int _monthlyScans = 0;
   int _monthlyWarnings = 0;
   bool _loadingInitialData = true;
-  final Set<int> _expandedScanIds = {};
 
-  // Home category filter ('sugar', 'salt', 'fat', 'allergen')
-  String _selectedCategory = 'sugar';
-  List<Map<String, dynamic>> _categoryItems = [];
-  bool _loadingCategory = false;
+  // Granular ValueNotifiers isolate high-frequency Home/History UI interactions
+  // so tapping avatars, categories, or scan cards never rebuilds all 4 tabs.
+  final ValueNotifier<String> _selectedMemberNotifier = ValueNotifier<String>('');
+  final ValueNotifier<String> _selectedCategoryNotifier =
+      ValueNotifier<String>('sugar');
+  final ValueNotifier<bool> _loadingCategoryNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<List<Map<String, dynamic>>> _categoryItemsNotifier =
+      ValueNotifier<List<Map<String, dynamic>>>(const []);
+  final ValueNotifier<Set<int>> _expandedScansNotifier =
+      ValueNotifier<Set<int>>(<int>{});
+
+  String get _selectedMemberName => _selectedMemberNotifier.value;
+  String get _selectedCategory => _selectedCategoryNotifier.value;
 
   late final VoidCallback _localeListener;
   Map<String, dynamic>? _cachedUserMap;
+
+  static String _snapshotKey(bool isGuest, int userId) =>
+      isGuest ? 'nv_home_snapshot_v1_guest' : 'nv_home_snapshot_v1_u_$userId';
+
+  String _allergenSignature() {
+    final codes = _allergens
+        .map((a) => (a['code'] ?? '').toString())
+        .where((s) => s.isNotEmpty)
+        .toList()
+      ..sort();
+    return codes.join(',');
+  }
 
   Map<String, dynamic> get _activeUserMap {
     final existing = _cachedUserMap;
@@ -89,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openLoginFromGuest() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      NutriVietPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
@@ -126,6 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     AppLocale.current.removeListener(_localeListener);
     _tabNotifier.dispose();
+    _selectedMemberNotifier.dispose();
+    _selectedCategoryNotifier.dispose();
+    _loadingCategoryNotifier.dispose();
+    _categoryItemsNotifier.dispose();
+    _expandedScansNotifier.dispose();
     super.dispose();
   }
 
@@ -141,6 +168,100 @@ class _HomeScreenState extends State<HomeScreen> {
     final parts = trimmed.split(RegExp(r'\s+'));
     final target = parts.length > 3 ? parts.first : parts.last;
     return target[0].toUpperCase() + (target.length > 1 ? target.substring(1) : '');
+  }
+
+  Future<bool> _hydrateHomeSnapshot(bool isGuest, int userId) async {
+    if (!isGuest && userId <= 0) return false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_snapshotKey(isGuest, userId));
+      if (raw == null || raw.isEmpty) return false;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return false;
+      final snap = Map<String, dynamic>.from(decoded);
+      if (!mounted) return false;
+
+      final cachedAllergens = (snap['allergens'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      final cachedMembers = (snap['family_members'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      final cachedScans = (snap['scans'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      final cachedCategoryItems = (snap['category_items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      final cachedCategory = (snap['category'] ?? 'sugar').toString();
+      final cachedMember = (snap['selected_member'] ?? '').toString();
+
+      final initialExpanded = <int>{};
+      for (final sc in cachedScans) {
+        final ev = sc['evaluation'];
+        if (ev is Map && ev['red_triggers'] is List && (ev['red_triggers'] as List).isNotEmpty) {
+          final sid = sc['id'];
+          if (sid is int) initialExpanded.add(sid);
+        }
+      }
+      if (initialExpanded.isEmpty && cachedScans.isNotEmpty) {
+        final firstId = cachedScans.first['id'];
+        if (firstId is int) initialExpanded.add(firstId);
+      }
+
+      _selectedMemberNotifier.value = cachedMember.isNotEmpty
+          ? cachedMember
+          : (cachedMembers.isNotEmpty
+              ? (cachedMembers.first['member_name'] ?? '').toString()
+              : '');
+      if (const {'sugar', 'salt', 'fat', 'allergen'}.contains(cachedCategory)) {
+        _selectedCategoryNotifier.value = cachedCategory;
+      }
+      if (cachedCategoryItems.isNotEmpty) {
+        _categoryItemsNotifier.value = cachedCategoryItems;
+        _loadingCategoryNotifier.value = false;
+      }
+      _expandedScansNotifier.value = initialExpanded;
+
+      setState(() {
+        _allergens = cachedAllergens;
+        _familyMembers = cachedMembers;
+        _scans = cachedScans;
+        _monthlyScans = (snap['monthly_scans'] as num?)?.toInt() ?? 0;
+        _monthlyWarnings = (snap['monthly_warnings'] as num?)?.toInt() ?? 0;
+        _loadingInitialData = false;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _saveHomeSnapshot() async {
+    if (!_isGuest && _userId <= 0) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = <String, dynamic>{
+        'allergens': _allergens,
+        'family_members': _familyMembers,
+        'scans': _scans.take(20).toList(),
+        'monthly_scans': _monthlyScans,
+        'monthly_warnings': _monthlyWarnings,
+        'selected_member': _selectedMemberName,
+        'category': _selectedCategory,
+        'category_items': _categoryItemsNotifier.value.take(6).toList(),
+      };
+      await prefs.setString(
+        _snapshotKey(_isGuest, _userId),
+        jsonEncode(payload),
+      );
+    } catch (_) {
+      // Best-effort instant-launch cache; never interrupt user flow.
+    }
   }
 
   Future<void> _initSessionAndData() async {
@@ -174,13 +295,21 @@ class _HomeScreenState extends State<HomeScreen> {
       _langPref = AppLocale.code;
     });
 
-    await _refreshUserData();
+    // Stale-While-Revalidate: show cached Home data immediately at ~0ms,
+    // then refresh profile & category concepts in parallel in the background.
+    await _hydrateHomeSnapshot(isGuestMode, parsedUid);
+    final allergenSigBefore = _allergenSignature();
+
+    await Future.wait([
+      _refreshUserData(skipCategoryReloadIfSigMatches: allergenSigBefore),
+      _loadCategoryConcepts(_selectedCategory),
+    ]);
     if (mounted && _loadingInitialData) {
       setState(() => _loadingInitialData = false);
     }
   }
 
-  Future<void> _refreshUserData() async {
+  Future<void> _refreshUserData({String? skipCategoryReloadIfSigMatches}) async {
     if (!_isGuest && _userId <= 0) {
       if (mounted && _loadingInitialData) {
         setState(() => _loadingInitialData = false);
@@ -226,6 +355,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (!mounted) return;
+    final nextExpanded = Set<int>.from(_expandedScansNotifier.value);
+    String nextSelectedMember = _selectedMemberName;
+
     setState(() {
       _loadingInitialData = false;
       _langPref = AppLocale.code;
@@ -238,10 +370,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (results[2]['success'] == true) {
         _familyMembers = List<Map<String, dynamic>>.from(results[2]['members'] ?? []);
         final hasSelected = _familyMembers.any(
-          (m) => (m['member_name'] ?? '').toString() == _selectedMemberName,
+          (m) => (m['member_name'] ?? '').toString() == nextSelectedMember,
         );
-        if (_familyMembers.isNotEmpty && (_selectedMemberName.isEmpty || !hasSelected)) {
-          _selectedMemberName = (_familyMembers.first['member_name'] ?? '').toString();
+        if (_familyMembers.isNotEmpty && (nextSelectedMember.isEmpty || !hasSelected)) {
+          nextSelectedMember = (_familyMembers.first['member_name'] ?? '').toString();
         }
       }
       if (results[3]['success'] == true) {
@@ -255,21 +387,31 @@ class _HomeScreenState extends State<HomeScreen> {
             if (reds is List && reds.isNotEmpty) {
               final sid = sc['id'];
               if (sid is int) {
-                _expandedScanIds.add(sid);
+                nextExpanded.add(sid);
               }
             }
           }
         }
-        if (_expandedScanIds.isEmpty && _scans.isNotEmpty) {
+        if (nextExpanded.isEmpty && _scans.isNotEmpty) {
           final firstId = _scans.first['id'];
           if (firstId is int) {
-            _expandedScanIds.add(firstId);
+            nextExpanded.add(firstId);
           }
         }
       }
     });
 
-    await _loadCategoryConcepts(_selectedCategory);
+    if (_selectedMemberNotifier.value != nextSelectedMember) {
+      _selectedMemberNotifier.value = nextSelectedMember;
+    }
+    _expandedScansNotifier.value = nextExpanded;
+
+    final allergenSigAfter = _allergenSignature();
+    if (skipCategoryReloadIfSigMatches == null ||
+        allergenSigAfter != skipCategoryReloadIfSigMatches) {
+      await _loadCategoryConcepts(_selectedCategory);
+    }
+    _saveHomeSnapshot();
   }
 
   Future<void> _loadCategoryConcepts(String category) async {
@@ -285,18 +427,19 @@ class _HomeScreenState extends State<HomeScreen> {
       limit: 12,
     );
     if (cached != null) {
-      setState(() {
-        _selectedCategory = category;
-        _loadingCategory = false;
-        _categoryItems = List<Map<String, dynamic>>.from(cached['items'] ?? []);
-      });
+      _selectedCategoryNotifier.value = category;
+      _loadingCategoryNotifier.value = false;
+      _categoryItemsNotifier.value =
+          List<Map<String, dynamic>>.from(cached['items'] ?? []);
       return;
     }
 
-    setState(() {
-      _selectedCategory = category;
-      _loadingCategory = true;
-    });
+    final switchingCategory = _selectedCategoryNotifier.value != category;
+    _selectedCategoryNotifier.value = category;
+    // Keep hydrated SWR items visible on first launch while refreshing quietly.
+    if (switchingCategory || _categoryItemsNotifier.value.isEmpty) {
+      _loadingCategoryNotifier.value = true;
+    }
 
     final res = await ProfileService.getCategoryConcepts(
       category: category,
@@ -305,19 +448,19 @@ class _HomeScreenState extends State<HomeScreen> {
       limit: 12,
     );
 
-    if (!mounted) return;
-    setState(() {
-      _loadingCategory = false;
-      if (res['success'] == true) {
-        _categoryItems = List<Map<String, dynamic>>.from(res['items'] ?? []);
-      }
-    });
+    if (!mounted || _selectedCategoryNotifier.value != category) return;
+    _loadingCategoryNotifier.value = false;
+    if (res['success'] == true) {
+      _categoryItemsNotifier.value =
+          List<Map<String, dynamic>>.from(res['items'] ?? []);
+      _saveHomeSnapshot();
+    }
   }
 
   Future<void> _openAllergyProfile() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
+      NutriVietPageRoute(
         builder: (_) => AllergyProfileScreen(
           userId: _userId,
           userName: _userName,
@@ -407,8 +550,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (res['success'] == true) {
                   setState(() {
                     _familyMembers = List<Map<String, dynamic>>.from(res['members'] ?? []);
-                    _selectedMemberName = name;
                   });
+                  _selectedMemberNotifier.value = name;
+                  _saveHomeSnapshot();
                 } else if (mounted) {
                   showNutriVietNotice(
                     context,
@@ -438,8 +582,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       PageRouteBuilder(
         fullscreenDialog: true,
-        transitionDuration: const Duration(milliseconds: 300),
-        reverseTransitionDuration: const Duration(milliseconds: 240),
+        transitionDuration: const Duration(milliseconds: 240),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
         pageBuilder: (_, __, ___) => PackagingScannerScreen(
           userId: _userId,
           memberName: _shortName,
@@ -451,15 +595,12 @@ class _HomeScreenState extends State<HomeScreen> {
             curve: Curves.easeOutCubic,
             reverseCurve: Curves.easeInCubic,
           );
-          return FadeTransition(
-            opacity: curved,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.08),
-                end: Offset.zero,
-              ).animate(curved),
-              child: child,
-            ),
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: RepaintBoundary(child: child),
           );
         },
       ),
@@ -472,9 +613,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (latest is Map<String, dynamic>) {
         _tabNotifier.value = 2;
         if (latest['id'] is int) {
-          setState(() {
-            _expandedScanIds.add(latest['id'] as int);
-          });
+          _expandedScansNotifier.value = {
+            ..._expandedScansNotifier.value,
+            latest['id'] as int,
+          };
         }
       }
     }
@@ -837,150 +979,174 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 14),
 
-                          // Family Member Glass Avatars Row
-                          NutriVietHorizontalFadeScroll(
-                            fadeExtent: 26,
-                            child: Row(
-                              children: [
-                                ...members.map((m) {
-                                  final rawName =
-                                      (m['member_name'] ?? _shortName)
-                                          .toString();
-                                  final mName =
-                                      AppLocale.translateMemberName(rawName);
-                                  final isSelected =
-                                      rawName == _selectedMemberName ||
-                                          (_selectedMemberName.isEmpty &&
-                                              m == members.first);
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 22),
-                                    child: NutriVietPressScale(
+                          // Family Member Glass Avatars Row (zero ShaderMask saveLayer +
+                          // isolated ValueListenableBuilder so taps never rebuild HomeScreen)
+                          ValueListenableBuilder<String>(
+                            valueListenable: _selectedMemberNotifier,
+                            builder: (context, selectedMember, _) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: Row(
+                                  children: [
+                                    ...members.map((m) {
+                                      final rawName =
+                                          (m['member_name'] ?? _shortName)
+                                              .toString();
+                                      final mName =
+                                          AppLocale.translateMemberName(rawName);
+                                      final isSelected =
+                                          rawName == selectedMember ||
+                                              (selectedMember.isEmpty &&
+                                                  m == members.first);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 22),
+                                        child: NutriVietPressScale(
+                                          pressedScale: 0.93,
+                                          enableHaptic: true,
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              if (_selectedMemberNotifier.value !=
+                                                  rawName) {
+                                                _selectedMemberNotifier.value =
+                                                    rawName;
+                                                _saveHomeSnapshot();
+                                              }
+                                            },
+                                            child: Column(
+                                              children: [
+                                                AnimatedScale(
+                                                  scale:
+                                                      isSelected ? 1.06 : 0.96,
+                                                  duration: const Duration(
+                                                      milliseconds: 220),
+                                                  curve: Curves.easeOutBack,
+                                                  child: AnimatedContainer(
+                                                    duration: const Duration(
+                                                        milliseconds: 220),
+                                                    curve: Curves.easeOutCubic,
+                                                    width: 54,
+                                                    height: 54,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      gradient: LinearGradient(
+                                                        begin:
+                                                            Alignment.topLeft,
+                                                        end: Alignment
+                                                            .bottomRight,
+                                                        colors: isSelected
+                                                            ? [
+                                                                Colors.white
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.34),
+                                                                const Color(
+                                                                        0xFF86EFAC)
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.22),
+                                                              ]
+                                                            : [
+                                                                Colors.white
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.18),
+                                                                Colors.white
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.08),
+                                                              ],
+                                                      ),
+                                                      border: Border.all(
+                                                        color: isSelected
+                                                            ? Colors.white
+                                                            : Colors.white
+                                                                .withValues(
+                                                                    alpha: 0.45),
+                                                        width: isSelected
+                                                            ? 2.4
+                                                            : 1.3,
+                                                      ),
+                                                    ),
+                                                    child: Center(
+                                                      child: PhosphorIcon(
+                                                        PhosphorIconsDuotone
+                                                            .user,
+                                                        color: Colors.white,
+                                                        size: 27,
+                                                        duotoneSecondaryOpacity:
+                                                            isSelected
+                                                                ? 0.38
+                                                                : 0.24,
+                                                        duotoneSecondaryColor:
+                                                            Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  mName,
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withValues(
+                                                            alpha: isSelected
+                                                                ? 1.0
+                                                                : 0.85),
+                                                    fontSize: 13.5,
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+
+                                    // Dashed "+ Thêm / Add" button
+                                    NutriVietPressScale(
                                       pressedScale: 0.93,
                                       enableHaptic: true,
                                       child: GestureDetector(
-                                        onTap: () => setState(
-                                            () => _selectedMemberName = rawName),
+                                        onTap: _openAddFamilyMemberDialog,
                                         child: Column(
                                           children: [
-                                            AnimatedScale(
-                                              scale: isSelected ? 1.06 : 0.96,
-                                              duration: const Duration(
-                                                  milliseconds: 220),
-                                              curve: Curves.easeOutBack,
-                                              child: AnimatedContainer(
-                                                duration: const Duration(
-                                                    milliseconds: 220),
-                                                curve: Curves.easeOutCubic,
+                                            CustomPaint(
+                                              painter: _DashedCirclePainter(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.85)),
+                                              child: const SizedBox(
                                                 width: 54,
                                                 height: 54,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                    colors: isSelected
-                                                        ? [
-                                                            Colors.white
-                                                                .withValues(
-                                                                    alpha: 0.34),
-                                                            const Color(
-                                                                    0xFF86EFAC)
-                                                                .withValues(
-                                                                    alpha: 0.22),
-                                                          ]
-                                                        : [
-                                                            Colors.white
-                                                                .withValues(
-                                                                    alpha: 0.18),
-                                                            Colors.white
-                                                                .withValues(
-                                                                    alpha: 0.08),
-                                                          ],
-                                                  ),
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? Colors.white
-                                                        : Colors.white
-                                                            .withValues(
-                                                                alpha: 0.45),
-                                                    width:
-                                                        isSelected ? 2.4 : 1.3,
-                                                  ),
-                                                ),
                                                 child: Center(
                                                   child: PhosphorIcon(
-                                                    PhosphorIconsDuotone.user,
+                                                    PhosphorIconsBold.plus,
                                                     color: Colors.white,
-                                                    size: 27,
-                                                    duotoneSecondaryOpacity:
-                                                        isSelected
-                                                            ? 0.38
-                                                            : 0.24,
-                                                    duotoneSecondaryColor:
-                                                        Colors.white,
+                                                    size: 24,
                                                   ),
                                                 ),
                                               ),
                                             ),
                                             const SizedBox(height: 6),
                                             Text(
-                                              mName,
-                                              style: TextStyle(
-                                                color: Colors.white.withValues(
-                                                    alpha:
-                                                        isSelected ? 1.0 : 0.85),
+                                              AppLocale.t('Thêm', 'Add'),
+                                              style: const TextStyle(
+                                                color: Colors.white,
                                                 fontSize: 13.5,
-                                                fontWeight: isSelected
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w500,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     ),
-                                  );
-                                }),
-
-                                // Dashed "+ Thêm / Add" button
-                                NutriVietPressScale(
-                                  pressedScale: 0.93,
-                                  enableHaptic: true,
-                                  child: GestureDetector(
-                                    onTap: _openAddFamilyMemberDialog,
-                                    child: Column(
-                                      children: [
-                                        CustomPaint(
-                                          painter: _DashedCirclePainter(
-                                              color: Colors.white
-                                                  .withValues(alpha: 0.85)),
-                                          child: const SizedBox(
-                                            width: 54,
-                                            height: 54,
-                                            child: Center(
-                                              child: PhosphorIcon(
-                                                PhosphorIconsBold.plus,
-                                                color: Colors.white,
-                                                size: 24,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          AppLocale.t('Thêm', 'Add'),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 18),
 
@@ -1043,160 +1209,191 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // Category Pills Row (balanced 4-column bar — zero clipping, zero ShaderMask saveLayer!)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildCategoryPill(
-                      id: 'sugar',
-                      icon: PhosphorIconsDuotone.cube,
-                      label: AppLocale.t('Đường', 'Sugar'),
-                    ),
+            // Category Pills Row (isolated via ValueListenableBuilder so
+            // category switches never rebuild Hero card or sibling tabs)
+            ValueListenableBuilder<String>(
+              valueListenable: _selectedCategoryNotifier,
+              builder: (context, selectedCategory, _) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildCategoryPill(
+                          id: 'sugar',
+                          selectedCategory: selectedCategory,
+                          icon: PhosphorIconsDuotone.cube,
+                          label: AppLocale.t('Đường', 'Sugar'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCategoryPill(
+                          id: 'salt',
+                          selectedCategory: selectedCategory,
+                          icon: PhosphorIconsDuotone.grains,
+                          label: AppLocale.t('Muối', 'Salt'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCategoryPill(
+                          id: 'fat',
+                          selectedCategory: selectedCategory,
+                          icon: PhosphorIconsDuotone.drop,
+                          label: AppLocale.t('Chất béo', 'Fat'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCategoryPill(
+                          id: 'allergen',
+                          selectedCategory: selectedCategory,
+                          icon: PhosphorIconsDuotone.shieldWarning,
+                          label: AppLocale.t('Dị ứng', 'Allergens'),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildCategoryPill(
-                      id: 'salt',
-                      icon: PhosphorIconsDuotone.grains,
-                      label: AppLocale.t('Muối', 'Salt'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildCategoryPill(
-                      id: 'fat',
-                      icon: PhosphorIconsDuotone.drop,
-                      label: AppLocale.t('Chất béo', 'Fat'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildCategoryPill(
-                      id: 'allergen',
-                      icon: PhosphorIconsDuotone.shieldWarning,
-                      label: AppLocale.t('Dị ứng', 'Allergens'),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
 
             const SizedBox(height: 16),
 
-            // Active Category Knowledge Section (items are emitted as direct
-            // ListView children so Viewport culls offscreen cards at 120Hz)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                child: Align(
-                  key: ValueKey('cat_title_${_selectedCategory}_${AppLocale.code}'),
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _selectedCategory == 'sugar'
-                        ? AppLocale.t('Đường', 'Sugar')
-                        : (_selectedCategory == 'salt'
-                            ? AppLocale.t('Muối', 'Salt')
-                            : (_selectedCategory == 'fat'
-                                ? AppLocale.t('Chất béo', 'Fat')
-                                : AppLocale.t('Dị ứng', 'Allergens'))),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-                  if (_selectedCategory == 'allergen') ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      child: NutriVietGlassCard(
-                        cornerRadius: 20,
-                        padding: const EdgeInsets.all(14),
-                        onTap: _openAllergyProfile,
-                        child: Row(
-                          children: [
-                            const NutriVietGlassIconTile(
-                              icon: PhosphorIconsDuotone.shieldWarning,
-                              color: _riskHighRed,
-                              size: 44,
-                              isCircle: true,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    AppLocale.t(
-                                      'Bạn ăn món gì bị dị ứng? (VD: Bơ, Phô mai, Tôm...)',
-                                      'Which food caused your allergy? (e.g. Butter, Cheese...)',
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFFB91C1C),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    AppLocale.t(
-                                      'Chạm để tìm món ăn bạn bị dị ứng — Cây FoodOn sẽ tự động BÁO ĐỎ các thành phần liên quan (như Sữa bột, Đạm váng sữa) khi quét nhãn!',
-                                      'Tap to search trigger foods — FoodOn automatically triggers a RED ALERT on related label ingredients (like Milk powder, Whey)!',
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF4B5563),
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const PhosphorIcon(
-                              PhosphorIconsBold.caretRight,
-                              size: 16,
-                              color: _riskHighRed,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (_loadingCategory)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: NutriVietConceptListSkeleton(itemCount: 3),
-                    )
-                  else if (_categoryItems.isEmpty)
+            // Active Category Knowledge Section (isolated ListenableBuilder so
+            // switching Sugar/Salt/Fat/Allergen never rebuilds HomeScreen/tabs)
+            ListenableBuilder(
+              listenable: Listenable.merge([
+                _selectedCategoryNotifier,
+                _loadingCategoryNotifier,
+                _categoryItemsNotifier,
+              ]),
+              builder: (context, _) {
+                final selectedCategory = _selectedCategoryNotifier.value;
+                final loadingCategory = _loadingCategoryNotifier.value;
+                final categoryItems = _categoryItemsNotifier.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: NutriVietGlassCard(
-                        cornerRadius: 22,
-                        padding: const EdgeInsets.all(18),
-                        child: Text(
-                          AppLocale.t(
-                            'Không có dữ liệu cho danh mục này.',
-                            'No data available for this category.',
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: Align(
+                          key: ValueKey(
+                            'cat_title_${selectedCategory}_${AppLocale.code}',
                           ),
-                          style: const TextStyle(color: Color(0xFF6B7280)),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            selectedCategory == 'sugar'
+                                ? AppLocale.t('Đường', 'Sugar')
+                                : (selectedCategory == 'salt'
+                                    ? AppLocale.t('Muối', 'Salt')
+                                    : (selectedCategory == 'fat'
+                                        ? AppLocale.t('Chất béo', 'Fat')
+                                        : AppLocale.t('Dị ứng', 'Allergens'))),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
                         ),
                       ),
-                    )
-                  else
-                    ..._categoryItems.take(6).map((item) => Padding(
-                          key: ValueKey('cat_item_${item['id'] ?? item['code'] ?? item['name']}'),
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                          child: _buildAdditiveOrConceptCard(item),
-                        )),
+                    ),
+                    const SizedBox(height: 10),
+                    if (selectedCategory == 'allergen') ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        child: NutriVietGlassCard(
+                          cornerRadius: 20,
+                          padding: const EdgeInsets.all(14),
+                          onTap: _openAllergyProfile,
+                          child: Row(
+                            children: [
+                              const NutriVietGlassIconTile(
+                                icon: PhosphorIconsDuotone.shieldWarning,
+                                color: _riskHighRed,
+                                size: 44,
+                                isCircle: true,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      AppLocale.t(
+                                        'Bạn ăn món gì bị dị ứng? (VD: Bơ, Phô mai, Tôm...)',
+                                        'Which food caused your allergy? (e.g. Butter, Cheese...)',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFFB91C1C),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      AppLocale.t(
+                                        'Chạm để tìm món ăn bạn bị dị ứng — Cây FoodOn sẽ tự động BÁO ĐỎ các thành phần liên quan (như Sữa bột, Đạm váng sữa) khi quét nhãn!',
+                                        'Tap to search trigger foods — FoodOn automatically triggers a RED ALERT on related label ingredients (like Milk powder, Whey)!',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF4B5563),
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const PhosphorIcon(
+                                PhosphorIconsBold.caretRight,
+                                size: 16,
+                                color: _riskHighRed,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (loadingCategory)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: NutriVietConceptListSkeleton(itemCount: 3),
+                      )
+                    else if (categoryItems.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: NutriVietGlassCard(
+                          cornerRadius: 22,
+                          padding: const EdgeInsets.all(18),
+                          child: Text(
+                            AppLocale.t(
+                              'Không có dữ liệu cho danh mục này.',
+                              'No data available for this category.',
+                            ),
+                            style: const TextStyle(color: Color(0xFF6B7280)),
+                          ),
+                        ),
+                      )
+                    else
+                      ...categoryItems.take(6).map((item) => Padding(
+                            key: ValueKey(
+                              'cat_item_${item['id'] ?? item['code'] ?? item['name']}',
+                            ),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                            child: _buildAdditiveOrConceptCard(item),
+                          )),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -1206,10 +1403,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCategoryPill({
     required String id,
+    required String selectedCategory,
     required IconData icon,
     required String label,
   }) {
-    final isSelected = _selectedCategory == id;
+    final isSelected = selectedCategory == id;
     return NutriVietPressScale(
       pressedScale: 0.94,
       enableHaptic: true,
@@ -1368,12 +1566,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void _applyScanSummary(Map<String, dynamic> res) {
     final updatedScans = List<Map<String, dynamic>>.from(res['scans'] ?? []);
     final validIds = updatedScans.map((s) => s['id']).whereType<int>().toSet();
+    final prunedExpanded = _expandedScansNotifier.value
+        .where((id) => validIds.contains(id))
+        .toSet();
     setState(() {
       _scans = updatedScans;
       _monthlyScans = (res['monthly_scans'] ?? 0) as int;
       _monthlyWarnings = (res['monthly_warnings'] ?? 0) as int;
-      _expandedScanIds.removeWhere((id) => !validIds.contains(id));
     });
+    _expandedScansNotifier.value = prunedExpanded;
+    _saveHomeSnapshot();
   }
 
   Future<bool> _confirmAndDeleteScan(int scanId, String title) async {
@@ -1674,7 +1876,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemBuilder: (context, idx) {
                       final scan = _scans[idx];
                       final scanId = (scan['id'] ?? 0) as int;
-                      final isExpanded = _expandedScanIds.contains(scanId);
                       final title = AppLocale.translateScanTitle(
                         (scan['label_title'] ?? '').toString(),
                       );
@@ -1734,22 +1935,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: NutriVietGlassCard(
                             cornerRadius: 22,
                             padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                InkWell(
-                                  borderRadius: BorderRadius.circular(16),
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    setState(() {
-                                      if (isExpanded) {
-                                        _expandedScanIds.remove(scanId);
-                                      } else {
-                                        _expandedScanIds.add(scanId);
-                                      }
-                                    });
-                                  },
-                                  child: Row(
+                            child: ValueListenableBuilder<Set<int>>(
+                              valueListenable: _expandedScansNotifier,
+                              builder: (context, expandedIds, _) {
+                                final isExpanded = expandedIds.contains(scanId);
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        final next = Set<int>.from(expandedIds);
+                                        if (!next.remove(scanId)) {
+                                          next.add(scanId);
+                                        }
+                                        _expandedScansNotifier.value = next;
+                                      },
+                                      child: Row(
                                     children: [
                                       Container(
                                         width: 58,
@@ -2136,6 +2339,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       : const SizedBox.shrink(),
                                 ),
                               ],
+                            );
+                              },
                             ),
                           ),
                         ),
