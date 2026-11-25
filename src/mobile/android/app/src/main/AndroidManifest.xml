@@ -30,6 +30,10 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Cap default Dart old-gen heap on low-RAM devices; overridden dynamically in MainActivity.getFlutterShellArgs -->
+        <meta-data
+            android:name="io.flutter.embedding.android.OldGenHeapSize"
+            android:value="256" />
     </application>
 </manifest>
 
