@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
@@ -12,8 +13,10 @@ import 'package:nutriviet_mobile/screens/login_screen.dart';
 import 'package:nutriviet_mobile/screens/settings_screen.dart';
 import 'package:nutriviet_mobile/services/auth_service.dart';
 import 'package:nutriviet_mobile/services/local_guest_store.dart';
+import 'package:nutriviet_mobile/services/perf_monitor.dart';
 import 'package:nutriviet_mobile/services/profile_service.dart';
 import 'package:nutriviet_mobile/theme/nutriviet_glass.dart';
+import 'package:nutriviet_mobile/theme/nutriviet_route.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_glass_modal.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_notice.dart';
 import 'package:nutriviet_mobile/widgets/nutriviet_shimmer.dart';
@@ -170,6 +173,18 @@ void main() {
     expect(find.text('Nhóm dị ứng thực phẩm'), findsOneWidget);
     expect(find.text('Đậu phộng'), findsOneWidget);
     expect(find.text('Sữa & Chế phẩm'), findsOneWidget);
+
+    // Tapping an allergen card activates it and shows severity pill
+    await tester.tap(find.text('Đậu phộng'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Sốc phản vệ'), findsOneWidget);
+
+    // Lazy Sliver CustomScrollView builds lower sections smoothly as user scrolls
+    await tester.scrollUntilVisible(
+      find.text('Tình trạng sức khỏe'),
+      250.0,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Tình trạng sức khỏe'), findsOneWidget);
 
     // Must NOT contain gender, height, weight, age, or BMI form clutter
@@ -178,11 +193,6 @@ void main() {
     expect(find.text('Cân nặng'), findsNothing);
     expect(find.text('Tuổi'), findsNothing);
     expect(find.textContaining('BMI'), findsNothing);
-
-    // Tapping an allergen card activates it and shows severity pill
-    await tester.tap(find.text('Đậu phộng'));
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(find.text('Sốc phản vệ'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -941,6 +951,169 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'NutriVietPageRoute transitions cleanly without M3 saveLayer zoom route',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.iOS: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.windows: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.linux: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.macOS: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.fuchsia: NutriVietPageTransitionsBuilder(),
+              },
+            ),
+          ),
+          home: Builder(
+            builder: (ctx) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    ctx,
+                    NutriVietPageRoute(
+                      builder: (_) => Scaffold(
+                        body: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('SecondRoute'),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('OpenRoute'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('OpenRoute'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      // Both incoming and outgoing routes must use zero-saveLayer GPU
+      // SlideTransition rather than full-screen FadeTransition / M3 zoom.
+      expect(
+        find.ancestor(
+          of: find.text('SecondRoute'),
+          matching: find.byType(SlideTransition),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(FadeTransition), findsNothing);
+      await tester.pumpAndSettle();
+      expect(find.text('SecondRoute'), findsOneWidget);
+
+      await tester.tap(find.text('SecondRoute'));
+      await tester.pumpAndSettle();
+      expect(find.text('OpenRoute'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'NutriVietShimmerGroup uses a single shared RepaintBoundary across all bones',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: NutriVietShimmerGroup(
+              child: Column(
+                children: [
+                  NutriVietShimmerBox(width: 100, height: 14),
+                  NutriVietShimmerBox(width: 140, height: 14),
+                  NutriVietShimmerBox(width: 80, height: 14),
+                  NutriVietShimmerBox.circle(size: 32),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final groupFinder = find.byType(NutriVietShimmerGroup);
+      final boundariesInsideGroup = find.descendant(
+        of: groupFinder,
+        matching: find.byType(RepaintBoundary),
+      );
+      expect(find.byType(NutriVietShimmerBox), findsNWidgets(4));
+      // Exactly 1 shared RepaintBoundary on the group, never 1 per bone.
+      expect(boundariesInsideGroup, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'HomeScreen hydrates Stale-While-Revalidate snapshot immediately without waiting for network',
+    (WidgetTester tester) async {
+      await AppLocale.setLanguage('vi');
+      SharedPreferences.setMockInitialValues({
+        'nv_home_snapshot_v1_u_42': jsonEncode({
+          'allergens': [],
+          'family_members': [
+            {'id': 1, 'member_name': 'Me', 'is_primary': 1},
+            {'id': 2, 'member_name': 'Bé An', 'is_primary': 0},
+          ],
+          'scans': [],
+          'monthly_scans': 7,
+          'monthly_warnings': 2,
+          'selected_member': 'Bé An',
+          'category': 'salt',
+          'category_items': [
+            {
+              'id': 'salt_1',
+              'code': 'FOODON:00001111',
+              'title_en': 'Refined Table Salt',
+              'description_en': 'High sodium food seasoning.',
+              'risk_level': 'high',
+            },
+          ],
+        }),
+      });
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: HomeScreen(
+            user: {
+              'id': 42,
+              'full_name': 'Minh Anh',
+              'email': 'minh@example.com',
+              'role': 'user',
+              'token': 'test-token',
+              'is_guest': false,
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('Bé An'), findsOneWidget);
+      expect(find.text('Refined Table Salt'), findsOneWidget);
+      expect(find.textContaining('Đã đọc 7 nhãn'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  test('NutriVietPerfMonitor tracks frame build/raster stats and 120Hz budget misses', () {
+    NutriVietPerfMonitor.reset();
+    NutriVietPerfMonitor.recordSample(buildUs: 1200, rasterUs: 2400); // 3.6ms OK
+    NutriVietPerfMonitor.recordSample(buildUs: 2500, rasterUs: 3000); // 5.5ms OK
+    NutriVietPerfMonitor.recordSample(buildUs: 4500, rasterUs: 5500); // 10.0ms >8.33ms
+    NutriVietPerfMonitor.recordSample(buildUs: 8000, rasterUs: 11000); // 19.0ms >16.67ms
+
+    final snap = NutriVietPerfMonitor.snapshot();
+    expect(snap['frames'], 4);
+    expect(snap['over_120hz'], 2);
+    expect(snap['over_60hz'], 1);
+    expect(snap['build_avg_ms'], closeTo(4.05, 0.01));
+    expect(snap['raster_avg_ms'], closeTo(5.475, 0.01));
+  });
 }
 
 void _noop() {}
