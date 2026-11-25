@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
@@ -6,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
@@ -131,6 +133,9 @@ class AllergyProfileScreen extends StatefulWidget {
 }
 
 class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
+  static final Map<String, Map<String, dynamic>> _profileCache = {};
+  static List<Map<String, String>> _cachedQuickFoods = [];
+
   bool _isLoading = true;
   bool _isSaving = false;
   String? _errorMessage;
@@ -140,6 +145,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   bool _nameEdited = false;
 
   late final TextEditingController _foodSearchController;
+  late final ValueNotifier<List<Map<String, String>>> _quickFoodsNotifier;
 
   bool _scanDerivatives = true;
   bool _warnTraces = true;
@@ -148,7 +154,9 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
   bool _isSearchingFood = false;
   bool _allergensChanged = false;
   List<Map<String, dynamic>> _foodSearchResults = [];
-  List<Map<String, String>> _quickEverydayFoods = [];
+
+  String get _profileCacheKey =>
+      widget.isGuest ? 'guest' : 'user_${widget.userId}';
 
   final List<AllergenChipItem> _allergens = [
     AllergenChipItem(
@@ -266,14 +274,26 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     _displayName = widget.userName.trim();
     _currentEmail = (widget.userEmail ?? '').trim();
     _foodSearchController = TextEditingController();
+    _quickFoodsNotifier =
+        ValueNotifier<List<Map<String, String>>>(_cachedQuickFoods);
+    final cached = _profileCache[_profileCacheKey];
+    if (cached != null) {
+      _applyLoadedPayload(
+        cached['allergenRes'] as Map<String, dynamic>,
+        cached['chronicsRes'] as Map<String, dynamic>,
+        cached['settingsRes'] as Map<String, dynamic>,
+      );
+      _isLoading = false;
+    }
     _loadUserEmail();
-    _loadProfile();
+    _loadProfile(showSkeleton: cached == null);
     _loadQuickTriggerFoods();
   }
 
   @override
   void dispose() {
     _foodSearchController.dispose();
+    _quickFoodsNotifier.dispose();
     super.dispose();
   }
 
@@ -305,34 +325,16 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
         .where((m) => (m['label'] ?? '').isNotEmpty)
         .toList();
     if (items.isNotEmpty) {
-      setState(() => _quickEverydayFoods = items);
+      _cachedQuickFoods = items;
+      _quickFoodsNotifier.value = items;
     }
   }
 
-  Future<void> _loadProfile() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final results = widget.isGuest
-        ? await Future.wait([
-            LocalGuestStore.getAllergens(),
-            LocalGuestStore.getChronics(),
-            LocalGuestStore.getSettings(),
-          ])
-        : await Future.wait([
-            ProfileService.getAllergens(widget.userId),
-            ProfileService.getChronics(widget.userId),
-            ProfileService.getSettings(widget.userId),
-          ]);
-
-    if (!mounted) return;
-
-    final allergenRes = results[0];
-    final chronicsRes = results[1];
-    final settingsRes = results[2];
-
+  void _applyLoadedPayload(
+    Map<String, dynamic> allergenRes,
+    Map<String, dynamic> chronicsRes,
+    Map<String, dynamic> settingsRes,
+  ) {
     if (allergenRes['success'] == true) {
       final List saved = allergenRes['allergens'] ?? [];
       for (final a in _allergens) {
@@ -409,8 +411,45 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       _notifyBadges = s['notify_badges'] ?? true;
       _notifyReminders = s['notify_reminders'] ?? false;
     }
+  }
 
-    setState(() => _isLoading = false);
+  Future<void> _loadProfile({bool showSkeleton = true}) async {
+    if (showSkeleton) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    final results = widget.isGuest
+        ? await Future.wait([
+            LocalGuestStore.getAllergens(),
+            LocalGuestStore.getChronics(),
+            LocalGuestStore.getSettings(),
+          ])
+        : await Future.wait([
+            ProfileService.getAllergens(widget.userId),
+            ProfileService.getChronics(widget.userId),
+            ProfileService.getSettings(widget.userId),
+          ]);
+
+    if (!mounted) return;
+
+    final allergenRes = results[0];
+    final chronicsRes = results[1];
+    final settingsRes = results[2];
+
+    _profileCache[_profileCacheKey] = {
+      'allergenRes': allergenRes,
+      'chronicsRes': chronicsRes,
+      'settingsRes': settingsRes,
+    };
+
+    setState(() {
+      _errorMessage = null;
+      _applyLoadedPayload(allergenRes, chronicsRes, settingsRes);
+      _isLoading = false;
+    });
   }
 
   Future<void> _searchEverydayAllergyFood(String query) async {
@@ -666,7 +705,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       if (widget.isInitialSetup) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
+          NutriVietPageRoute(
             builder: (_) => HomeScreen(user: {
               'id': widget.userId,
               'full_name': finalName,
@@ -862,60 +901,67 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                 : null,
           ),
         ),
-        if (_quickEverydayFoods.isNotEmpty && _foodSearchResults.isEmpty) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _quickEverydayFoods.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final qf = _quickEverydayFoods[index];
-                final label = qf['label']!;
-                final isCurrent =
-                    _foodSearchController.text.trim().toLowerCase() ==
-                        label.toLowerCase();
-                return InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    _foodSearchController.text = label;
-                    _searchEverydayAllergyFood(label);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? const Color(0xFFFEE2E2)
-                          : const Color(0xD8FFFFFF),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isCurrent
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFFDDE5DF),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${qf['emoji']} $label',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: isCurrent
-                              ? const Color(0xFFB91C1C)
-                              : const Color(0xFF334155),
+        if (_foodSearchResults.isEmpty)
+          ValueListenableBuilder<List<Map<String, String>>>(
+            valueListenable: _quickFoodsNotifier,
+            builder: (context, quickFoods, _) {
+              if (quickFoods.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: quickFoods.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final qf = quickFoods[index];
+                      final label = qf['label']!;
+                      final isCurrent =
+                          _foodSearchController.text.trim().toLowerCase() ==
+                              label.toLowerCase();
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _foodSearchController.text = label;
+                          _searchEverydayAllergyFood(label);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? const Color(0xFFFEE2E2)
+                                : const Color(0xFFFAFDFB),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isCurrent
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFFDDE5DF),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${qf['emoji']} $label',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: isCurrent
+                                    ? const Color(0xFFB91C1C)
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
-        ],
         if (_isSearchingFood) ...[
           const SizedBox(height: 12),
           const NutriVietFoodSearchSkeleton(itemCount: 3),
@@ -1116,23 +1162,14 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
           constraints: const BoxConstraints(minHeight: 112),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: active ? const Color(0xF5FFF1F2) : const Color(0xDCFFFFFF),
+            color: active ? const Color(0xFFFFF1F2) : const Color(0xFFFAFDFB),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: active
                   ? const Color(0xFFEF4444)
-                  : const Color(0xFFDDE5DF),
-              width: active ? 1.6 : 1.1,
+                  : const Color(0xFFE0EAE4),
+              width: active ? 1.6 : 1.05,
             ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1471,7 +1508,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
       if (widget.isInitialSetup) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
+          NutriVietPageRoute(
             builder: (_) => HomeScreen(user: {
               'id': widget.userId,
               'full_name': finalName,
@@ -1500,104 +1537,150 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                         padding: EdgeInsets.only(top: topInset + 72),
                         child: const NutriVietAllergyProfileSkeleton(),
                       )
-                    : SingleChildScrollView(
+                    : CustomScrollView(
+                        scrollCacheExtent: const ScrollCacheExtent.pixels(600),
                         physics: const BouncingScrollPhysics(
                           parent: AlwaysScrollableScrollPhysics(),
                         ),
-                        padding: EdgeInsets.fromLTRB(
-                          18,
-                          topInset + 84,
-                          18,
-                          36,
-                        ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 640),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                        slivers: [
+                          SliverPadding(
+                            padding: EdgeInsets.fromLTRB(
+                              18,
+                              topInset + 84,
+                              18,
+                              36,
+                            ),
+                            sliver: SliverList.list(
+                              addRepaintBoundaries: false,
                               children: [
                                 if (_errorMessage != null) ...[
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xEEFDE8E8),
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: const Color(0xFFEF4444),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const PhosphorIcon(
-                                          PhosphorIconsDuotone.warningOctagon,
-                                          color: Color(0xFFDC2626),
-                                          size: 20,
+                                  Center(
+                                    child: ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 640),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 12,
                                         ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            _errorMessage!,
-                                            style: const TextStyle(
-                                              color: Color(0xFFDC2626),
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xEEFDE8E8),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: const Color(0xFFEF4444),
                                           ),
                                         ),
-                                      ],
+                                        child: Row(
+                                          children: [
+                                            const PhosphorIcon(
+                                              PhosphorIconsDuotone
+                                                  .warningOctagon,
+                                              color: Color(0xFFDC2626),
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                _errorMessage!,
+                                                style: const TextStyle(
+                                                  color: Color(0xFFDC2626),
+                                                  fontSize: 13.5,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 16),
                                 ],
 
                                 // Compact Health Shield Banner (no gender/height/weight/BMI)
-                                _buildSummaryBanner(
-                                  selectedAllergens,
-                                  selectedChronics,
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 640),
+                                    child: _buildSummaryBanner(
+                                      selectedAllergens,
+                                      selectedChronics,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 22),
 
                                 // Primary: FoodOn Smart Food Search
-                                _buildFoodOnSearchSection(),
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 640),
+                                    child: _buildFoodOnSearchSection(),
+                                  ),
+                                ),
                                 const SizedBox(height: 24),
 
                                 // Primary: 8 Allergen Families Grid
-                                _buildAllergenGridSection(selectedAllergens),
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 640),
+                                    child: _buildAllergenGridSection(
+                                      selectedAllergens,
+                                    ),
+                                  ),
+                                ),
                                 const SizedBox(height: 26),
 
                                 // Health Conditions Grid
-                                _buildHealthConditionsSection(),
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 640),
+                                    child: _buildHealthConditionsSection(),
+                                  ),
+                                ),
                                 const SizedBox(height: 22),
 
                                 // Scan Sensitivity Switches
-                                _buildProtectionSwitchesCard(),
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 640),
+                                    child: _buildProtectionSwitchesCard(),
+                                  ),
+                                ),
                                 const SizedBox(height: 26),
 
                                 // Single clear bottom Save CTA
-                                NutriVietGlassActionButton(
-                                  label: widget.isInitialSetup
-                                      ? AppLocale.t(
-                                          'Hoàn tất & Bắt đầu quét',
-                                          'Finish & Start Scanning',
-                                        )
-                                      : AppLocale.t(
-                                          'Lưu hồ sơ sức khỏe',
-                                          'Save Health Profile',
-                                        ),
-                                  icon: PhosphorIconsBold.checkCircle,
-                                  isLoading: _isSaving,
-                                  width: double.infinity,
-                                  height: 56,
-                                  onPressed: _handleSave,
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 640),
+                                    child: NutriVietGlassActionButton(
+                                      label: widget.isInitialSetup
+                                          ? AppLocale.t(
+                                              'Hoàn tất & Bắt đầu quét',
+                                              'Finish & Start Scanning',
+                                            )
+                                          : AppLocale.t(
+                                              'Lưu hồ sơ sức khỏe',
+                                              'Save Health Profile',
+                                            ),
+                                      icon: PhosphorIconsBold.checkCircle,
+                                      isLoading: _isSaving,
+                                      width: double.infinity,
+                                      height: 56,
+                                      onPressed: _handleSave,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                               ],
                             ),
                           ),
-                        ),
+                        ],
                       ),
               ),
             ),
