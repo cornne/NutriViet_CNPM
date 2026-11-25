@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/local_guest_store.dart';
 import '../services/profile_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
@@ -302,7 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _openAllergyProfile() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
+      NutriVietPageRoute(
         builder: (_) => AllergyProfileScreen(
           userId: widget.userId,
           userName: _currentName,
@@ -646,7 +647,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          NutriVietPageRoute(builder: (_) => const LoginScreen()),
                         );
                       },
                     ),
@@ -665,7 +666,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (!context.mounted) return;
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          NutriVietPageRoute(builder: (_) => const LoginScreen()),
                           (route) => false,
                         );
                       },
@@ -680,7 +681,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            NutriVietPageRoute(
                               builder: (_) => AdminModerationScreen(
                                 token: widget.authToken,
                                 currentUserId: widget.userId,
@@ -717,7 +718,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (!context.mounted) return;
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          NutriVietPageRoute(builder: (_) => const LoginScreen()),
                           (route) => false,
                         );
                       },

@@ -3,6 +3,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'verify_email_screen.dart';
@@ -92,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
+          NutriVietPageRoute(
             builder: (context) => VerifyEmailScreen(email: userEmail),
           ),
           (route) => false,

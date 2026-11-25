@@ -4,6 +4,7 @@ import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../services/local_guest_store.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_ui.dart';
@@ -355,7 +356,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pop(ctx);
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                NutriVietPageRoute(
                   builder: (context) => VerifyEmailScreen(email: email),
                 ),
               );
@@ -439,7 +440,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+        NutriVietPageRoute(builder: (context) => HomeScreen(user: user)),
         (route) => false,
       );
     } else {
@@ -467,7 +468,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => HomeScreen(user: guestUser)),
+      NutriVietPageRoute(builder: (context) => HomeScreen(user: guestUser)),
       (route) => false,
     );
   }
@@ -867,7 +868,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         onTap: () {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
+                                            NutriVietPageRoute(
                                               builder: (context) =>
                                                   const RegisterScreen(),
                                             ),

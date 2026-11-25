@@ -46,9 +46,11 @@ class _NutriVietShimmerGroupState extends State<NutriVietShimmerGroup>
 
   @override
   Widget build(BuildContext context) {
-    return _NutriVietShimmerScope(
-      progress: _controller,
-      child: widget.child,
+    return RepaintBoundary(
+      child: _NutriVietShimmerScope(
+        progress: _controller,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -130,43 +132,45 @@ class _NutriVietShimmerBoxState extends State<NutriVietShimmerBox>
 
   @override
   Widget build(BuildContext context) {
-    final Animation<double> anim =
-        NutriVietShimmerGroup.maybeOf(context) ?? _fallbackController!;
+    final groupAnim = NutriVietShimmerGroup.maybeOf(context);
+    final Animation<double> anim = groupAnim ?? _fallbackController!;
     final base = widget.baseColor ?? const Color(0x88DCE7E1);
     final mid = (widget.highlightColor ?? Colors.white).withValues(alpha: 0.92);
     final radius = BorderRadius.circular(widget.borderRadius);
 
-    return RepaintBoundary(
-      child: Padding(
-        padding: widget.margin ?? EdgeInsets.zero,
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: AnimatedBuilder(
-            animation: anim,
-            builder: (context, _) {
-              final t = Curves.easeInOut.transform(anim.value);
-              final slide = -1.6 + t * 3.2;
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: radius,
-                  gradient: LinearGradient(
-                    begin: Alignment(slide - 0.85, -0.35),
-                    end: Alignment(slide + 0.85, 0.35),
-                    colors: [
-                      base,
-                      mid,
-                      base,
-                    ],
-                    stops: const [0.12, 0.50, 0.88],
-                  ),
+    // Avoid allocating a separate GPU RepaintBoundary per shimmer bone when
+    // already isolated inside a parent [NutriVietShimmerGroup].
+    final Widget box = Padding(
+      padding: widget.margin ?? EdgeInsets.zero,
+      child: SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: AnimatedBuilder(
+          animation: anim,
+          builder: (context, _) {
+            final t = Curves.easeInOut.transform(anim.value);
+            final slide = -1.6 + t * 3.2;
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                gradient: LinearGradient(
+                  begin: Alignment(slide - 0.85, -0.35),
+                  end: Alignment(slide + 0.85, 0.35),
+                  colors: [
+                    base,
+                    mid,
+                    base,
+                  ],
+                  stops: const [0.12, 0.50, 0.88],
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
+
+    return groupAnim != null ? box : RepaintBoundary(child: box);
   }
 }
 

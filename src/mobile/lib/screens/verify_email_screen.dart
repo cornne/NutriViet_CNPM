@@ -3,6 +3,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
 import '../services/auth_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_ui.dart';
 import 'login_screen.dart';
 
@@ -191,7 +192,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                             onPressed: () {
                               Navigator.pushAndRemoveUntil(
                                 context,
-                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                NutriVietPageRoute(builder: (_) => const LoginScreen()),
                                 (route) => false,
                               );
                             },
@@ -231,7 +232,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                       onTap: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          NutriVietPageRoute(builder: (_) => const LoginScreen()),
                           (route) => false,
                         );
                       },
