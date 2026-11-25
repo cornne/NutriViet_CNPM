@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/community_service.dart';
 import '../services/paddle_ocr_vl_service.dart';
 import '../theme/nutriviet_glass.dart';
+import '../theme/nutriviet_route.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
@@ -74,7 +75,7 @@ class CommunityFeedScreen extends StatefulWidget {
                 Navigator.pop(ctx);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  NutriVietPageRoute(builder: (_) => const LoginScreen()),
                 );
               },
             ),
@@ -909,7 +910,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     } else {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        NutriVietPageRoute(builder: (_) => const LoginScreen()),
                       );
                     }
                   },
@@ -923,7 +924,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                      NutriVietPageRoute(builder: (_) => const RegisterScreen()),
                     );
                   },
                 ),
@@ -1270,7 +1271,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                 onTap: () async {
                                   await Navigator.push(
                                     context,
-                                    MaterialPageRoute(
+                                    NutriVietPageRoute(
                                       builder: (_) => AdminModerationScreen(
                                         token: _token,
                                         currentUserId: _userId,
