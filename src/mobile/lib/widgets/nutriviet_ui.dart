@@ -813,16 +813,9 @@ class NutriVietGlassAppBar extends StatelessWidget {
             ],
           ),
           border: Border.all(
-            color: const Color(0xFFFFFFFF),
-            width: 1.2,
+            color: const Color(0xFFDCE7E0),
+            width: 1.15,
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x140F172A),
-              blurRadius: 14,
-              offset: Offset(0, 4),
-            ),
-          ],
         ),
         child: Stack(
           alignment: Alignment.center,
