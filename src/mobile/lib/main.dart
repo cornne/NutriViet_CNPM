@@ -4,10 +4,19 @@ import 'l10n/app_locale.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
+import 'services/perf_monitor.dart';
 import 'theme/nutriviet_glass.dart';
+import 'theme/nutriviet_route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Tune decoded image cache ceiling so Community feed scrolling avoids
+  // repeated eviction/re-decode stalls without bloating RAM.
+  final imageCache = PaintingBinding.instance.imageCache;
+  imageCache.maximumSize = 800;
+  imageCache.maximumSizeBytes = 192 << 20; // 192 MiB
+  NutriVietPerfMonitor.start();
+
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -40,7 +49,18 @@ class NutriVietApp extends StatelessWidget {
           scrollBehavior: const NutriVietScrollBehavior(),
           theme: ThemeData(
             useMaterial3: true,
-            splashFactory: InkRipple.splashFactory,
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.iOS: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.macOS: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.windows: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.linux: NutriVietPageTransitionsBuilder(),
+                TargetPlatform.fuchsia: NutriVietPageTransitionsBuilder(),
+              },
+            ),
             scaffoldBackgroundColor: const Color(0xFFF3F6F3),
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF14803C),
