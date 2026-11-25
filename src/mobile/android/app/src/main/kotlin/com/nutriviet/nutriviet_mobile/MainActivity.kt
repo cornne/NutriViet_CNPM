@@ -1,5 +1,8 @@
 package com.nutriviet.nutriviet_mobile
 
+import android.app.ActivityManager
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -8,8 +11,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -25,6 +31,11 @@ class MainActivity : FlutterActivity() {
         requestHighestRefreshRate()
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        requestHighestRefreshRate()
+    }
+
     override fun onResume() {
         super.onResume()
         requestHighestRefreshRate()
@@ -35,6 +46,65 @@ class MainActivity : FlutterActivity() {
         if (hasFocus) {
             requestHighestRefreshRate()
         }
+    }
+
+    /**
+     * Device-aware renderer & Dart heap policy (modeled after VyseTV):
+     * - Keeps Impeller on modern 64-bit Vulkan 1.1+ Android devices (120Hz zero shader-jank).
+     * - Automatically falls back to Skia (`--enable-impeller=false`) on devices lacking
+     *   Vulkan 1.1, 32-bit processes, low-RAM phones, or Huawei/HONOR/NVIDIA drivers where
+     *   Impeller GLES shader compilation stalls or crashes.
+     * - Caps Dart old-gen heap at 256 MB on low-RAM (<= 2.2 GB) devices to prevent OOM kills,
+     *   while letting higher-RAM devices scale cleanly.
+     */
+    @Suppress("DEPRECATION")
+    override fun getFlutterShellArgs(): FlutterShellArgs {
+        val args = super.getFlutterShellArgs()
+        val lowRam = isLowRamClass()
+        val useSkia = shouldUseSkiaRenderer(lowRam)
+        if (useSkia) {
+            args.add("--enable-impeller=false")
+        }
+        val heapMb = if (lowRam) 256 else defaultOldGenHeapSizeMegabytes()
+        args.add("--old-gen-heap-size=$heapMb")
+        Log.i(TAG, "Flutter renderer=${if (useSkia) "Skia" else "Impeller"}, lowRam=$lowRam, heap=${heapMb}MB")
+        return args
+    }
+
+    private fun memoryInfo(): Pair<ActivityManager, ActivityManager.MemoryInfo> {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(info)
+        return activityManager to info
+    }
+
+    private fun isLowRamClass(): Boolean {
+        val (activityManager, info) = memoryInfo()
+        return !Process.is64Bit() ||
+            activityManager.isLowRamDevice ||
+            info.totalMem <= LOW_MEM_THRESHOLD_BYTES
+    }
+
+    private fun defaultOldGenHeapSizeMegabytes(): Int {
+        val halfMemMb = (memoryInfo().second.totalMem / 1_000_000L / 2L).toInt()
+        return halfMemMb.coerceIn(256, 4096)
+    }
+
+    private fun shouldUseSkiaRenderer(lowRam: Boolean): Boolean {
+        if (lowRam) return true
+        val manufacturer = Build.MANUFACTURER ?: ""
+        if (manufacturer.equals("Huawei", ignoreCase = true) ||
+            manufacturer.equals("HONOR", ignoreCase = true) ||
+            manufacturer.equals("NVIDIA", ignoreCase = true)
+        ) {
+            return true
+        }
+        val supportsVulkan11 = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+            packageManager.hasSystemFeature(
+                PackageManager.FEATURE_VULKAN_HARDWARE_VERSION,
+                VULKAN_1_1_VERSION
+            )
+        return !supportsVulkan11
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -252,5 +322,13 @@ class MainActivity : FlutterActivity() {
         if (changed) {
             window.attributes = params
         }
+    }
+
+    private companion object {
+        const val TAG = "NutriVietMainActivity"
+        // ~2.2 GiB threshold separating 2 GB low-RAM devices from 3+ GB devices
+        const val LOW_MEM_THRESHOLD_BYTES = 2252L shl 20
+        // PackageManager.FEATURE_VULKAN_HARDWARE_VERSION 1.1.0 == 0x401000
+        const val VULKAN_1_1_VERSION = 0x401000
     }
 }
