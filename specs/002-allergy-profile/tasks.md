@@ -19,7 +19,7 @@ Phase 4: End-to-End Verification & Synchronized Persistence
 
 ### Phase 1: Setup & Database Infrastructure
 
-- [x] **TASK-FG2-01** `[Setup]` Create `user_allergens` table schema in `src/backend/database.py` with foreign key to `users`.
+- [x] **TASK-FG2-01** `[Setup]` Create `user_allergens` table schema in Cloudflare D1 (`nutriviet-app`, initialized in `src/cloudflare-worker/src/auth_profile.ts`) with foreign key to `users`.
 - [x] **TASK-FG2-02** `[Setup]` Add compound unique index `idx_user_allergen(user_id, allergen_code)` for idempotent profile updates.
 
 ---
@@ -28,7 +28,7 @@ Phase 4: End-to-End Verification & Synchronized Persistence
 
 - [x] **TASK-FG2-03** `[Backend]` Implement `get_user_allergens(user_id)` DAO function returning active list.
 - [x] **TASK-FG2-04** `[Backend]` Implement `save_user_allergens(user_id, allergens_list)` with atomic delete/insert transaction.
-- [x] **TASK-FG2-05** `[Backend]` Expose `GET /api/v1/profile/allergens` and `POST /api/v1/profile/allergens` in `src/backend/server.py` and PythonAnywhere WSGI handler.
+- [x] **TASK-FG2-05** `[Backend]` Expose `GET /api/v1/profile/allergens` and `POST /api/v1/profile/allergens` in `src/cloudflare-worker/src/auth_profile.ts` on Cloudflare Workers.
 
 ---
 
@@ -42,5 +42,5 @@ Phase 4: End-to-End Verification & Synchronized Persistence
 
 ### Phase 4: Verification & Live Cloud Integration
 
-- [x] **TASK-FG2-09** `[E2E]` Test end-to-end flow: Select allergens on Flutter app ➔ Save ➔ Inspect SQLite records on PythonAnywhere.
+- [x] **TASK-FG2-09** `[E2E]` Test end-to-end flow: Select allergens on Flutter app ➔ Save ➔ Inspect Cloudflare D1 (`nutriviet-app`) records.
 - [x] **TASK-FG2-10** `[E2E]` Reopen screen and verify persistent pre-population of previously selected allergens.

@@ -1,0 +1,157 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "NutriViet Authentication Microservice API",
+    "version": "1.2.0",
+    "description": "RESTful API contract for FG1 Authentication & Authorization adhering to Spec Kit standards with mandatory email verification gate and password recovery."
+  },
+  "servers": [
+    {
+      "url": "https://nutriviet.nutriviet-api.workers.dev",
+      "description": "Production Cloudflare Workers + D1 Server"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "responses": {
+          "200": { "description": "Service is healthy and operational" }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new consumer account with pending verification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["full_name", "email", "password"],
+                "properties": {
+                  "full_name": { "type": "string", "example": "Nguyen Van A" },
+                  "email": { "type": "string", "format": "email", "example": "nguyenvana@gmail.com" },
+                  "password": { "type": "string", "minLength": 8, "example": "SecurePass@2026" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created successfully; verification email dispatched" },
+          "400": { "description": "Validation error (missing or malformed fields)" },
+          "409": { "description": "Email conflict (already registered)" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Authenticate user credentials with mandatory email verification gate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "nguyenvana@gmail.com" },
+                  "password": { "type": "string", "example": "SecurePass@2026" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authentication successful, returns user payload and JWT token" },
+          "401": { "description": "Invalid credentials (email or password incorrect)" },
+          "403": { "description": "Account not verified (EMAIL_NOT_VERIFIED), verification link required" }
+        }
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "summary": "Resend activation email link for unverified account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "nguyenvana@gmail.com" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Verification email resent successfully" },
+          "400": { "description": "Account already verified" },
+          "404": { "description": "User account not found" }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "summary": "Request password recovery email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "nguyenvana@gmail.com" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Recovery instructions sent if account exists" }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "summary": "Change current or temporary password to a new permanent password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id", "current_password", "new_password"],
+                "properties": {
+                  "user_id": { "type": "integer", "example": 1 },
+                  "current_password": { "type": "string", "example": "Nutri@A1B2C3" },
+                  "new_password": { "type": "string", "minLength": 6, "example": "NewPass2026@" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password updated successfully" },
+          "400": { "description": "Missing parameters or incorrect current password" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "summary": "List all registered users (Admin RBAC protected: requires role === 'admin')",
+        "responses": {
+          "200": { "description": "Array of persistent user records without password hashes" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Admin role required" }
+        }
+      }
+    }
+  }
+}

@@ -39,7 +39,7 @@ This plan extends the existing NutriViet full-stack infrastructure to support **
                                         | SQL Transactions (Atomic Delete/Insert)
                                         v
 +-------------------------------------------------------------------------------+
-|                       DATABASE LAYER (SQLite: nutriviet.db)                   |
+|                       DATABASE LAYER (Cloudflare D1: nutriviet-app)             |
 |                                                                               |
 |   TABLE user_allergens (                                                      |
 |       id INTEGER PRIMARY KEY AUTOINCREMENT,                                   |
@@ -126,9 +126,9 @@ src/
 │       ├── contracts/openapi.json
 │       ├── tasks.md
 │       └── checklists/requirements.md
-├── backend/
-│   ├── database.py       # Updated with user_allergens DDL & CRUD operations
-│   └── server.py         # Added GET & POST /api/v1/profile/allergens handlers
+├── cloudflare-worker/
+│   └── src/
+│       └── auth_profile.ts   # user_allergens DDL, GET/POST /api/v1/profile/allergens & scan re-eval
 └── mobile/
     └── lib/
         ├── screens/

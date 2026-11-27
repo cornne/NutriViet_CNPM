@@ -12,7 +12,7 @@
 * **Option A: Store JSON string in `users.allergens_json` column (Rejected):**
   * *Disadvantages:* Cannot easily perform cross-user aggregate queries (e.g., *"How many users in District 1 are allergic to peanuts?"*), harder to enforce referential integrity.
 * **Option B: Normalized relational table `user_allergens` (Selected):**
-  * *Advantages:* Third Normal Form (3NF), indexed lookups by `user_id`, atomic delete/insert within a single SQLite transaction, seamless migration to PostgreSQL in Sprint 4.
+  * *Advantages:* Third Normal Form (3NF), indexed lookups by `user_id`, atomic delete/insert batching in Cloudflare D1 (`nutriviet-app`).
 
 ---
 
@@ -29,10 +29,11 @@
 ## 3. Atomic Profile Synchronization Strategy
 
 * When saving updated profiles, the client sends the entire active set of allergens.
-* Backend executes:
-  ```python
-  cursor.execute("DELETE FROM user_allergens WHERE user_id = ?", (user_id,))
-  cursor.executemany("INSERT INTO user_allergens ...", records)
-  conn.commit()
+* Backend executes a batched D1 transaction in `src/cloudflare-worker/src/auth_profile.ts`:
+  ```ts
+  await env.APP_DB.batch([
+    env.APP_DB.prepare("DELETE FROM user_allergens WHERE user_id = ?").bind(userId),
+    ...insertStatements,
+  ]);
   ```
 * This pattern guarantees idempotency and eliminates race conditions.

@@ -7,16 +7,8 @@
   },
   "servers": [
     {
-      "url": "https://ngobinh2006.pythonanywhere.com",
-      "description": "Production PythonAnywhere Cloud Server"
-    },
-    {
-      "url": "http://10.0.2.2:8000",
-      "description": "Android Emulator loopback gateway"
-    },
-    {
-      "url": "http://localhost:8000",
-      "description": "Local development server"
+      "url": "https://nutriviet.nutriviet-api.workers.dev",
+      "description": "Production Cloudflare Workers + D1 Server"
     }
   ],
   "paths": {
@@ -151,47 +143,13 @@
         }
       }
     },
-    "/api/v1/profile/metrics": {
-      "get": {
-        "summary": "Retrieve user physical and nutrition body metrics (BMI & TDEE)",
-        "parameters": [
-          { "name": "user_id", "in": "query", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": { "description": "Object containing age, gender, height, weight, BMI, status, and TDEE calories" }
-        }
-      },
-      "post": {
-        "summary": "Save user physical and nutrition body metrics",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["user_id", "age", "height", "weight"],
-                "properties": {
-                  "user_id": { "type": "integer" },
-                  "age": { "type": "integer", "example": 22 },
-                  "gender": { "type": "string", "example": "male" },
-                  "height": { "type": "number", "example": 170.0 },
-                  "weight": { "type": "number", "example": 65.0 },
-                  "activity_level": { "type": "string", "example": "moderate" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Metrics updated successfully with calculated BMI and TDEE" }
-        }
-      }
-    },
     "/api/v1/users": {
       "get": {
-        "summary": "List all registered users (for examiner & demonstration inspection)",
+        "summary": "List all registered users (Admin RBAC protected: requires role === 'admin')",
         "responses": {
-          "200": { "description": "Array of persistent user records without password hashes" }
+          "200": { "description": "Array of persistent user records without password hashes" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Admin role required" }
         }
       }
     }

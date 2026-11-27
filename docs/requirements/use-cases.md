@@ -1,9 +1,9 @@
 # NutriViet: Use-Case Model & Functional Specifications
 **Detailed Requirements Modeling & User Interface Prototyping**  
 **Course:** CS300 - CSC13002 - Introduction to Software Engineering  
-**Project Assignment:** PA3-2026 (Section C & Section D Deliverables)  
+**Project Assignment:** PA4-2026 (Section A Revised Submission)  
 **Group:** Group 07 - NutriViet Team  
-**Submission Date:** 14/11/2026  
+**Submission Date:** 25/11/2026  
 
 ---
 
@@ -42,11 +42,11 @@ The table below establishes bidirectional traceability between the 8 Functional 
 
 In accordance with UML 2.5 standards, the NutriViet system identifies both human actors (primary end-users and administrators) and external technical systems (secondary actors):
 
-1. **User (Abstract Base Actor):** An abstract generalized human actor representing any authenticated entity within the NutriViet ecosystem. Possesses core authentication credentials (email/password or OAuth identity) and session security context. Both `Consumer` and `System Administrator` inherit from `User`.
-2. **Consumer (Primary End-User - Specializes `User`):** Everyday shoppers and consumers managing individual or family food allergies (peanuts, seafood, cow's milk, gluten, eggs, soy) or chronic metabolic conditions (diabetes, gout, hypertension). Interacts primarily through the Android mobile client to scan products, configure allergy profiles, log meals, and contribute unindexed items.
-3. **System Administrator (Staff / Nutrition Moderator - Specializes `User`):** Certified nutritionists, medical advisors, and platform administrators responsible for moderating crowdsourced product submissions, auditing user-reported OCR inaccuracies, and maintaining the FoodOn master ontology and additive dictionaries via the administrative web portal.
-4. **Google ML Kit OCR Engine (Secondary / Supporting Technical Actor):** On-device machine learning subsystem providing text detection, perspective rectification, and raw optical character tokenization from captured mobile camera frames.
-5. **FoodOn Semantic Ontology Engine (Secondary / Supporting Technical Actor):** Cloud-hosted semantic knowledge graph providing hierarchical ingredient derivation (e.g., inferring *Casein* $\to$ *Cow's Milk Allergen*) and typo-tolerant Levenshtein fuzzy string matching against Vietnamese dietary dictionaries.
+1. **User (Abstract Base Actor):** An abstract generalized human actor representing any authenticated entity within the NutriViet ecosystem. Possesses core authentication credentials (email/password) and a Bearer session security context. Both `Consumer` and `System Administrator` inherit from `User`.
+2. **Consumer (Primary End-User - Specializes `User`):** Everyday shoppers and consumers managing individual or family food allergies (peanuts, seafood, cow's milk, gluten, eggs, soy) or chronic metabolic conditions (diabetes, gout, hypertension). Interacts through the Android mobile client either as an authenticated user or via local-first **Guest Mode** (`LocalGuestStore`) to scan products, configure allergy profiles, view scan history, and participate in the community feed.
+3. **System Administrator (Staff / Nutrition Moderator - Specializes `User`):** Platform administrators (`role == 'admin'`) responsible for moderating crowdsourced community posts, resolving abuse reports, and managing user bans/roles via the hidden RBAC-protected `AdminModerationScreen` and `/api/v1/admin/*` endpoints.
+4. **Edge OCR Vision Router (Secondary / Supporting Technical Actor):** Cloudflare Workers Edge Proxy (`/api/v1/ocr/jobs`) orchestrating a 5-tier fastest-to-slowest failover chain (`kilo-particle-1`, `cf-mistral-vision`, `baidu-paddleocr` (`PaddleOCR-VL-1.6`), `kilo-nemotron-vl`, `cf-llama4-vision`), paired with server-side Markdown/HTML cleaning and fuzzy Ingredients-only extraction (`extractIngredientsSection`).
+5. **FoodOn Semantic Ontology Engine (Secondary / Supporting Technical Actor):** Cloudflare Workers + D1 (`nutriviet-foodon`) semantic knowledge engine housing 33,688 FoodOn concepts, 53,242 lexical bridge terms, and 742 E-codes, providing 4-stage ingredient recognition, ancestor-chain derivation (e.g., *Casein* $\to$ *Cow's Milk Allergen*), and Levenshtein fuzzy string matching ($\ge 82\%$ similarity threshold).
 
 ---
 
@@ -61,8 +61,8 @@ flowchart LR
     User(["User (Abstract Base)"])
     Consumer(["Consumer (Shopper / End-User)"])
     Admin(["System Administrator (Moderator)"])
-    MLKit[["Google ML Kit (OCR Engine)"]]
-    FoodOn[["FoodOn Semantic Ontology Engine"]]
+    MLKit[["Edge OCR Vision Router (Cloudflare Proxy)"]]
+    FoodOn[["FoodOn Semantic Ontology Engine (D1)"]]
 
     %% Actor Generalization
     Consumer -->|Generalizes| User
@@ -155,8 +155,8 @@ flowchart LR
     subgraph Identity_Profile ["FG1 & FG2: Identity & Health Profile Subsystem"]
         UC01(["UC01: Register New Account"])
         UC02(["UC02: Log In & Authenticate"])
-        UC02a(["UC02a: Email/Password Login"])
-        UC02b(["UC02b: Google OAuth 2.0 Login"])
+        UC02a(["UC02a: Email/Password Cloud Login"])
+        UC02b(["UC02b: Local-First Guest Mode Entry"])
         UC03(["UC03: Manage Profile & Security"])
         UC04(["UC04: Configure Allergy Profile"])
         UC05(["UC05: Set Sensitivity Thresholds"])
@@ -181,8 +181,8 @@ Covers real-time camera viewfinder capture, image preprocessing, Levenshtein fuz
 ```mermaid
 flowchart LR
     Consumer(["Consumer"])
-    MLKit[["Google ML Kit OCR Engine (Secondary)"]]
-    FoodOn[["FoodOn Semantic Ontology (Secondary)"]]
+    MLKit[["Edge OCR Vision Router (Secondary)"]]
+    FoodOn[["FoodOn Semantic Ontology (D1)"]]
 
     subgraph Scanner_Hazard ["FG3 & FG4: Scanner & Hazard Evaluation Subsystem"]
         UC06(["UC06: Scan Food Packaging Label"])
@@ -293,7 +293,7 @@ flowchart LR
 | **Extend** | `UC16: Report Inaccuracy` | `UC09: Evaluate Hazards` | `-.->\|extend: On Discrepancy\|` | Conditional: The user may report an OCR misread or misclassified additive after reviewing the hazard evaluation. |
 | **Extend** | `UC15: Submit Unindexed` | `UC17: Moderate Submissions`| `-.->\|extend: Triggers Review\|` | Workflow: When a user submits an unindexed item, it extends the system by appending an entry to the moderation queue. |
 | **Extend** | `UC16: Report Inaccuracy` | `UC17: Moderate Submissions`| `-.->\|extend: Flags Discrepancy\|` | Workflow: Inaccuracy reports extend the moderation queue for administrative review and catalog correction. |
-| **Use Case Generalization** | `UC02a`, `UC02b` | `UC02: Log In` | `-->\|Generalizes\|` | Email/password login and Google OAuth 2.0 login are concrete specializations of user authentication. |
+| **Use Case Generalization** | `UC02a`, `UC02b` | `UC02: Log In` | `-->\|Generalizes\|` | Email/password cloud login and local-first Guest Mode entry are concrete specializations of session entry. |
 | **Use Case Generalization** | `UC09a`, `UC09b` | `UC09: Evaluate Hazards`| `-->\|Generalizes\|` | Cloud-based ontology evaluation and local offline fallback cache evaluation specialize hazard evaluation. |
 | **Use Case Generalization** | `UC12a`, `UC12b` | `UC12: Record Incident` | `-->\|Generalizes\|` | Acute anaphylactic emergencies and mild food intolerances specialize allergic symptom incident logging. |
 | **Use Case Generalization** | `UC15a`, `UC15b` | `UC15: Submit Product` | `-->\|Generalizes\|` | Direct packaging camera capture contribution and manual barcode entry specialize crowdsourced contribution. |
@@ -315,19 +315,19 @@ flowchart LR
 | **Functional Group** | FG1: Authentication and Authorization |
 | **Primary Actor** | Consumer (Unauthenticated Guest) |
 | **Priority** | High |
-| **Description** | Allows a new user to create a personal NutriViet account by supplying full name, email address, and a secure password, or through single-tap Google OAuth 2.0 registration. |
+| **Description** | Allows a new user to create a personal NutriViet account by supplying full name, email address, and a secure password, followed by email verification. |
 | **Preconditions** | 1. Mobile device has internet connectivity (Wi-Fi or cellular).<br/>2. Application is installed and user is not currently logged in. |
-| **Postconditions** | **Success:** A new user account record is created in PostgreSQL; encrypted local session tokens (JWT) are stored in the device Keystore; the user is redirected to the initial Health Profile setup wizard (`UC04`).<br/>**Failure:** No account record created; device remains on registration screen with explanatory error message. |
+| **Postconditions** | **Success:** A new user account record is created in Cloudflare D1 (`nutriviet-app`); a verification email is dispatched via Brevo/Resend; the user is navigated to `VerifyEmailScreen` to activate their account before signing in.<br/>**Failure:** No account record created (rolled back if email dispatch fails); device remains on registration screen with explanatory error message. |
 
 #### Basic Flow (Main Success Scenario)
-1. User opens the application and selects **"Đăng ký ngay" (Register Now)** on the welcome screen.
-2. System displays the registration form requesting: Full Name, Email, Password, Password Confirmation, and Terms of Medical Service acceptance checkbox.
+1. User opens the application and selects **"Đăng ký ngay" (Register Now)** on the welcome/login screen.
+2. System displays `RegisterScreen` with blank default inputs requesting: Full Name, Email, Password, Password Confirmation, and Terms of Medical Service acceptance checkbox.
 3. User enters valid information (e.g., name `"Nguyễn Văn An"`, email `"an.nguyen@nutriviet.vn"`, password with $\ge 8$ chars, numbers, and symbols) and checks the terms checkbox.
-4. User taps **"Hoàn tất & Cài đặt Hồ sơ" (Complete & Configure Profile)**.
-5. System validates field formats client-side, computes Argon2id password hash, and transmits an encrypted registration request over TLS 1.3 to the backend API.
-6. Backend verifies email uniqueness, creates the user record with role `USER`, and issues a cryptographically signed JWT access/refresh token pair.
-7. Mobile client stores the tokens securely in Android Keystore / SQLCipher.
-8. System transitions automatically to **UC04: Configure Allergy & Health Profile**.
+4. User taps **"Đăng Ký" (Register)**.
+5. System validates field formats client-side and transmits the registration request over HTTPS/TLS to `POST /api/v1/auth/register` on Cloudflare Workers.
+6. Backend verifies email uniqueness, hashes the password using **PBKDF2-HMAC-SHA256** (100,000 iterations, 16-byte random salt), creates the user record in Cloudflare D1 (`nutriviet-app`) with role `user`, and dispatches a verification link via Brevo/Resend.
+7. Mobile client navigates to `VerifyEmailScreen` prompting the user to confirm their email address (with a **"Resend Verification"** option).
+8. Once verified (`GET /verify-email`), the user signs in and transitions to **UC04: Configure Allergy & Health Profile**.
 
 #### Alternative & Exception Flows
 * **A1 (Duplicate Email Address):** At Step 5, if the backend detects that the email already exists in the system:
@@ -340,15 +340,11 @@ flowchart LR
 * **A3 (Network Interruption during Registration):** At Step 5, if network connection drops before receiving server response:
   1. Client retries request 2 times with exponential backoff (2s, 4s).
   2. If still unreachable, displays: *"Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại."*
-* **A4 (Google OAuth Registration):** At Step 2, user taps **"Tiếp tục với Google" (Continue with Google)**:
-  1. System triggers Google Sign-In SDK consent prompt.
-  2. User selects Google account; Google returns OAuth ID token.
-  3. System sends ID token to backend `/auth/google` endpoint.
-  4. Backend creates verified user profile and continues to Step 7.
+* **A4 (Unverified Email / Resend Verification):** If the user attempts to sign in before clicking the verification link, backend returns `403 EMAIL_NOT_VERIFIED` and client offers one-tap resend via `POST /api/v1/auth/resend-verification`.
 
 #### Special Requirements
-- Password hashing must use Argon2id with 64MB memory cost.
-- Complete registration roundtrip latency must be $\le 1.5$ seconds under standard 4G networks.
+- Password hashing must use Web Crypto PBKDF2-HMAC-SHA256 (100,000 iterations, 16-byte random salt).
+- Registration endpoint is protected by per-IP sliding-window rate limiting (8 requests / 60s).
 
 #### Prototype Screen
 <a id="figure-d1"></a>
@@ -370,36 +366,35 @@ flowchart LR
 | **Functional Group** | FG1: Authentication and Authorization |
 | **Primary Actor** | Consumer, System Administrator |
 | **Priority** | Critical |
-| **Description** | Authenticates registered users or administrators using credentials (email + password) or Google OAuth, granting access to personalized profiles or moderation portals based on RBAC roles. |
-| **Preconditions** | User has an active registered account in NutriViet. |
-| **Postconditions** | **Success:** User identity authenticated; JWT access token (60-minute expiry) and refresh token issued; user redirected to home scanner or admin portal according to role.<br/>**Failure:** User session remains unauthenticated; error feedback displayed; failed attempt count incremented. |
+| **Description** | Authenticates registered users or administrators using email and password credentials, or allows consumers to enter local-first **Guest Mode** (`LocalGuestStore`), granting access to personalized profiles, scanning, or hidden admin moderation tools based on server-enforced RBAC roles. |
+| **Preconditions** | Application is installed; for cloud login, user has a verified registered account in NutriViet. |
+| **Postconditions** | **Success:** User identity authenticated via Cloudflare Workers; 32-byte cryptographic Bearer session token persisted in `SharedPreferences` (or local Guest state initialized); user redirected to `HomeScreen` (with `AdminModerationScreen` unlocked exclusively for `role == 'admin'`).<br/>**Failure:** User session remains unauthenticated; error feedback displayed. |
 
 #### Basic Flow (Main Success Scenario)
-1. User launches NutriViet mobile app or navigates to the admin web portal.
-2. System displays the login interface requesting email and password.
-3. User enters registered email and password, checks **"Ghi nhớ đăng nhập" (Remember me)**, and taps **"Đăng Nhập An Toàn" (Secure Login)**.
-4. Client validates non-empty inputs and transmits credentials over HTTPS/TLS 1.3 to `/api/v1/auth/login`.
-5. Backend verifies password hash and checks user status (Active / Banned).
-6. Backend constructs JWT containing `user_id`, `email`, and `role` (`USER` or `ADMIN`).
-7. Client stores encrypted session tokens and decrypts local offline SQLite health cache.
-8. System directs regular consumers to **UC06: Camera OCR Scanner**, or administrators to **UC17: Admin Moderation Portal**.
+1. User launches NutriViet mobile app (`LoginScreen` initializes with blank email/password fields — zero pre-fill policy).
+2. System displays the login interface requesting email and password, alongside **"Tiếp tục với tư cách Khách" (Continue as Guest)** and **"Quên mật khẩu?" (Forgot Password?)**.
+3. User enters registered email and password and taps **"Đăng Nhập" (Sign In)**.
+4. Client validates non-empty inputs and transmits credentials over HTTPS to `POST /api/v1/auth/login`.
+5. Backend verifies PBKDF2-HMAC-SHA256 password hash, checks `is_banned == 0` and `is_verified == 1` in Cloudflare D1 (`nutriviet-app`).
+6. Backend issues a 32-byte URL-safe Bearer token stored in `user_sessions` and returns user metadata (`user_id`, `email`, `full_name`, `role`).
+7. Client stores the session in `SharedPreferences` via `AuthService`; if local Guest data exists in `LocalGuestStore`, offers one-tap local-to-cloud sync.
+8. System navigates to `HomeScreen` (and exposes hidden Admin Moderation entry in `SettingsScreen` / `CommunityFeedScreen` only when `role == 'admin'`).
 
 #### Alternative & Exception Flows
 * **A1 (Invalid Credentials):** At Step 5, if email does not exist or password hash fails verification:
   1. Backend returns HTTP 401 Unauthorized with generic message *"Email hoặc mật khẩu không chính xác."*
-  2. Client highlights password field in red and increments local failed attempt counter.
-* **A2 (Account Brute-Force Lockout):** At Step 5, if 5 consecutive failed login attempts occur within 10 minutes:
-  1. Backend locks the account for 15 minutes to prevent credential stuffing attacks.
-  2. Client informs user: *"Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau 15 phút hoặc đặt lại mật khẩu."*
-* **A3 (Expired Session Token Refresh):** During regular app operation, when 60-minute access token expires:
-  1. Mobile client interceptor catches HTTP 401 and automatically calls `/auth/refresh` using refresh token.
-  2. Backend validates refresh token rotation and returns fresh access token without user disruption.
-* **A4 (Deactivated / Banned Account):** If user account was flagged for abusive crowdsourced spam:
-  1. Backend returns HTTP 403 Forbidden with reason: *"Tài khoản đã bị tạm khóa do vi phạm tiêu chuẩn cộng đồng."*
+  2. Client highlights error state cleanly via `showNutriVietNotice`.
+* **A2 (Rate-Limit Protection & OTP Password Recovery):**
+  1. `POST /api/v1/auth/login` enforces per-IP sliding-window rate limiting (15 requests / 60s, returning HTTP 429).
+  2. If user forgets their password, they tap **"Quên mật khẩu?"** to request a 6-digit 15-minute OTP (`POST /api/v1/auth/forgot-password`) and reset via `POST /api/v1/auth/reset-password` (revoking all active sessions).
+* **A3 (Continue as Guest - Local-First Mode):** At Step 2, user taps **"Tiếp tục với tư cách Khách"**:
+  1. `AuthService.enterGuestMode()` sets `is_guest = true` with zero cloud writes.
+  2. User can configure allergens/chronics/family locally (`LocalGuestStore`) and scan labels via stateless `POST /api/v1/foodon/evaluate`.
+* **A4 (Unverified or Banned Account):** If `is_verified == 0`, backend returns `403 EMAIL_NOT_VERIFIED` and navigates to `VerifyEmailScreen`; if `is_banned == 1`, backend returns HTTP 403 Forbidden.
 
 #### Special Requirements
-- Sensitive tokens must be stored in Android Keystore hardware-backed storage.
-- Admin role must enforce Multi-Factor Authentication (MFA) on desktop web portal.
+- Session tokens are stored locally in `SharedPreferences` and validated server-side via `Authorization: Bearer <token>`.
+- Admin RBAC (`role === 'admin'`) is strictly enforced on all `/api/v1/admin/*` endpoints.
 
 #### Prototype Screen
 <a id="figure-d2"></a>
@@ -407,7 +402,7 @@ flowchart LR
 <p align="center">
   <img src="./assets/prototypes/uc02_login.png" alt="Figure D.2: UC02 Log In Screen" height="520" style="max-height: 520px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
 </p>
-<p align="center"><em>Figure D.2: UC02 Log In screen displaying credentials entry, remember me checkbox, and Google OAuth shortcut.</em></p>
+<p align="center"><em>Figure D.2: UC02 Prototype Log In screen (note: Google OAuth was subsequently decommissioned in the production Flutter client in favor of Email/Password + Guest Mode).</em></p>
 
 ---
 
@@ -421,7 +416,7 @@ flowchart LR
 | **Functional Group** | FG1: Authentication and Authorization |
 | **Primary Actor** | Consumer |
 | **Priority** | Medium |
-| **Description** | Enables users to update account personal details, change security passwords, manage linked Google accounts, switch dependent family profiles, and securely terminate active sessions. |
+| **Description** | Enables users to update account personal details (`POST /api/v1/auth/update-profile`), change security passwords (`POST /api/v1/auth/change-password`), switch dependent family profiles, toggle VI/EN UI language (`AppLocale`), and securely terminate active sessions (`POST /api/v1/auth/logout`). |
 | **Preconditions** | User is authenticated (`UC02`). |
 | **Postconditions** | Account profile or credentials updated; local and server-side preferences synchronized. |
 
@@ -431,7 +426,7 @@ flowchart LR
 3. User selects **"Đổi mật khẩu" (Change Password)**.
 4. System prompts for current password, new password, and confirmation.
 5. User enters valid information and taps **"Cập nhật" (Update)**.
-6. Backend validates old password, stores new Argon2id hash, and invalidates all other active refresh sessions.
+6. Backend validates old password, stores the new PBKDF2-HMAC-SHA256 hash in Cloudflare D1, and revokes all other active `user_sessions` (`token != auth.token`).
 7. System displays success notification: *"Mật khẩu đã được thay đổi thành công."*
 
 #### Alternative & Exception Flows
@@ -465,7 +460,7 @@ flowchart LR
 | **Priority** | Critical |
 | **Description** | Allows consumers to select and update known food allergens (peanuts, shellfish, cow's milk, gluten, soy, eggs, tree nuts, sesame) and chronic health conditions (diabetes, gout, hypertension, hyperlipidemia) that drive all scanning evaluations. |
 | **Preconditions** | User is authenticated (`UC02`). |
-| **Postconditions** | **Success:** Personal health profile updated in PostgreSQL and mirrored to local AES-256 encrypted SQLite cache for offline scanning.<br/>**Failure:** Previous profile remains intact; error notification shown. |
+| **Postconditions** | **Success:** Personal health profile updated in Cloudflare D1 (`nutriviet-app`) for signed-in users (or `SharedPreferences` via `LocalGuestStore` for Guests); saving allergens automatically re-evaluates up to 25 recent `scan_history` records.<br/>**Failure:** Previous profile remains intact; error notification shown. |
 
 #### Basic Flow (Main Success Scenario)
 1. User navigates to **"Hồ Sơ Sức Khỏe & Dị Ứng" (Health & Allergy Profile)**.
@@ -473,21 +468,21 @@ flowchart LR
 3. User toggles allergen chips (e.g., selects **🥜 Đậu phộng**, **🦐 Hải sản**, **🥛 Sữa bò**). Selected chips glow with red/warning borders and count tag updates to *"3 đã chọn"*.
 4. User selects chronic dietary condition chips (e.g., toggles **🩸 Gút / Axit Uric cao**).
 5. User taps **"Xác Nhận & Bắt Đầu Quét Nhãn" (Confirm & Start Scanning)**.
-6. System packages profile payload, persists it to local SQLite cache, and synchronizes asynchronously with backend `/api/v1/profile`.
+6. System packages profile payload and persists it via `POST /api/v1/profile/allergens` and `POST /api/v1/profile/chronics` (or `LocalGuestStore` in Guest Mode).
 7. System confirms: *"Hồ sơ sức khỏe đã được cập nhật thành công"* and transitions to camera scanner.
 
 #### Alternative & Exception Flows
 * **A1 (No Allergens Selected):** User unchecks all items and saves:
   1. System displays informational modal: *"Bạn chưa chọn chất gây dị ứng nào. Ứng dụng sẽ chỉ đánh giá thành phần theo tiêu chuẩn dinh dưỡng chung. Bạn có muốn tiếp tục?"*
   2. If user confirms, profile is saved in neutral mode.
-* **A2 (Offline Profile Update):** If user modifies allergies in a supermarket basement without cellular signal:
-  1. Mobile client writes changes immediately to local encrypted SQLite storage (`offline_pending_sync = true`).
-  2. All local OCR scans instantly apply the newly configured allergens.
-  3. A background sync worker uploads changes to backend once network connectivity resumes.
+* **A2 (Guest Mode Local Profile Update):** If user is in Guest Mode without signing in:
+  1. Mobile client writes changes immediately to `SharedPreferences` via `LocalGuestStore` (`nv_guest_allergens`, `nv_guest_chronics`).
+  2. All stateless scans (`/api/v1/foodon/evaluate`) immediately apply the newly configured allergens.
+  3. Upon signing in later, `LocalGuestStore.syncToCloudAccount(...)` offers one-tap merge to Cloudflare D1.
 * **A3 (Family Dependent Sub-Profiles):** User taps "+ Thêm hồ sơ người thân"; inputs child's name and independent allergy tags.
 
 #### Special Requirements
-- Local cache storage must be encrypted with AES-256-GCM using keys stored in Android Keystore.
+- Local Guest Mode profiles and scan caches are persisted in `SharedPreferences` (`LocalGuestStore`) and automatically merged into Cloudflare D1 upon sign-in (`syncToCloudAccount`).
 - Switching profiles must recalculate scan history risk ratings on demand.
 
 #### Prototype Screen
@@ -540,17 +535,17 @@ flowchart LR
 | **Functional Group** | FG3: Packaging OCR Scanner |
 | **Primary Actor** | Consumer |
 | **Priority** | Critical |
-| **Description** | Provides real-time camera viewfinder with live text bounding boxes, flashlight control, and capture shutter button to extract packaging label text in supermarket aisles. |
+| **Description** | Provides a full-screen CameraX viewfinder (`PackagingScannerScreen`) with framing reticle, flashlight control, gallery picker (`image_picker`), and capture shutter button to capture packaging label images in supermarket aisles. |
 | **Preconditions** | 1. User has granted Android Camera permissions (`android.permission.CAMERA`).<br/>2. Mobile device camera is operational. |
-| **Postconditions** | High-resolution label image captured, passed to on-device OCR preprocessing (`UC07`), and analyzed for hazards (`UC09`). |
+| **Postconditions** | Label image captured, compressed via native Android EXIF-aware JPEG compressor (`MainActivity.kt`), uploaded to the Cloudflare Edge OCR Proxy (`UC07`), and analyzed for hazards (`UC09`). |
 
 #### Basic Flow (Main Success Scenario)
-1. User taps the floating **Scan Button (Camera)** on the main navigation bar.
-2. System initializes camera hardware, displays active viewfinder at $\ge 30\text{ fps}$, and renders target framing corners with animated laser guide.
+1. User taps the floating **Scan Orb (Camera)** on the main `NutriVietFloatingBottomBar`.
+2. System initializes `CameraController` (CameraX), displays active full-screen viewfinder at $\ge 30\text{ fps}$, and renders the `NutriVietScannerReticle` framing guide.
 3. User positions phone camera 15–20 cm away from food package ingredient panel.
-4. Google ML Kit text detector analyzes incoming camera frames in real time, drawing green/yellow bounding boxes around recognized text tokens (*"Đậu phộng"*, *"Sodium Caseinate"*, *"Bột mì"*).
-5. User taps the circular white **Shutter Button**.
-6. System captures uncompressed photo frame, freezes camera view with haptic feedback, and invokes **UC07: Preprocess & Crop Label Image**.
+4. User aligns the ingredient list inside the framing cutout (or switches to gallery import via `image_picker`).
+5. User taps the circular **Shutter Button**.
+6. System captures the photo frame, invokes `UC07: Preprocess & Crop Label Image` (`PackagingScannerMath` + `MainActivity.kt`), and submits to `/api/v1/ocr/jobs`.
 
 #### Alternative & Exception Flows
 * **A1 (Camera Permission Denied):** At Step 2, if camera permission was denied by user:
@@ -586,26 +581,26 @@ flowchart LR
 | **Use Case ID** | **UC07** |
 | **Use Case Name** | Preprocess & Crop Label Image |
 | **Functional Group** | FG3: Packaging OCR Scanner |
-| **Primary Actor** | Consumer, Google ML Kit (Secondary) |
+| **Primary Actor** | Consumer, Edge OCR Vision Router (Secondary) |
 | **Priority** | High |
-| **Description** | Automatically straightens, enhances contrast, and enables manual crop boundary adjustment over captured label images to eliminate extraneous background noise prior to OCR text tokenization. |
-| **Preconditions** | Label photo successfully captured via `UC06`. |
-| **Postconditions** | Normalized, binarized text region extracted and tokenized for hazard evaluation (`UC09`). |
+| **Description** | Normalizes orientation, crops to the selected ingredient bounding box, compresses the JPEG payload on-device via Kotlin native (`MainActivity.kt`), and extracts clean ingredient text on the Cloudflare Edge OCR Proxy (`PaddleOCR-VL-1.6` / 5-tier Vision Router). |
+| **Preconditions** | Label photo successfully captured or imported from gallery via `UC06`. |
+| **Postconditions** | Normalized, compressed JPEG uploaded to `/api/v1/ocr/jobs`; Markdown/HTML tables stripped (`extractCleanOcrText`) and Ingredients-only section extracted (`extractIngredientsSection`) for hazard evaluation (`UC09`). |
 
 #### Basic Flow (Main Success Scenario)
-1. System receives raw captured image from `UC06` and automatically detects rectangular text boundaries.
-2. System displays the cropped region inside adjustable corner drag handles alongside image enhancement filters (**"Tăng tương phản"**, **"Xoay 90°"**, **"Khử bóng lóa"**).
-3. User verifies bounding box covers all ingredients and taps **"Trích Xuất Văn Bản OCR" (Extract Text)**.
-4. On-device pipeline applies adaptive Otsu thresholding to remove cellophane glare.
-5. Google ML Kit extracts raw text lines; regex normalizer stitches hyphenated line-breaks and standardizes Vietnamese diacritics.
-6. Cleaned ingredient tokens are passed forward to **UC09: Evaluate Ingredient Hazards**.
+1. System receives raw captured or gallery image from `UC06` (`PackagingScannerMath` maps `BoxFit.cover` / `BoxFit.contain` frame bounds to normalized crop coordinates).
+2. In gallery/crop review mode, user can adjust the bounding region to isolate the *"Thành phần / Ingredients"* panel.
+3. User confirms extraction; `PaddleOcrVlService.optimizeBytesForUpload` calls the native Android channel `com.nutriviet/image_opt` (`compressForOcr` in `MainActivity.kt`) to apply EXIF orientation rotation, crop, downscale (`maxSide = 1280`), and adaptive JPEG compression (`<= 180 KB`).
+4. Mobile client uploads the compressed image via multipart `POST /api/v1/ocr/jobs` to Cloudflare Workers (`ocr_proxy.ts`).
+5. Cloudflare `OcrProviderRouter` routes the image through the 5-tier Vision/OCR failover chain (`kilo-particle-1`, `cf-mistral-vision`, `baidu-paddleocr` `PaddleOCR-VL-1.6`, `kilo-nemotron-vl`, `cf-llama4-vision`), cleans Markdown/HTML (`extractCleanOcrText`), and isolates the Ingredients section (`extractIngredientsSection`).
+6. Cleaned ingredient text is passed forward to **UC09: Evaluate Ingredient Hazards**.
 
 #### Alternative & Exception Flows
-* **A1 (Manual Crop Adjustment):** User drags corner handles to exclude promotional text or barcode graphics, focusing exclusively on the *"Thành phần"* paragraph.
-* **A2 (Sideways / Upside-down Packaging):** User taps "🔄 Xoay 90°" to orient curved beverage bottle label text horizontally.
-* **A3 (No Text Detected in Selected Box):** If ML Kit finds zero text lines in cropped area:
-  1. System alerts: *"Không tìm thấy văn bản trong vùng đã chọn. Vui lòng căn chỉnh lại vùng nhãn."*
-  2. Provides shortcut to retake photo or enter ingredients manually.
+* **A1 (Manual Crop Adjustment):** User drags crop handles in `cropReview` stage to exclude promotional text or barcode graphics, focusing exclusively on the *"Thành phần"* paragraph.
+* **A2 (Async Polling Fallback):** If `OcrProviderRouter` falls back to async `baidu-paddleocr`, client polls `GET /api/v1/ocr/jobs/:jobId` with `PaddleOcrCancelToken` support until `state == 'done'`.
+* **A3 (No Ingredients Detected / Nutrition Facts Only):** If `extractIngredientsSection` returns `has_ingredients = false` (e.g., only Nutrition Facts table was captured):
+  1. System alerts the user that no ingredient list was found (`notFound` stage).
+  2. Provides one-tap retry to retake photo or enter ingredients manually.
 
 #### Prototype Screen
 <a id="figure-d6"></a>
@@ -633,14 +628,14 @@ flowchart LR
 
 #### Basic Flow (Main Success Scenario)
 1. User taps **"Lịch sử" (History)** from the scanner screen or navigation menu.
-2. System queries local SQLite database and renders chronological list of scan cards.
+2. System queries Cloudflare D1 `scan_history` via `GET /api/v1/scans` (for authenticated users) or `SharedPreferences` via `LocalGuestStore` (for Guests) and renders chronological list of scan cards.
 3. Each card displays: Product Name, Timestamp, Hazard Status Tag (Cảnh báo Đỏ / Cảnh báo Vàng / An toàn), and primary flagged ingredients.
 4. User types `"Bánh"` in the search bar; list dynamically filters in $< 50\text{ ms}$.
 5. User taps a card (e.g., *"Bánh Quy Bơ Đậu Phộng Oishi"*); system opens full detailed hazard report (`UC09`).
 
 #### Alternative & Exception Flows
 * **A1 (Empty History):** If user has never scanned a product, system displays empty-state illustration with CTA button *"Bắt đầu quét sản phẩm đầu tiên"*.
-* **A2 (Delete History Record):** User swipes card left and confirms deletion; record is erased from local and cloud storage.
+* **A2 (Delete History Record / Clear All):** User taps delete on a scan card (`DELETE /api/v1/scans/:id`) or clears all history (`DELETE /api/v1/scans`); record(s) are erased from Cloudflare D1 (or `LocalGuestStore` for Guests).
 * **A3 (Re-Evaluate on Profile Change):** If user recently added a new allergy in `UC04`, system places a refresh badge on historical scans indicating hazard levels have been updated against the new profile.
 
 #### Prototype Screen
@@ -669,7 +664,7 @@ flowchart LR
 
 #### Basic Flow (Main Success Scenario - RED Hazard Triggered)
 1. System receives normalized ingredient tokens: `["Đậu phộng (28%)", "Bột mì", "Đường", "Sodium Caseinate (E469)", "Bột ngọt (E621)", "Dầu cọ"]`.
-2. Evaluation engine applies Levenshtein fuzzy matching ($\ge 75\%$ similarity threshold) against Vietnamese allergen dictionaries and queries FoodOn graph.
+2. `D1FoodOnEngine` (`src/cloudflare-worker/src/foodon.ts`) repairs common OCR homoglyphs/E-codes (`repairOcrEcodes`, `repairOcrWordHomoglyphs`), splits ingredients (`splitRawIngredients`), and executes a 4-stage recognition pipeline against Cloudflare D1 (`nutriviet-foodon`): (1) `ecode_bridge` lookup (742 E/INS codes incl. bare parenthesized codes), (2) `lexical_bridge` exact/singular match (53,242 terms), (3) 1–4 word n-gram component decomposition, and (4) Levenshtein fuzzy matching ($\ge 82\%$ similarity threshold).
 3. System identifies:
    - Match 1: *"Đậu phộng"* matches user's primary severe allergen with 100% confidence.
    - Match 2: *"Sodium Caseinate"* is identified via FoodOn ontology node `FOODON:03411304` as a primary protein derivative of *Cow's Milk*.
@@ -720,7 +715,7 @@ flowchart LR
 
 ---
 
-### UC10: View Safe Product Alternatives
+### UC10: View Safe Product Alternatives *(Planned for Sprint 5)*
 *Performed by: Luong Hoang Nam | Reviewed by: Ngo Tien Binh | Edited by: Truong Gia Linh*
 
 | Element | Specification |
@@ -759,7 +754,7 @@ flowchart LR
 
 ---
 
-### UC11: Log Daily Meal Intake
+### UC11: Log Daily Meal Intake *(Planned for Sprint 5)*
 *Performed by: Truong Gia Linh | Reviewed by: Nguyen Hoang Phuc Thinh | Edited by: Le Tat Nam*
 
 | Element | Specification |
@@ -795,7 +790,7 @@ flowchart LR
 
 ---
 
-### UC12: Record Allergic Symptom Incident
+### UC12: Record Allergic Symptom Incident *(Planned for Sprint 5)*
 *Performed by: Truong Gia Linh | Reviewed by: Ngo Tien Binh | Edited by: Le Tat Nam*
 
 | Element | Specification |
@@ -834,7 +829,7 @@ flowchart LR
 
 ---
 
-### UC13: Manage Safe Product Favorites
+### UC13: Manage Safe Product Favorites *(Planned for Sprint 5)*
 *Performed by: Nguyen Hoang Phuc Thinh | Reviewed by: Luong Hoang Nam | Edited by: Truong Gia Linh*
 
 | Element | Specification |
@@ -860,7 +855,7 @@ flowchart LR
 
 ---
 
-### UC14: Create & Check Grocery Shopping List
+### UC14: Create & Check Grocery Shopping List *(Planned for Sprint 5)*
 *Performed by: Nguyen Hoang Phuc Thinh | Reviewed by: Le Tat Nam | Edited by: Ngo Tien Binh*
 
 | Element | Specification |
@@ -980,26 +975,20 @@ flowchart LR
 | **Functional Group** | FG8: Admin Allergy Dictionary and Product Verification |
 | **Primary Actor** | System Administrator |
 | **Priority** | Critical |
-| **Description** | Equips administrators with a desktop web moderation portal to inspect user-submitted photos side-by-side with OCR text, standardize ingredient taxonomies, and approve items into the public catalog or reject invalid entries. |
-| **Preconditions** | Administrator is authenticated with `ADMIN` role (`UC02`). |
-| **Postconditions** | **Approved:** Product status updated to `VERIFIED`; indexed into master catalog for all users.<br/>**Rejected:** Product status updated to `REJECTED` with audit feedback. |
+| **Description** | Equips administrators (`role === 'admin'`) with the RBAC-protected `AdminModerationScreen` (hidden from regular users and Guests) backed by `/api/v1/admin/*` endpoints to inspect community posts and abuse reports, hide/unhide/delete content, and manage user bans or roles. |
+| **Preconditions** | Administrator is authenticated with `role == 'admin'` (`UC02`). |
+| **Postconditions** | **Updated:** Post status (`active`/`hidden`/`deleted`), report resolution (`dismiss`/`hide_post`/`delete_post`), or user ban/role state persisted in Cloudflare D1 (`nutriviet-app`). |
 
 #### Basic Flow (Main Success Scenario)
-1. Administrator opens the web portal and logs in; system navigates to `/admin/moderation`.
-2. System presents pending queue count (e.g., *"12 chờ duyệt"*). Admin selects `"Bánh Que Giòn Cay Ngũ Vị"`.
-3. System renders a side-by-side split screen:
-   - Left Panel: Original high-res packaging photos uploaded by user.
-   - Right Panel: Editable fields for Product Name, Barcode, Normalized Ingredients, and Auto-detected Allergen tags.
-4. Administrator inspects packaging photo, corrects typography, and verifies the automated hazard tags (**⚠️ Gắn nhãn Dị ứng: Tôm / Giáp xác**).
-5. Administrator clicks **"✔ Duyệt Vào Danh Mục" (Approve into Catalog)**.
-6. Backend updates product status to `VERIFIED`, writes audit record with admin ID and timestamp, and sends a push notification thanking the contributor.
+1. Administrator logs in via `LoginScreen` and opens **Admin Moderation** from the shield icon in `CommunityFeedScreen` or the hidden row in `SettingsScreen`.
+2. System loads `AdminModerationScreen` with 3 tabs (**Reports**, **Posts**, **Users**) via `GET /api/v1/admin/overview`, `/admin/reports`, and `/admin/users`.
+3. Administrator inspects a flagged post or user report side-by-side with product name, verdict, and uploaded photo.
+4. Administrator selects a moderation action: **Dismiss**, **Hide Post**, or **Delete Post** (`POST /api/v1/admin/reports/:id/resolve` or `/admin/posts/:id/moderate`), or bans an abusive user (`POST /api/v1/admin/users/:id/update`).
+5. Backend enforces `requireAdmin` (`403 ADMIN_REQUIRED` for non-admins), updates Cloudflare D1, and revokes `user_sessions` immediately when a user is banned.
 
 #### Alternative & Exception Flows
-* **A1 (Unclear Photo - Request Revision):** Packaging photo is too blurry to verify ingredients:
-  1. Admin clicks **"✏ Yêu cầu sửa" (Request Correction)**.
-  2. System notifies contributing user to upload a sharper packaging photo.
-* **A2 (Spam / Fake Product - Reject):** Submission is non-food spam or duplicate:
-  1. Admin clicks **"✖ Từ chối" (Reject)**, selects reason from dropdown, and archives record.
+* **A1 (Hide / Unhide Flagged Post):** Administrator hides a misleading or unverified post (`POST /api/v1/admin/posts/:id/moderate` with `action: "hide"`), keeping it invisible to regular users while preserving audit records.
+* **A2 (Delete Post & Ban Abusive Account):** For spam or repeated violations, administrator deletes the post (`action: "delete"`) or resolves the report (`POST /api/v1/admin/reports/:id/resolve`) and bans the user (`POST /api/v1/admin/users/:id/update` with `is_banned: 1`), immediately revoking their `user_sessions`.
 
 #### Prototype Screen
 <a id="figure-d15"></a>
@@ -1011,7 +1000,7 @@ flowchart LR
 
 ---
 
-### UC18: Manage Master Additive & Allergen Dictionary
+### UC18: Manage Master Additive & Allergen Dictionary *(Planned for Sprint 5)*
 *Performed by: Le Tat Nam | Reviewed by: Ngo Tien Binh | Edited by: Luong Hoang Nam*
 
 | Element | Specification |
@@ -1023,7 +1012,7 @@ flowchart LR
 | **Priority** | High |
 | **Description** | Provides centralized administrative controls to create, read, update, and classify chemical food additive codes (E-numbers), scientific synonyms, and link them to FoodOn ontology concept IDs. |
 | **Preconditions** | Administrator is authenticated with `ADMIN` role (`UC02`). |
-| **Postconditions** | Additive dictionary updated in PostgreSQL; cache invalidation broadcasted to client devices. |
+| **Postconditions** | Additive dictionary updated in Cloudflare D1 (`nutriviet-foodon`: `foodon_concepts`, `lexical_bridge`, `ecode_bridge`); edge queries reflect updates immediately. |
 
 #### Basic Flow (Main Success Scenario)
 1. Administrator navigates to **"Từ Điển Phụ Gia & FoodOn"** tab on the admin web dashboard.
