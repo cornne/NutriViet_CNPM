@@ -113,7 +113,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final strength = _calculateStrength(_passwordController.text);
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
@@ -284,7 +283,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       fontSize: 15,
                                       color: Color(0xFF0F172A),
                                     ),
-                                    onChanged: (val) => setState(() {}),
                                     decoration: InputDecoration(
                                       hintText: AppLocale.t(
                                         'Tối thiểu 8 ký tự',
@@ -324,50 +322,97 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       return null;
                                     },
                                   ),
-                                  if (_passwordController.text.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        AnimatedContainer(
-                                          duration: const Duration(milliseconds: 220),
-                                          height: 5,
-                                          width: strength >= 3
-                                              ? 90
-                                              : (strength >= 2 ? 60 : 32),
-                                          decoration: BoxDecoration(
-                                            color: strength >= 3
-                                                ? const Color(0xFF14803C)
-                                                : (strength >= 2
-                                                    ? const Color(0xFFF59E0B)
-                                                    : const Color(0xFFEF4444)),
-                                            borderRadius: BorderRadius.circular(3),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: Text(
-                                            strength >= 3
-                                                ? AppLocale.t('Độ mạnh: Rất mạnh', 'Strength: Strong')
-                                                : (strength >= 2
-                                                    ? AppLocale.t(
-                                                        'Độ mạnh: Trung bình',
-                                                        'Strength: Medium',
-                                                      )
-                                                    : AppLocale.t('Độ mạnh: Yếu', 'Strength: Weak')),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: strength >= 3
-                                                  ? const Color(0xFF14803C)
-                                                  : (strength >= 2
-                                                      ? const Color(0xFFD97706)
-                                                      : const Color(0xFFDC2626)),
+                                  ValueListenableBuilder<TextEditingValue>(
+                                    valueListenable: _passwordController,
+                                    builder: (context, value, _) {
+                                      final pass = value.text;
+                                      if (pass.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      final strength = _calculateStrength(pass);
+                                      final barColor = strength >= 3
+                                          ? const Color(0xFF14803C)
+                                          : (strength >= 2
+                                              ? const Color(0xFFD97706)
+                                              : const Color(0xFFDC2626));
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 10),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(3),
+                                                    child: LinearProgressIndicator(
+                                                      value: (strength / 4)
+                                                          .clamp(0.18, 1.0),
+                                                      minHeight: 5,
+                                                      backgroundColor:
+                                                          const Color(0xFFE5ECE8),
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                              Color>(barColor),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Text(
+                                                  strength >= 3
+                                                      ? AppLocale.t(
+                                                          'Rất mạnh',
+                                                          'Strong',
+                                                        )
+                                                      : (strength >= 2
+                                                          ? AppLocale.t(
+                                                              'Trung bình',
+                                                              'Medium',
+                                                            )
+                                                          : AppLocale.t(
+                                                              'Yếu',
+                                                              'Weak',
+                                                            )),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: barColor,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ),
+                                            const SizedBox(height: 6),
+                                            Wrap(
+                                              spacing: 6,
+                                              runSpacing: 4,
+                                              children: [
+                                                _pwdHintChip(
+                                                  AppLocale.t(
+                                                    '8+ ký tự',
+                                                    '8+ chars',
+                                                  ),
+                                                  pass.length >= 8,
+                                                ),
+                                                _pwdHintChip(
+                                                  AppLocale.t(
+                                                    'Chữ hoa',
+                                                    'Uppercase',
+                                                  ),
+                                                  RegExp(r'[A-Z]').hasMatch(pass),
+                                                ),
+                                                _pwdHintChip(
+                                                  AppLocale.t('Số', 'Number'),
+                                                  RegExp(r'[0-9]').hasMatch(pass),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ],
+                                      );
+                                    },
+                                  ),
                                   const SizedBox(height: 16),
 
                                   Text(
@@ -422,37 +467,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   const SizedBox(height: 14),
 
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: Checkbox(
-                                          value: _agreeTerms,
-                                          activeColor: const Color(0xFF14803C),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(5),
-                                          ),
-                                          onChanged: (val) =>
-                                              setState(() => _agreeTerms = val ?? true),
-                                        ),
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => setState(
+                                      () => _agreeTerms = !_agreeTerms,
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          AppLocale.t(
-                                            'Tôi đồng ý với Điều khoản & Cam kết bảo mật y tế',
-                                            'I agree to the Terms & Health Privacy Policy',
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: Checkbox(
+                                              value: _agreeTerms,
+                                              activeColor:
+                                                  const Color(0xFF14803C),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                              onChanged: (val) => setState(
+                                                () => _agreeTerms = val ?? true,
+                                              ),
+                                            ),
                                           ),
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF334155),
-                                            fontWeight: FontWeight.w600,
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              AppLocale.t(
+                                                'Tôi đồng ý với Điều khoản & Cam kết bảo mật y tế',
+                                                'I agree to the Terms & Health Privacy Policy',
+                                              ),
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                color: Color(0xFF334155),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -554,6 +614,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _pwdHintChip(String label, bool met) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: met ? const Color(0xFFE6F6EC) : const Color(0xFFF1F5F3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PhosphorIcon(
+            met ? PhosphorIconsBold.check : PhosphorIconsRegular.circle,
+            size: 11,
+            color: met ? NutriVietGlass.brandGreen : const Color(0xFF64748B),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: met ? NutriVietGlass.brandGreen : const Color(0xFF64748B),
+            ),
+          ),
+        ],
       ),
     );
   }
