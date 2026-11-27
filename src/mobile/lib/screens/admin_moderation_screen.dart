@@ -6,6 +6,7 @@ import '../theme/nutriviet_glass.dart';
 import '../widgets/nutriviet_glass_modal.dart';
 import '../widgets/nutriviet_notice.dart';
 import '../widgets/nutriviet_shimmer.dart';
+import '../widgets/nutriviet_ui.dart';
 
 /// Hidden Admin Moderation & User Management Console.
 /// Only exposed in UI when `user['role'] == 'admin'` and strictly verified
@@ -26,9 +27,11 @@ class AdminModerationScreen extends StatefulWidget {
 
 class _AdminModerationScreenState extends State<AdminModerationScreen>
     with SingleTickerProviderStateMixin {
-  static const Color _brandGreen = Color(0xFF14803C);
-  static const Color _brandPurple = Color(0xFF4F37C8);
-  static const Color _dangerRed = Color(0xFFDC2626);
+  static const Color _brandGreen = NutriVietGlass.brandGreen;
+  static const Color _brandTeal = NutriVietGlass.brandTeal;
+  static const Color _brandSlate = NutriVietGlass.brandSlate;
+  static const Color _brandSlateTint = NutriVietGlass.brandSlateTint;
+  static const Color _dangerRed = NutriVietGlass.riskRed;
 
   late final TabController _tabController;
   bool _loading = true;
@@ -151,175 +154,201 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
     return NutriVietGlassBackdrop(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const PhosphorIcon(
-              PhosphorIconsBold.caretLeft,
-              color: Color(0xFF111827),
-              size: 22,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-          ),
-          title: Row(
-            children: [
-              const PhosphorIcon(
-                PhosphorIconsFill.shieldCheck,
-                color: _brandPurple,
-                size: 22,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  AppLocale.t('Quản trị Cộng đồng', 'Admin Moderation'),
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const PhosphorIcon(
-                PhosphorIconsBold.arrowsClockwise,
-                color: Color(0xFF111827),
-                size: 20,
-              ),
-              onPressed: _loadAll,
-            ),
-          ],
-        ),
-        body: _loading
-            ? ListView(
-                padding: const EdgeInsets.all(20),
-                children: const [
-                  NutriVietShimmerBox(height: 82, borderRadius: 20),
-                  SizedBox(height: 14),
-                  NutriVietShimmerBox(height: 120, borderRadius: 20),
-                  SizedBox(height: 14),
-                  NutriVietShimmerBox(height: 120, borderRadius: 20),
-                ],
-              )
-            : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: NutriVietGlassCard(
-                        cornerRadius: 22,
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const PhosphorIcon(
-                              PhosphorIconsDuotone.warningCircle,
-                              color: _dangerRed,
-                              size: 40,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                color: Color(0xFF1F2937),
-                                fontWeight: FontWeight.w600,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Padding(
+                padding: EdgeInsets.only(top: topInset + 72),
+                child: _loading
+                    ? NutriVietShimmerGroup(
+                        child: ListView(
+                          padding: const EdgeInsets.all(20),
+                          children: const [
+                            NutriVietShimmerBox(height: 82, borderRadius: 20),
+                            SizedBox(height: 14),
+                            NutriVietShimmerBox(height: 120, borderRadius: 20),
+                            SizedBox(height: 14),
+                            NutriVietShimmerBox(height: 120, borderRadius: 20),
+                          ],
+                        ),
+                      )
+                    : _error != null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: NutriVietGlassCard(
+                                cornerRadius: 22,
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const PhosphorIcon(
+                                      PhosphorIconsDuotone.warningCircle,
+                                      color: _dangerRed,
+                                      size: 40,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _error!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 14.5,
+                                        color: Color(0xFF1F2937),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    NutriVietGlassPillButton(
+                                      label: AppLocale.t('Thử lại', 'Retry'),
+                                      onPressed: _loadAll,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 14),
-                            NutriVietGlassPillButton(
-                              label: AppLocale.t('Thử lại', 'Retry'),
-                              onPressed: _loadAll,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                : Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                        child: Row(
-                          children: [
-                            _kpiTile(
-                              AppLocale.t('Báo cáo chờ', 'Pending'),
-                              '${_stats['pending_reports'] ?? 0}',
-                              _dangerRed,
-                            ),
-                            const SizedBox(width: 8),
-                            _kpiTile(
-                              AppLocale.t('Bài hiện', 'Visible'),
-                              '${_stats['visible_posts'] ?? 0}',
-                              _brandGreen,
-                            ),
-                            const SizedBox(width: 8),
-                            _kpiTile(
-                              AppLocale.t('Đang ẩn', 'Hidden'),
-                              '${_stats['hidden_posts'] ?? 0}',
-                              const Color(0xFFD97706),
-                            ),
-                            const SizedBox(width: 8),
-                            _kpiTile(
-                              AppLocale.t('Tài khoản', 'Users'),
-                              '${_stats['total_users'] ?? 0}',
-                              _brandPurple,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.72),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                          ),
-                          child: TabBar(
-                            controller: _tabController,
-                            indicator: BoxDecoration(
-                              color: _brandPurple,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            labelColor: Colors.white,
-                            unselectedLabelColor: const Color(0xFF374151),
-                            labelStyle: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                            dividerColor: Colors.transparent,
-                            tabs: [
-                              Tab(text: AppLocale.t('Báo cáo', 'Reports')),
-                              Tab(text: AppLocale.t('Bài viết', 'Posts')),
-                              Tab(text: AppLocale.t('Người dùng', 'Users')),
+                          )
+                        : Column(
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                                child: Row(
+                                  children: [
+                                    _kpiTile(
+                                      AppLocale.t('Báo cáo chờ', 'Pending'),
+                                      '${_stats['pending_reports'] ?? 0}',
+                                      _dangerRed,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _kpiTile(
+                                      AppLocale.t('Bài hiện', 'Visible'),
+                                      '${_stats['visible_posts'] ?? 0}',
+                                      _brandGreen,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _kpiTile(
+                                      AppLocale.t('Đang ẩn', 'Hidden'),
+                                      '${_stats['hidden_posts'] ?? 0}',
+                                      const Color(0xFFD97706),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _kpiTile(
+                                      AppLocale.t('Tài khoản', 'Users'),
+                                      '${_stats['total_users'] ?? 0}',
+                                      _brandTeal,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFAFDFB),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: NutriVietGlass.borderSubtle,
+                                    ),
+                                  ),
+                                  child: TabBar(
+                                    controller: _tabController,
+                                    indicator: BoxDecoration(
+                                      color: _brandSlate,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    indicatorSize: TabBarIndicatorSize.tab,
+                                    labelColor: Colors.white,
+                                    unselectedLabelColor:
+                                        const Color(0xFF334155),
+                                    labelStyle: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                    dividerColor: Colors.transparent,
+                                    tabs: [
+                                      Tab(
+                                        text: AppLocale.t('Báo cáo', 'Reports'),
+                                      ),
+                                      Tab(
+                                        text: AppLocale.t('Bài viết', 'Posts'),
+                                      ),
+                                      Tab(
+                                        text: AppLocale.t('Người dùng', 'Users'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Expanded(
+                                child: NutriVietGlassScrollArea(
+                                  child: TabBarView(
+                                    controller: _tabController,
+                                    children: [
+                                      _buildReportsTab(),
+                                      _buildPostsTab(),
+                                      _buildUsersTab(),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: NutriVietGlassAppBar(
+                    leading: NutriVietGlassCircleButton(
+                      icon: PhosphorIconsBold.caretLeft,
+                      iconColor: const Color(0xFF0F172A),
+                      onTap: () => Navigator.pop(context, true),
+                    ),
+                    title: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const PhosphorIcon(
+                          PhosphorIconsFill.shieldCheck,
+                          color: _brandSlate,
+                          size: 18,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildReportsTab(),
-                            _buildPostsTab(),
-                            _buildUsersTab(),
-                          ],
+                        const SizedBox(width: 7),
+                        Flexible(
+                          child: Text(
+                            AppLocale.t(
+                              'Quản trị Cộng đồng',
+                              'Admin Moderation',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                      ],
+                    ),
+                    actions: [
+                      NutriVietGlassCircleButton(
+                        icon: PhosphorIconsBold.arrowsClockwise,
+                        iconColor: const Color(0xFF0F172A),
+                        onTap: _loadAll,
                       ),
                     ],
                   ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -356,12 +385,57 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
     );
   }
 
+  Widget _emptyState(IconData icon, String title, String subtitle) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: NutriVietGlassCard(
+          cornerRadius: 22,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NutriVietGlassIconTile(
+                icon: icon,
+                color: _brandTeal,
+                size: 54,
+                isCircle: true,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildReportsTab() {
     if (_reports.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocale.t('Chưa có báo cáo vi phạm nào.', 'No reports yet.'),
-          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+      return _emptyState(
+        PhosphorIconsDuotone.shieldCheck,
+        AppLocale.t('Chưa có báo cáo vi phạm nào.', 'No reports yet.'),
+        AppLocale.t(
+          'Mọi bài viết cộng đồng hiện đang an toàn.',
+          'All community posts are currently clean.',
         ),
       );
     }
@@ -454,10 +528,12 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
 
   Widget _buildPostsTab() {
     if (_posts.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocale.t('Chưa có bài viết cộng đồng nào.', 'No community posts yet.'),
-          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+      return _emptyState(
+        PhosphorIconsDuotone.chatCenteredText,
+        AppLocale.t('Chưa có bài viết cộng đồng nào.', 'No community posts yet.'),
+        AppLocale.t(
+          'Bài chia sẻ sản phẩm từ người dùng sẽ hiển thị tại đây.',
+          'User-shared product reviews will appear here.',
         ),
       );
     }
@@ -553,10 +629,12 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
 
   Widget _buildUsersTab() {
     if (_users.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocale.t('Chưa có tài khoản nào.', 'No accounts found.'),
-          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+      return _emptyState(
+        PhosphorIconsDuotone.usersThree,
+        AppLocale.t('Chưa có tài khoản nào.', 'No accounts found.'),
+        AppLocale.t(
+          'Danh sách tài khoản đã đăng ký sẽ hiển thị tại đây.',
+          'Registered user accounts will appear here.',
         ),
       );
     }
@@ -603,7 +681,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
                       color: isBanned
                           ? const Color(0xFFFEE2E2)
                           : (isAdmin
-                              ? const Color(0xFFEDE9FE)
+                              ? _brandSlateTint
                               : const Color(0xFFE5F4EC)),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -616,7 +694,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen>
                         fontWeight: FontWeight.w800,
                         color: isBanned
                             ? _dangerRed
-                            : (isAdmin ? _brandPurple : _brandGreen),
+                            : (isAdmin ? _brandSlate : _brandGreen),
                       ),
                     ),
                   ),
