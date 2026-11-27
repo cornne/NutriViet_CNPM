@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import '../l10n/app_locale.dart';
@@ -439,9 +440,10 @@ class CommunityFeedScreen extends StatefulWidget {
 }
 
 class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
-  static const Color _brandGreen = Color(0xFF14803C);
-  static const Color _brandPurple = Color(0xFF4F37C8);
-  static const Color _dangerRed = Color(0xFFDC2626);
+  static const Color _brandGreen = NutriVietGlass.brandGreen;
+  static const Color _brandSlate = NutriVietGlass.brandSlate;
+  static const Color _brandSlateTint = NutriVietGlass.brandSlateTint;
+  static const Color _dangerRed = NutriVietGlass.riskRed;
 
   final TextEditingController _searchCtrl = TextEditingController();
   Timer? _debounce;
@@ -651,7 +653,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                                           vertical: 1.5,
                                                         ),
                                                         decoration: BoxDecoration(
-                                                          color: const Color(0xFFEDE9FE),
+                                                          color: _brandSlateTint,
                                                           borderRadius: BorderRadius.circular(6),
                                                         ),
                                                         child: const Text(
@@ -659,7 +661,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                                           style: TextStyle(
                                                             fontSize: 9.5,
                                                             fontWeight: FontWeight.w800,
-                                                            color: _brandPurple,
+                                                            color: _brandSlate,
                                                           ),
                                                         ),
                                                       ),
@@ -988,13 +990,13 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: post['author_role'] == 'admin'
-                    ? const Color(0xFFEDE9FE)
+                    ? _brandSlateTint
                     : const Color(0xFFDFF3E6),
                 child: Text(
                   authorInitial,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: post['author_role'] == 'admin' ? _brandPurple : _brandGreen,
+                    color: post['author_role'] == 'admin' ? _brandSlate : _brandGreen,
                   ),
                 ),
               ),
@@ -1022,7 +1024,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEDE9FE),
+                              color: _brandSlateTint,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
@@ -1030,7 +1032,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                               style: TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
-                                color: _brandPurple,
+                                color: _brandSlate,
                               ),
                             ),
                           ),
@@ -1136,54 +1138,74 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _toggleLike(index),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    children: [
-                      PhosphorIcon(
-                        isLiked ? PhosphorIconsFill.heart : PhosphorIconsRegular.heart,
-                        color: isLiked ? _dangerRed : const Color(0xFF4B5563),
-                        size: 19,
+              Semantics(
+                button: true,
+                label: AppLocale.t('Thích bài viết', 'Like post'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _toggleLike(index);
+                  },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 40),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        children: [
+                          PhosphorIcon(
+                            isLiked ? PhosphorIconsFill.heart : PhosphorIconsRegular.heart,
+                            color: isLiked ? _dangerRed : const Color(0xFF4B5563),
+                            size: 19,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${post['likes_count'] ?? 0}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${post['likes_count'] ?? 0}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: Color(0xFF374151),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _openCommentsSheet(index),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    children: [
-                      const PhosphorIcon(
-                        PhosphorIconsRegular.chatCircle,
-                        color: Color(0xFF4B5563),
-                        size: 19,
+              const SizedBox(width: 10),
+              Semantics(
+                button: true,
+                label: AppLocale.t('Xem bình luận', 'View comments'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _openCommentsSheet(index);
+                  },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 40),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        children: [
+                          const PhosphorIcon(
+                            PhosphorIconsRegular.chatCircle,
+                            color: Color(0xFF4B5563),
+                            size: 19,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${post['comments_count'] ?? 0}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${post['comments_count'] ?? 0}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: Color(0xFF374151),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1205,7 +1227,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                       : AppLocale.t('Ẩn bài viết', 'Hide post'),
                   icon: PhosphorIcon(
                     isHidden ? PhosphorIconsBold.eye : PhosphorIconsBold.eyeSlash,
-                    color: _brandPurple,
+                    color: _brandSlate,
                     size: 18,
                   ),
                   onPressed: () => _deleteOrModeratePost(post, isHidden ? 'unhide' : 'hide'),
@@ -1242,6 +1264,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         color: _brandGreen,
         child: NutriVietGlassScrollArea(
           child: CustomScrollView(
+            scrollCacheExtent: const ScrollCacheExtent.pixels(600),
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
@@ -1282,7 +1305,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                 },
                                 child: const NutriVietGlassIconTile(
                                   icon: PhosphorIconsFill.shieldCheck,
-                                  color: _brandPurple,
+                                  color: _brandSlate,
                                   size: 40,
                                 ),
                               ),
@@ -1326,15 +1349,25 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                               size: 19,
                             ),
                           ),
-                          suffixIcon: _searchCtrl.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const PhosphorIcon(PhosphorIconsBold.x, size: 16),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    _loadPosts();
-                                  },
-                                )
-                              : null,
+                          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _searchCtrl,
+                            builder: (context, val, _) {
+                              if (val.text.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return IconButton(
+                                tooltip: AppLocale.t('Xóa tìm kiếm', 'Clear search'),
+                                icon: const PhosphorIcon(
+                                  PhosphorIconsBold.x,
+                                  size: 16,
+                                ),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  _loadPosts();
+                                },
+                              );
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1391,11 +1424,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: _includeHidden
-                                        ? _brandPurple
-                                        : Colors.white.withValues(alpha: 0.78),
+                                        ? _brandSlate
+                                        : const Color(0xFFFAFDFB),
                                     borderRadius: BorderRadius.circular(18),
                                     border: Border.all(
-                                      color: _includeHidden ? _brandPurple : const Color(0xFFD5E0DA),
+                                      color: _includeHidden ? _brandSlate : const Color(0xFFD5E0DA),
                                     ),
                                   ),
                                   child: Text(
@@ -1403,7 +1436,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: _includeHidden ? Colors.white : _brandPurple,
+                                      color: _includeHidden ? Colors.white : _brandSlate,
                                     ),
                                   ),
                                 ),
@@ -1419,12 +1452,14 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(20, 0, 20, widget.embedded ? 128 : 32),
                   sliver: const SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        NutriVietShimmerBox(height: 156, borderRadius: 22),
-                        SizedBox(height: 12),
-                        NutriVietShimmerBox(height: 156, borderRadius: 22),
-                      ],
+                    child: NutriVietShimmerGroup(
+                      child: Column(
+                        children: [
+                          NutriVietShimmerBox(height: 156, borderRadius: 22),
+                          SizedBox(height: 12),
+                          NutriVietShimmerBox(height: 156, borderRadius: 22),
+                        ],
+                      ),
                     ),
                   ),
                 )
@@ -1463,11 +1498,12 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                       child: Column(
                         children: [
                           const NutriVietGlassIconTile(
-                            icon: PhosphorIconsDuotone.sparkle,
+                            icon: PhosphorIconsDuotone.chatCenteredText,
                             color: _brandGreen,
-                            size: 52,
+                            size: 54,
+                            isCircle: true,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
                           Text(
                             AppLocale.t(
                               'Chưa có bài chia sẻ nào.',
@@ -1486,7 +1522,25 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                               'Scan a product label or tap "+ Share" to post to the NutriViet community.',
                             ),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 13.5, color: Color(0xFF6B7280)),
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              color: Color(0xFF64748B),
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          NutriVietGlassPillButton(
+                            height: 44,
+                            label: AppLocale.t('Chia sẻ sản phẩm đầu tiên', 'Share first product'),
+                            onPressed: () async {
+                              final created = await CommunityFeedScreen.openComposeSheet(
+                                context: context,
+                                user: widget.user,
+                              );
+                              if (created && mounted) {
+                                await _loadPosts();
+                              }
+                            },
                           ),
                         ],
                       ),
