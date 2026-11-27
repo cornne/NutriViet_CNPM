@@ -63,11 +63,11 @@ class NutriVietApp extends StatelessWidget {
             ),
             scaffoldBackgroundColor: const Color(0xFFF3F6F3),
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF14803C),
-              primary: const Color(0xFF14803C),
-              secondary: const Color(0xFF4F37C8),
+              seedColor: NutriVietGlass.brandGreen,
+              primary: NutriVietGlass.brandGreen,
+              secondary: NutriVietGlass.brandTeal,
               surface: const Color(0xFFFFFFFF),
-              error: const Color(0xFFDC2626),
+              error: NutriVietGlass.riskRed,
             ),
             fontFamily: 'Roboto',
             cardTheme: CardThemeData(
