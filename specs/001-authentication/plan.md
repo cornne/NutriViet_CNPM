@@ -11,19 +11,19 @@ This plan formalizes the full-stack engineering workflow for **FG1 (Authenticati
 
 The implementation covers three integrated tiers:
 1. **Frontend Client (Mobile):** Flutter application (Dart) running on Android, implementing Material Design 3, asynchronous HTTP communication, token persistence, and WCAG-compliant form validation.
-2. **Backend Application Server:** Lightweight Python RESTful microservice providing cryptographically salted authentication, error handling, CORS headers, and relational persistence.
-3. **Database Layer:** Relational SQLite persistence engine (`nutriviet.db`) with normalized schema, constraints, and audit timestamps.
+2. **Backend Application Server:** Cloudflare Workers + Hono TypeScript serverless API (`src/cloudflare-worker/src/auth_profile.ts`) providing Web Crypto PBKDF2-HMAC-SHA256 authentication, per-IP rate limiting, CORS headers, and relational persistence.
+3. **Database Layer:** Cloudflare D1 (SQLite APAC — `nutriviet-app`) with normalized schema, constraints, and audit timestamps.
 
 ---
 
 ## 2. Technical Context & Stack Decisions
 
 * **Client Framework**: Flutter (Dart 3.x), Material 3, `http` package for REST integration, `shared_preferences` for session management.
-* **Backend Runtime**: Python 3.10+ (Lightweight high-performance HTTP server / FastAPI compatible API).
-* **Database**: SQLite3 embedded relational engine (Zero external server dependencies, ACID compliant, native SQL schema).
-* **Security & Cryptography**: Salted SHA-256 / PBKDF2 cryptographic hashing; Bearer authentication tokens.
+* **Backend Runtime**: Cloudflare Workers + Hono (`^4.7.4`) + TypeScript (`^5.7.3`) deployed at `https://nutriviet.nutriviet-api.workers.dev`.
+* **Database**: Cloudflare D1 (`nutriviet-app` SQLite engine with Smart Placement in APAC).
+* **Security & Cryptography**: Web Crypto PBKDF2-HMAC-SHA256 (100,000 iterations); 32-byte Bearer authentication tokens (`user_sessions`); Brevo/Resend HTTP email verification & 6-digit OTP reset.
 * **Android Target**: Android API 26+ (Android 8.0 Oreo up to Android 15), compatible with Android Studio emulator and physical devices.
-* **Network Communication**: Android Emulator uses `http://10.0.2.2:8000` bridge to access host machine backend.
+* **Network Communication**: All builds communicate directly with `https://nutriviet.nutriviet-api.workers.dev/api/v1` over HTTPS (zero localhost probes).
 
 ---
 
@@ -43,7 +43,7 @@ The implementation covers three integrated tiers:
 |                     |   AuthService   | ----------------------------+         |
 |                     +--------+--------+                                       |
 +------------------------------|------------------------------------------------+
-                               | HTTP JSON (via 10.0.2.2:8000)
+                               | HTTPS JSON (workers.dev)
                                v
 +-------------------------------------------------------------------------------+
 |                             BACKEND API SERVER                                |
@@ -60,7 +60,7 @@ The implementation covers three integrated tiers:
                                         | SQL Queries (SELECT / INSERT)
                                         v
 +-------------------------------------------------------------------------------+
-|                       DATABASE LAYER (SQLite: nutriviet.db)                   |
+|                       DATABASE LAYER (Cloudflare D1: nutriviet-app)             |
 |                                                                               |
 |   TABLE users (                                                               |
 |       id INTEGER PRIMARY KEY AUTOINCREMENT,                                   |
@@ -151,11 +151,14 @@ src/
 │       ├── spec.md
 │       ├── plan.md
 │       └── tasks.md
-├── backend/
-│   ├── server.py                # Standalone REST API with SQLite
-│   ├── database.py              # SQLite schema & user DAO
-│   ├── requirements.txt         # Optional dependencies
-│   └── README.md                # Server execution guide
+├── cloudflare-worker/
+│   ├── cloudflare.config.ts     # Worker & D1 bindings
+│   ├── package.json             # Hono, esbuild, Vitest
+│   └── src/
+│       ├── index.ts             # Hono router & rate limiter
+│       ├── auth_profile.ts      # Auth, OTP reset & profile handlers
+│       ├── crypto.ts            # Web Crypto PBKDF2 & OTP
+│       └── email.ts             # Brevo / Resend HTTP email dispatch
 └── mobile/
     ├── pubspec.yaml             # Flutter metadata & dependencies
     ├── README.md                # Android Studio execution guide

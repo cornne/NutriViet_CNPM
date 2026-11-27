@@ -12,24 +12,18 @@
 * **Option A: Plain MD5 / SHA-256 (Rejected):** Vulnerable to rainbow table attacks and GPU precomputation.
 * **Option B: bcrypt / Argon2 (Considered):** Industry standard, but requires native C-extension compilation dependencies which complicates evaluation on student machines.
 * **Option C: PBKDF2 with HMAC-SHA256 & 100,000 rounds (Selected):**
-  * *Rationale:* Built directly into Python's native `hashlib` standard library (zero external pip packages required). NIST SP 800-132 compliant, resistant to brute-force attacks via work-factor stretching, and 100% portable.
-  * *Salt generation:* 16 bytes of OS entropy (`os.urandom(16).hex()`).
+  * *Rationale:* Built natively into the Web Crypto API (`crypto.subtle.deriveBits` in `src/cloudflare-worker/src/crypto.ts`) with zero external runtime dependencies. NIST SP 800-132 compliant, resistant to brute-force attacks via work-factor stretching, and byte-compatible with standard PBKDF2-HMAC-SHA256.
+  * *Salt generation:* 16 bytes of CSPRNG entropy (`crypto.getRandomValues`).
 
 ---
 
-## 2. Cross-Platform Android Emulator Networking Spike
+## 2. Direct HTTPS Cloud Networking Decision
 
-* **Context:** When running the Flutter client inside the Android Virtual Device (AVD), requests to `http://localhost:8000` or `http://127.0.0.1:8000` resolve to the emulator's internal loopback interface, failing to connect to the host computer's backend.
+* **Context:** Earlier prototypes probed local loopback addresses (`10.0.2.2:8000` / `localhost:8000`), which caused connection timeouts on physical Android devices and added startup latency.
 * **Investigation Findings:**
-  * Android Studio QEMU router maps the host loopback interface to IP `10.0.2.2`.
-  * Android 9+ (API 28+) enforces network security configs blocking plaintext HTTP unless explicitly authorized.
+  * Deploying the backend to **Cloudflare Workers** (`https://nutriviet.nutriviet-api.workers.dev`) with Smart Placement in APAC eliminates local loopback dependencies across both Android emulators and physical devices.
 * **Implemented Solution:**
-  1. Set `android:usesCleartextTraffic="true"` in `AndroidManifest.xml`.
-  2. Implement dynamic host resolution in `auth_service.dart`:
-     ```dart
-     if (Platform.isAndroid) return 'http://10.0.2.2:8000/api/v1/auth';
-     return 'http://127.0.0.1:8000/api/v1/auth';
-     ```
+  1. All Flutter builds (debug & release) target `https://nutriviet.nutriviet-api.workers.dev/api/v1` over HTTPS exclusively (configurable via `--dart-define=NUTRIVIET_API_ROOT=...`), with zero localhost probes.
 
 ---
 

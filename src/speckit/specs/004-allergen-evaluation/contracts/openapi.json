@@ -1,0 +1,88 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "NutriViet FoodOn Ontology & Hazard Evaluation API (FG4)",
+    "version": "1.0.0",
+    "description": "Cloudflare Workers + D1 FoodOn 33,688-concept evaluation, lookup, and interactive graph endpoints."
+  },
+  "servers": [
+    {
+      "url": "https://nutriviet.nutriviet-api.workers.dev",
+      "description": "Production Cloudflare Workers + D1 Server"
+    }
+  ],
+  "paths": {
+    "/api/v1/foodon/evaluate": {
+      "post": {
+        "summary": "Stateless ingredient evaluation returning RED/YELLOW/GREEN verdict and flagged triggers",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "raw_text": { "type": "string" },
+                  "ingredients": { "type": "array", "items": { "type": "string" } },
+                  "allergens": { "type": "array", "items": { "type": "string" } },
+                  "chronics": { "type": "array", "items": { "type": "string" } },
+                  "scan_derivatives": { "type": "boolean", "default": true },
+                  "warn_traces": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Evaluation verdict, risk_level, red_triggers, yellow_triggers, and detected_additives" }
+        }
+      }
+    },
+    "/api/v1/foodon/allergy-lookup": {
+      "get": {
+        "summary": "Search everyday trigger foods and FoodOn concepts for AllergyProfileScreen",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Matching FoodOn concepts" } }
+      }
+    },
+    "/api/v1/foodon/additives": {
+      "get": {
+        "summary": "Search 742 E-codes and INS additives",
+        "responses": { "200": { "description": "Matching E/INS additives" } }
+      }
+    },
+    "/api/v1/foodon/category": {
+      "get": {
+        "summary": "Retrieve FoodOn concepts by category or allergen",
+        "responses": { "200": { "description": "Category concepts" } }
+      }
+    },
+    "/api/v1/foodon/search": {
+      "get": {
+        "summary": "Full-text search across 33,688 FoodOn concepts",
+        "responses": { "200": { "description": "Search results" } }
+      }
+    },
+    "/api/v1/foodon/graph": {
+      "get": {
+        "summary": "Fetch graph neighborhood (ancestors, siblings, children) for a FoodOn CURIE",
+        "responses": { "200": { "description": "Graph nodes and edges" } }
+      }
+    },
+    "/api/v1/foodon/graph/expand": {
+      "get": {
+        "summary": "Paginated children expansion for a FoodOn node",
+        "responses": { "200": { "description": "Child nodes" } }
+      }
+    },
+    "/api/v1/foodon/graph/path": {
+      "get": {
+        "summary": "Compute Lowest Common Ancestor (LCA) path between two FoodOn CURIEs",
+        "responses": { "200": { "description": "LCA ontology path" } }
+      }
+    }
+  }
+}

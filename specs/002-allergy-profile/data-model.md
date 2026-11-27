@@ -2,7 +2,7 @@
 
 **Feature**: `002-fg2-allergy-profile`  
 **Specification**: [spec.md](spec.md) | **Plan**: [plan.md](plan.md)  
-**Database**: SQLite 3 (`nutriviet.db`)  
+**Database**: Cloudflare D1 (SQLite APAC — `nutriviet-app`)  
 **Target Table**: `user_allergens`  
 
 ---

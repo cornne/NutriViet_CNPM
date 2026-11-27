@@ -54,7 +54,7 @@ cd src/mobile
 # 1. Install dependencies
 flutter pub get
 
-# 2. Static analysis & unit/widget tests (23 tests)
+# 2. Static analysis & unit/widget tests (38 tests)
 flutter analyze
 flutter test
 

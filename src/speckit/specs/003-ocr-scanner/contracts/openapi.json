@@ -1,0 +1,102 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "NutriViet Packaging OCR & Scan History API (FG3)",
+    "version": "1.0.0",
+    "description": "Cloudflare Workers Edge OCR Proxy, 5-tier provider status, and owner-scoped Scan History CRUD."
+  },
+  "servers": [
+    {
+      "url": "https://nutriviet.nutriviet-api.workers.dev",
+      "description": "Production Cloudflare Workers + D1 Server"
+    }
+  ],
+  "paths": {
+    "/api/v1/ocr/providers": {
+      "get": {
+        "summary": "Get ordered 5-tier OCR provider chain status and cooldown telemetry",
+        "responses": {
+          "200": { "description": "Provider chain snapshot ordered fastest-to-slowest" }
+        }
+      }
+    },
+    "/api/v1/ocr/jobs": {
+      "post": {
+        "summary": "Submit compressed packaging image for OCR extraction",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data_base64": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Synchronous fast-path OCR result (state: done, text, ingredients_text, has_ingredients)" },
+          "202": { "description": "Async Baidu PaddleOCR job accepted (jobId)" },
+          "400": { "description": "Missing or invalid image payload" },
+          "429": { "description": "Per-IP rate limit exceeded (20 req/60s)" }
+        }
+      }
+    },
+    "/api/v1/ocr/jobs/{jobId}": {
+      "get": {
+        "summary": "Poll async PaddleOCR-VL-1.6 job status and cleaned ingredients",
+        "parameters": [
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Job status (pending/running/done) and extracted text" }
+        }
+      }
+    },
+    "/api/v1/scans": {
+      "get": {
+        "summary": "List authenticated user's scan history from Cloudflare D1",
+        "responses": {
+          "200": { "description": "Array of scan_history records" },
+          "401": { "description": "Bearer token required" }
+        }
+      },
+      "post": {
+        "summary": "Create and evaluate a persisted scan record (or delete/clear via action)",
+        "responses": {
+          "201": { "description": "Scan evaluated and persisted" },
+          "401": { "description": "Bearer token required" }
+        }
+      },
+      "delete": {
+        "summary": "Clear all scan history for authenticated user",
+        "responses": {
+          "200": { "description": "All user scans cleared" },
+          "401": { "description": "Bearer token required" }
+        }
+      }
+    },
+    "/api/v1/scans/{id}": {
+      "delete": {
+        "summary": "Delete a single owner-scoped scan record",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Scan deleted" },
+          "401": { "description": "Bearer token required" }
+        }
+      }
+    }
+  }
+}

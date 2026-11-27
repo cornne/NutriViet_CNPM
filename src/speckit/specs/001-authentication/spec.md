@@ -110,46 +110,40 @@ In response to the latest security policies and user experience requirements:
 
 ---
 
-### User Story 5 - Settings, Change Password & Body Nutrition Metrics (Priority: P1)
+### User Story 5 - Settings & Change Password (Priority: P1)
 **As a** verified user,  
-**I want to** change my temporary or existing password in a dedicated Settings section and customize my physical body metrics (Age, Gender, Height, Weight),  
-**So that** I can secure my account after password recovery and receive standard, personalized BMI and caloric intake recommendations.
+**I want to** change my password and update my account profile in a dedicated Settings section,  
+**So that** I can maintain account security and manage active sessions cleanly.
 
 **Acceptance Scenarios**:
 1. **Scenario 5.1 (Change Password in Settings):**
-   - **Given** the user is logged in (including users who logged in with temporary password `Nutri@XXXXXX`),
-   - **When** the user accesses Settings and inputs their current password and new password ($\ge 6$ chars),
-   - **Then** the backend validates the current password, updates the password hash, and confirms success.
+   - **Given** the user is logged in,
+   - **When** the user accesses `SettingsScreen` and inputs their current password and new password ($\ge 6$ chars),
+   - **Then** the Cloudflare Workers backend validates the current password via `POST /api/v1/auth/change-password`, updates the PBKDF2-HMAC-SHA256 hash in D1 (`nutriviet-app`), revokes other active `user_sessions`, and confirms success.
 
-2. **Scenario 5.2 (Input Age, Height, Weight & Live BMI Calculation):**
-   - **Given** the user is on the Health Profile or Settings screen,
-   - **When** the user enters their Age, Height (cm), Weight (kg), and selects Gender,
-   - **Then** the app immediately calculates and displays their WHO/Asian BMI status (Underweight, Normal, Overweight, Obese) and estimated daily caloric requirement (TDEE).
+*(Note: Body metrics `user_metrics` / BMI / TDEE from early PA3 drafts were intentionally decommissioned in PA4 so `AllergyProfileScreen` stays focused on allergens and chronic conditions; `/api/v1/profile/metrics` returns `404`.)*
 
 ---
 
 ## 3. Data Requirements & Schema Updates
 
-### Table: `users` (SQLite)
+### Table: `users` (Cloudflare D1 — `nutriviet-app`)
 * `id`: Integer Primary Key Autoincrement
 * `full_name`: Text Not Null
 * `email`: Text Unique Not Null (Collate NOCASE)
-* `password_hash`: Text Not Null (PBKDF2 HMAC-SHA256, 100,000 iterations)
-* `salt`: Text Not Null (32-byte hex salt)
-* `is_verified`: Integer Not Null Default 0 (0 = Pending verification, 1 = Verified)
+* `password_hash`: Text Not Null (Web Crypto PBKDF2-HMAC-SHA256, 100,000 iterations)
+* `salt`: Text Not Null (32-char hex salt)
+* `role`: Text Not Null Default `'user'` (`'user'` | `'admin'`)
+* `is_banned`: Integer Not Null Default `0`
+* `is_verified`: Integer Not Null Default `0` (0 = Pending verification, 1 = Verified)
 * `verification_token`: Text Nullable (URL-safe activation token)
-* `reset_token`: Text Nullable (Password reset token)
+* `reset_token`: Text Nullable (`sha256(otp)|expiresAtIso` 6-digit 15-min OTP)
 * `created_at`: ISO-8601 Timestamp
 
-### Table: `user_metrics` (SQLite)
-* `user_id`: Integer Primary Key References `users(id)` On Delete Cascade
-* `age`: Integer Default 22
-* `gender`: Text Default 'male'
-* `height`: Real Default 170.0 (cm)
-* `weight`: Real Default 65.0 (kg)
-* `activity_level`: Text Default 'moderate'
-* `target_calories`: Integer Default 2100 (kcal)
-* `updated_at`: ISO-8601 Timestamp
+### Table: `user_sessions` (Cloudflare D1 — `nutriviet-app`)
+* `token`: Text Primary Key (32-byte URL-safe Bearer token)
+* `user_id`: Integer Not Null References `users(id)` On Delete Cascade
+* `created_at`: ISO-8601 Timestamp
 
 ---
 

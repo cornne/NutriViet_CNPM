@@ -5,7 +5,7 @@
 [![Methodology](https://img.shields.io/badge/Methodology-Scrum%20%2F%20Agile-orange.svg)]()
 [![Development](https://img.shields.io/badge/Spec--Driven-GitHub%20Spec%20Kit-purple.svg)](https://github.com/github/spec-kit)
 [![Backend](https://img.shields.io/badge/Backend-Cloudflare%20Workers%20%2B%20D1-F38020.svg?logo=cloudflare&logoColor=white)](https://nutriviet.nutriviet-api.workers.dev/health)
-[![Video Demo](https://img.shields.io/badge/YouTube-Video%20Demo-red.svg?logo=youtube)](https://www.youtube.com/watch?v=-LUs4PHV20Q)
+[![Video Demo](https://img.shields.io/badge/YouTube-PA4%20Video%20Demo-red.svg?logo=youtube)](https://www.youtube.com/watch?v=p96107Qfwzk)
 
 > **NutriViet** is an Android mobile application engineered to protect consumers with personalized food allergy hazard alerts and proactive nutrition management. Combining a full-screen **Live CameraX** label scanner, **PaddleOCR-VL-1.6** via a secure **Cloudflare Workers Edge Proxy**, and the **FoodOn semantic ontology (33,688 concepts)** hosted on **Cloudflare D1 (APAC)**, NutriViet translates complex ingredient labels into unambiguous color-coded alerts (**RED** allergen hazard / **YELLOW** chronic condition caution / **GREEN** safe), alongside local-first Guest Mode, scan history management, and an RBAC-protected Community & Admin Moderation platform.
 
@@ -119,8 +119,8 @@ See [src/cloudflare-worker/README.md](./src/cloudflare-worker/README.md) for D1 
 
 | Module | Command | Suite Coverage |
 | :--- | :--- | :--- |
-| **Flutter Mobile** | `cd src/mobile && flutter analyze && flutter test` | **23 tests** — UI/Glass widgets, VI/EN localization, Allergy & Health Profile, Guest Mode & scan delete/clear, RBAC gates, Cloudflare OCR Proxy pipeline & retries |
-| **Cloudflare Worker** | `cd src/cloudflare-worker && npm run typecheck && npm test` | **4 tests** — PBKDF2 parity, ingredient splitting, OCR Markdown/HTML cleaning, WHO/VN BMI & TDEE calculation |
+| **Flutter Mobile** | `cd src/mobile && flutter analyze && flutter test` | **38 tests** — UI/Glass widgets, VI/EN localization, Allergy & Health Profile, Guest Mode & scan delete/clear, RBAC gates, Cloudflare OCR Proxy pipeline & retries |
+| **Cloudflare Worker** | `cd src/cloudflare-worker && npm run typecheck && npm test` | **19 tests** — PBKDF2 parity, OTP reset, OCR Markdown/HTML cleaning, ingredient splitting & extraction, FoodOn fuzzy/E-code logic, rate limiter, auth guards, 5-tier OCR router failover |
 
 ---
 
@@ -129,7 +129,8 @@ See [src/cloudflare-worker/README.md](./src/cloudflare-worker/README.md) for D1 
 - **PA1-2026:** [Project Proposal](./proposal.md) · [Team Contract](./docs/management/team-contract.md)
 - **PA2-2026:** [Vision Document](./docs/requirements/vision.md) · [Project Plan](./docs/management/project-plan.md) · [Constitution](./src/constitution.md) · [Weekly Reports](./docs/management/weekly-reports.md)
 - **PA3-2026:** [Use-Case Model & 18 Specs](./docs/requirements/use-cases.md) · [Changes Log](./Changes.md) · [Video Demo Script](./docs/management/video-demo-script.md) · [Spec Kit Artifacts](./src/speckit/README.md)
-- **Active Specs:** [FG1 Auth](./specs/001-authentication/) · [FG2 Allergy Profile](./specs/002-allergy-profile/) · [Guest & Community RBAC](./specs/003-community-guest-rbac/spec.md)
+- **PA4-2026:** [Software Architecture (C4 L1–L3 & Deployment)](./docs/analysis-and-design/architecture.md) · [Revised Use-Case Specs](./docs/requirements/use-cases.md) · [Changes Log](./Changes.md) · [PA4 Video Demo (YouTube)](https://www.youtube.com/watch?v=p96107Qfwzk) · [Demo Script](./docs/management/video-demo-script.md) · [Weekly & AI Reports](./docs/management/weekly-reports.md)
+- **Active Specs:** [FG1 Auth](./specs/001-authentication/) · [FG2 Allergy Profile](./specs/002-allergy-profile/) · [FG3 OCR Scanner](./specs/003-ocr-scanner/) · [FG4 FoodOn Evaluation](./specs/004-allergen-evaluation/) · [Guest & Community RBAC](./specs/003-community-guest-rbac/spec.md)
 
 ---
 
