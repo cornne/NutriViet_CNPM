@@ -88,7 +88,7 @@ class _NutriVietPressScaleState extends State<NutriVietPressScale> {
   }
 }
 
-/// Layered Liquid-Glass duotone icon badge (iOS 26 / modern squircle or orb tile).
+/// Crisp opaque duotone icon badge (squircle or orb) with zero gradient overdraw.
 class NutriVietGlassIconTile extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -111,26 +111,17 @@ class NutriVietGlassIconTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = isCircle ? size / 2 : size * 0.30;
+    final radius = isCircle ? size / 2 : size * 0.28;
     final tint = fillTint ?? color;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.72),
-            tint.withValues(alpha: 0.19),
-            tint.withValues(alpha: 0.08),
-          ],
-          stops: const [0.0, 0.36, 1.0],
-        ),
+        color: Color.alphaBlend(tint.withValues(alpha: 0.11), Colors.white),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.85),
-          width: 1.15,
+          color: Color.alphaBlend(tint.withValues(alpha: 0.22), Colors.white),
+          width: 1.05,
         ),
       ),
       child: Center(
@@ -141,89 +132,6 @@ class NutriVietGlassIconTile extends StatelessWidget {
           duotoneSecondaryOpacity: secondaryOpacity,
           duotoneSecondaryColor: color,
         ),
-      ),
-    );
-  }
-}
-
-/// Subtle breathing glow ring used behind unlocked medals & active hero badges.
-class NutriVietPulseHalo extends StatefulWidget {
-  final Widget child;
-  final Color glowColor;
-  final double size;
-  final bool active;
-
-  const NutriVietPulseHalo({
-    super.key,
-    required this.child,
-    required this.glowColor,
-    required this.size,
-    this.active = true,
-  });
-
-  @override
-  State<NutriVietPulseHalo> createState() => _NutriVietPulseHaloState();
-}
-
-class _NutriVietPulseHaloState extends State<NutriVietPulseHalo>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-      value: widget.active ? 1.0 : 0.0,
-    );
-    if (widget.active) {
-      _ctrl.forward(from: 0.0);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant NutriVietPulseHalo oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.active != oldWidget.active) {
-      if (widget.active) {
-        _ctrl.forward(from: 0.0);
-      } else {
-        _ctrl.stop();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.active) return widget.child;
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (context, child) {
-          final pulse = math.sin(_ctrl.value * math.pi);
-          final alpha = 0.16 + 0.14 * pulse;
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: widget.glowColor.withValues(alpha: alpha),
-                  blurRadius: 12 + 5 * pulse,
-                  spreadRadius: 1.5 + 1.5 * pulse,
-                ),
-              ],
-            ),
-            child: child,
-          );
-        },
-        child: widget.child,
       ),
     );
   }
@@ -311,72 +219,6 @@ class _NutriVietTabViewState extends State<NutriVietTabView>
           ),
         );
       }),
-    );
-  }
-}
-
-/// Diagonal specular light sweep rendered quietly inside the Hero glass card.
-class NutriVietHeroSheen extends StatefulWidget {
-  const NutriVietHeroSheen({super.key});
-
-  @override
-  State<NutriVietHeroSheen> createState() => _NutriVietHeroSheenState();
-}
-
-class _NutriVietHeroSheenState extends State<NutriVietHeroSheen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: RepaintBoundary(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: AnimatedBuilder(
-              animation: _ctrl,
-              builder: (context, _) {
-                final raw = _ctrl.value;
-                final sweep = Curves.easeInOutSine.transform(raw);
-                final alignmentX = -1.7 + sweep * 3.4;
-                final alpha = raw > 0.0 && raw < 1.0
-                    ? math.sin(raw * math.pi) * 0.16
-                    : 0.0;
-                if (alpha <= 0.001) return const SizedBox.shrink();
-                return DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment(alignmentX - 0.55, -1.0),
-                      end: Alignment(alignmentX + 0.55, 1.0),
-                      colors: [
-                        Colors.white.withValues(alpha: 0.0),
-                        Colors.white.withValues(alpha: alpha),
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -665,33 +507,17 @@ class NutriVietGlassActionButton extends StatelessWidget {
         (isPrimary || isDanger ? Colors.white : NutriVietGlass.inkPrimary);
     final BorderRadius radius = BorderRadius.circular(height / 2);
 
-    final List<Color> gradientColors;
+    final Color fillColor;
     final Color borderColor;
-    final Color shadowColor;
     if (isDanger) {
-      gradientColors = const [
-        Color(0xFFF66969),
-        Color(0xFFEF4444),
-        Color(0xFFDC2626),
-      ];
-      borderColor = const Color(0x70FFFFFF);
-      shadowColor = const Color(0x30DC2626);
+      fillColor = const Color(0xFFDC2626);
+      borderColor = const Color(0xFFB91C1C);
     } else if (isPrimary) {
-      gradientColors = const [
-        Color(0xFF2B9C56),
-        Color(0xFF16833F),
-        Color(0xFF106A31),
-      ];
-      borderColor = const Color(0x6EFFFFFF);
-      shadowColor = const Color(0x3214803C);
+      fillColor = const Color(0xFF14803C);
+      borderColor = const Color(0xFF0F6B31);
     } else {
-      gradientColors = const [
-        Color(0xF6FFFFFF),
-        Color(0xEEF2F7F4),
-        Color(0xE8E7EFEA),
-      ];
-      borderColor = const Color(0xFFD5E0DA);
-      shadowColor = const Color(0x140F172A);
+      fillColor = const Color(0xFFF2F6F3);
+      borderColor = const Color(0xFFD2DED7);
     }
 
     final Widget inner = isLoading
@@ -738,38 +564,31 @@ class NutriVietGlassActionButton extends StatelessWidget {
             ],
           );
 
-    return NutriVietPressScale(
-      pressedScale: 0.97,
-      enableHaptic: !disabled,
+    return Semantics(
+      button: true,
       enabled: !disabled,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: disabled ? null : onPressed,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: disabled ? 0.65 : 1.0,
-          child: Container(
-            width: width,
-            height: height,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: gradientColors,
-                stops: const [0.0, 0.45, 1.0],
+      label: label,
+      child: NutriVietPressScale(
+        pressedScale: 0.97,
+        enableHaptic: !disabled,
+        enabled: !disabled,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: disabled ? null : onPressed,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 120),
+            opacity: disabled ? 0.65 : 1.0,
+            child: Container(
+              width: width,
+              height: height,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                color: fillColor,
+                border: Border.all(color: borderColor, width: 1.05),
               ),
-              border: Border.all(color: borderColor, width: 1.15),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor,
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              child: Center(child: inner),
             ),
-            child: Center(child: inner),
           ),
         ),
       ),
@@ -1090,23 +909,16 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(barHeight / 2),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Color(0xFFFCFEFD),
-                                  Color(0xFFF3F8F5),
-                                ],
-                              ),
+                              color: const Color(0xFFFCFEFD),
                               border: Border.all(
-                                color: const Color(0xFFFFFFFF),
-                                width: 1.25,
+                                color: const Color(0xFFD9E5DE),
+                                width: 1.1,
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x140F172A),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
+                                  color: Color(0x100F172A),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -1137,13 +949,9 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
                                             borderRadius: BorderRadius.circular(
                                               (barHeight - 8) / 2,
                                             ),
-                                            gradient: LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                selectedColor.withValues(alpha: 0.17),
-                                                selectedColor.withValues(alpha: 0.11),
-                                              ],
+                                            color: Color.alphaBlend(
+                                              selectedColor.withValues(alpha: 0.12),
+                                              Colors.white,
                                             ),
                                             border: Border.all(
                                               color: selectedColor.withValues(
@@ -1164,50 +972,55 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
                                     final Color fg =
                                         active ? selectedColor : unselectedColor;
                                     return Expanded(
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () {
-                                          if (selectedIndex != i) {
-                                            HapticFeedback.selectionClick();
-                                            onChanged(i);
-                                          }
-                                        },
-                                        child: Center(
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              PhosphorIcon(
-                                                active
-                                                    ? item.selectedIcon
-                                                    : item.icon,
-                                                color: fg,
-                                                size: 21,
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 2,
+                                      child: Semantics(
+                                        button: true,
+                                        selected: active,
+                                        label: item.label,
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () {
+                                            if (selectedIndex != i) {
+                                              HapticFeedback.selectionClick();
+                                              onChanged(i);
+                                            }
+                                          },
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                PhosphorIcon(
+                                                  active
+                                                      ? item.selectedIcon
+                                                      : item.icon,
+                                                  color: fg,
+                                                  size: 21,
                                                 ),
-                                                child: Text(
-                                                  item.label,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    color: fg,
-                                                    fontSize: 10.5,
-                                                    fontWeight: active
-                                                        ? FontWeight.w800
-                                                        : FontWeight.w600,
-                                                    letterSpacing: -0.1,
-                                                    height: 1.15,
+                                                const SizedBox(height: 2),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 2,
+                                                  ),
+                                                  child: Text(
+                                                    item.label,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      color: fg,
+                                                      fontSize: 10.5,
+                                                      fontWeight: active
+                                                          ? FontWeight.w800
+                                                          : FontWeight.w600,
+                                                      letterSpacing: -0.1,
+                                                      height: 1.15,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1221,43 +1034,39 @@ class NutriVietFloatingBottomBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       RepaintBoundary(
-                        child: NutriVietPressScale(
-                          pressedScale: 0.91,
-                          enableHaptic: true,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: onScanTap,
-                            child: Container(
-                              width: scanSize,
-                              height: scanSize,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF28A458),
-                                    Color(0xFF14803C),
-                                    Color(0xFF0E642D),
+                        child: Semantics(
+                          button: true,
+                          label: AppLocale.t('Quét nhãn', 'Scan label'),
+                          child: NutriVietPressScale(
+                            pressedScale: 0.91,
+                            enableHaptic: true,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: onScanTap,
+                              child: Container(
+                                width: scanSize,
+                                height: scanSize,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF14803C),
+                                  border: Border.all(
+                                    color: const Color(0xFF0E642D),
+                                    width: 1.15,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x2814803C),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
                                   ],
                                 ),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.55),
-                                  width: 1.35,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x3B14803C),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
+                                child: const Center(
+                                  child: PhosphorIcon(
+                                    PhosphorIconsBold.scan,
+                                    color: Colors.white,
+                                    size: 26,
                                   ),
-                                ],
-                              ),
-                              child: const Center(
-                                child: PhosphorIcon(
-                                  PhosphorIconsBold.scan,
-                                  color: Colors.white,
-                                  size: 26,
                                 ),
                               ),
                             ),

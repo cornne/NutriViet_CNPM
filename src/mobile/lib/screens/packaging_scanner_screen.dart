@@ -115,7 +115,6 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
     with WidgetsBindingObserver {
   static const Color _brandGreen = Color(0xFF14803C);
   static const Color _brandEmerald = Color(0xFF34D399);
-  static const Color _brandPurple = Color(0xFF818CF8);
 
   CameraController? _cameraController;
   bool _isCameraInitializing = true;
@@ -970,7 +969,7 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
                   children: [
                     TextSpan(
                       text: 'Nutri',
-                      style: TextStyle(color: _brandPurple),
+                      style: TextStyle(color: Colors.white),
                     ),
                     TextSpan(
                       text: 'Viet',
@@ -1267,16 +1266,9 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
                                   shape: BoxShape.circle,
                                   color: _brandGreen,
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.9),
+                                    color: Colors.white.withValues(alpha: 0.92),
                                     width: 3.2,
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _brandGreen.withValues(alpha: 0.45),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 child: Center(
                                   child: _isTakingPicture
@@ -1737,7 +1729,7 @@ class _PackagingScannerScreenState extends State<PackagingScannerScreen>
                     children: [
                       if (_ocrStatsBadge != null)
                         _InfoChip(
-                          icon: PhosphorIconsFill.sparkle,
+                          icon: PhosphorIconsBold.scan,
                           text: _ocrStatsBadge!,
                           bg: const Color(0xFFE6F4EA),
                           fg: _brandGreen,
@@ -2471,25 +2463,21 @@ class _LightweightScanBeamState extends State<_LightweightScanBeam>
             child: Align(
               alignment: Alignment(0, -0.88 + _ctrl.value * 1.76),
               child: Container(
-                height: 3,
+                height: 16,
                 margin: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                     colors: [
-                      Colors.transparent,
-                      Color(0xFF34D399),
-                      Colors.white,
-                      Color(0xFF34D399),
-                      Colors.transparent,
+                      Color(0x0034D399),
+                      Color(0x4D34D399),
+                      Color(0xFF6EE7B7),
+                      Color(0x4D34D399),
+                      Color(0x0034D399),
                     ],
+                    stops: [0.0, 0.35, 0.50, 0.65, 1.0],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF34D399).withValues(alpha: 0.65),
-                      blurRadius: 12,
-                      spreadRadius: 1.5,
-                    ),
-                  ],
                 ),
               ),
             ),

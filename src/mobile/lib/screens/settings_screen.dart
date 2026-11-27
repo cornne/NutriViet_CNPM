@@ -40,8 +40,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const Color _brandGreen = Color(0xFF14803C);
-  static const Color _brandPurple = Color(0xFF4F37C8);
+  static const Color _brandGreen = NutriVietGlass.brandGreen;
+  static const Color _brandTeal = NutriVietGlass.brandTeal;
+  static const Color _brandSlate = NutriVietGlass.brandSlate;
 
   late String _currentName;
   List<Map<String, dynamic>> _chronics = [];
@@ -566,7 +567,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               cornerRadius: 22,
               child: _buildSettingRow(
                 icon: PhosphorIconsDuotone.translate,
-                iconColor: _brandPurple,
+                iconColor: _brandTeal,
                 title: AppLocale.t('Ngôn ngữ', 'Language'),
                 trailingText: _languageLabel,
                 onTap: _openLanguageSheet,
@@ -590,7 +591,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: _buildSwitchRow(
                 icon: PhosphorIconsDuotone.bellRinging,
-                iconColor: _brandPurple,
+                iconColor: _brandTeal,
                 title: AppLocale.t('Nhắc nhở nhẹ nhàng', 'Gentle reminders'),
                 subtitle: AppLocale.t(
                   'Nhắc nhở đôi khi nếu bạn chưa quét trong một thời gian.',
@@ -675,7 +676,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (widget.userRole.toLowerCase() == 'admin') ...[
                       _buildSettingRow(
                         icon: PhosphorIconsDuotone.shieldCheck,
-                        iconColor: _brandPurple,
+                        iconColor: _brandSlate,
                         title: AppLocale.t('Quản trị Cộng đồng', 'Admin Moderation'),
                         trailingText: 'ADMIN',
                         onTap: () {
@@ -745,8 +746,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return NutriVietPressScale(
       pressedScale: 0.985,
       enableHaptic: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
@@ -902,8 +903,8 @@ class _FamilyProfilesSheet extends StatefulWidget {
 }
 
 class _FamilyProfilesSheetState extends State<_FamilyProfilesSheet> {
-  static const Color _brandGreen = Color(0xFF14803C);
-  static const Color _brandPurple = Color(0xFF4F37C8);
+  static const Color _brandGreen = NutriVietGlass.brandGreen;
+  static const Color _brandTeal = NutriVietGlass.brandTeal;
 
   late final TextEditingController _displayNameCtrl;
   late final TextEditingController _memberNameCtrl;
@@ -1254,7 +1255,7 @@ class _FamilyProfilesSheetState extends State<_FamilyProfilesSheet> {
                     final initial = displayName.isNotEmpty
                         ? displayName.substring(0, 1).toUpperCase()
                         : 'U';
-                    final accent = isPrimary ? _brandGreen : _brandPurple;
+                    final accent = isPrimary ? _brandGreen : _brandTeal;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),

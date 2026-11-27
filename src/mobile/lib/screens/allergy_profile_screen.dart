@@ -17,6 +17,8 @@ import 'home_screen.dart';
 class AllergenChipItem {
   final String code;
   final String emoji;
+  final IconData icon;
+  final Color accentColor;
   final String displayNameVi;
   final String displayNameEn;
   final String descriptionVi;
@@ -29,6 +31,8 @@ class AllergenChipItem {
   AllergenChipItem({
     required this.code,
     required this.emoji,
+    this.icon = PhosphorIconsDuotone.bowlFood,
+    this.accentColor = NutriVietGlass.brandTeal,
     required this.displayNameVi,
     required this.displayNameEn,
     required this.descriptionVi,
@@ -162,6 +166,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'peanuts',
       emoji: '🥜',
+      icon: PhosphorIconsDuotone.acorn,
+      accentColor: const Color(0xFFB45309),
       displayNameVi: 'Đậu phộng',
       displayNameEn: 'Peanuts',
       descriptionVi: 'Bơ đậu phộng, dầu lạc, kẹo lạc',
@@ -171,6 +177,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'seafood',
       emoji: '🦐',
+      icon: PhosphorIconsDuotone.shrimp,
+      accentColor: const Color(0xFFC2410C),
       displayNameVi: 'Hải sản & Cá',
       displayNameEn: 'Seafood & Fish',
       descriptionVi: 'Tôm, cua, mực, cá, nước mắm',
@@ -180,6 +188,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'milk',
       emoji: '🥛',
+      icon: PhosphorIconsDuotone.pintGlass,
+      accentColor: const Color(0xFF0369A1),
       displayNameVi: 'Sữa & Chế phẩm',
       displayNameEn: 'Milk & Dairy',
       descriptionVi: 'Sữa bột, whey, casein, bơ, phô mai',
@@ -189,6 +199,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'gluten',
       emoji: '🌾',
+      icon: PhosphorIconsDuotone.grains,
+      accentColor: const Color(0xFFA16207),
       displayNameVi: 'Lúa mì / Gluten',
       displayNameEn: 'Wheat & Gluten',
       descriptionVi: 'Bột mì, mì gói, bánh mì, mạch nha',
@@ -198,6 +210,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'eggs',
       emoji: '🥚',
+      icon: PhosphorIconsDuotone.egg,
+      accentColor: const Color(0xFFCA8A04),
       displayNameVi: 'Trứng',
       displayNameEn: 'Eggs',
       descriptionVi: 'Bột trứng, sốt mayonnaise, E1105',
@@ -207,6 +221,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'soy',
       emoji: '🌱',
+      icon: PhosphorIconsDuotone.plant,
+      accentColor: const Color(0xFF15803D),
       displayNameVi: 'Đậu nành',
       displayNameEn: 'Soybeans',
       descriptionVi: 'Nước tương, đậu phụ, lecithin E322',
@@ -216,6 +232,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'tree_nuts',
       emoji: '🌰',
+      icon: PhosphorIconsDuotone.tree,
+      accentColor: const Color(0xFF92400E),
       displayNameVi: 'Hạt cây',
       displayNameEn: 'Tree Nuts',
       descriptionVi: 'Điều, hạnh nhân, óc chó, mắc ca',
@@ -225,6 +243,8 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
     AllergenChipItem(
       code: 'sesame',
       emoji: '🌿',
+      icon: PhosphorIconsDuotone.leaf,
+      accentColor: const Color(0xFF0F766E),
       displayNameVi: 'Mè (Vừng)',
       displayNameEn: 'Sesame',
       descriptionVi: 'Hạt mè, dầu mè, bơ mè tahini',
@@ -886,19 +906,24 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
             ),
             prefixIconConstraints:
                 const BoxConstraints(minWidth: 44, minHeight: 44),
-            suffixIcon: _foodSearchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const PhosphorIcon(
-                      PhosphorIconsBold.xCircle,
-                      size: 20,
-                      color: Color(0xFF64748B),
-                    ),
-                    onPressed: () {
-                      _foodSearchController.clear();
-                      _searchEverydayAllergyFood('');
-                    },
-                  )
-                : null,
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _foodSearchController,
+              builder: (context, val, _) {
+                if (val.text.isEmpty) return const SizedBox.shrink();
+                return IconButton(
+                  tooltip: AppLocale.t('Xóa tìm kiếm', 'Clear search'),
+                  icon: const PhosphorIcon(
+                    PhosphorIconsBold.xCircle,
+                    size: 20,
+                    color: Color(0xFF64748B),
+                  ),
+                  onPressed: () {
+                    _foodSearchController.clear();
+                    _searchEverydayAllergyFood('');
+                  },
+                );
+              },
+            ),
           ),
         ),
         if (_foodSearchResults.isEmpty)
@@ -942,17 +967,28 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                                   : const Color(0xFFDDE5DF),
                             ),
                           ),
-                          child: Center(
-                            child: Text(
-                              '${qf['emoji']} $label',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PhosphorIcon(
+                                PhosphorIconsDuotone.magnifyingGlass,
+                                size: 14,
                                 color: isCurrent
-                                    ? const Color(0xFFB91C1C)
-                                    : const Color(0xFF334155),
+                                    ? const Color(0xFFDC2626)
+                                    : NutriVietGlass.brandTeal,
                               ),
-                            ),
+                              const SizedBox(width: 6),
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isCurrent
+                                      ? const Color(0xFFB91C1C)
+                                      : const Color(0xFF334155),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -970,19 +1006,25 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
           ..._foodSearchResults.map((food) {
             final alCode = (food['allergen_code'] ?? '').toString();
             final curie = (food['curie'] ?? '').toString();
-            final emoji = (food['emoji'] ?? '🍽️').toString();
             final foodName =
                 (food['food_name_en'] ?? food['food_name'] ?? curie).toString();
             final famName =
                 (food['family_name_en'] ?? food['family_name'] ?? '')
                     .toString();
+            final matchedFamily = _allergens.where((a) => a.code == alCode);
+            final famIcon = matchedFamily.isNotEmpty
+                ? matchedFamily.first.icon
+                : PhosphorIconsDuotone.bowlFood;
+            final famColor = matchedFamily.isNotEmpty
+                ? matchedFamily.first.accentColor
+                : NutriVietGlass.brandTeal;
             final isAlreadySelected = _allergens.any(
               (a) => a.code == alCode && a.isSelected,
             );
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () => _selectEverydayAllergyFood(food),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -992,7 +1034,7 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   decoration: BoxDecoration(
                     color: isAlreadySelected
                         ? const Color(0xFFFEF2F2)
-                        : const Color(0xE8FFFFFF),
+                        : const Color(0xFFFAFDFB),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: isAlreadySelected
@@ -1003,7 +1045,13 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
                   ),
                   child: Row(
                     children: [
-                      Text(emoji, style: const TextStyle(fontSize: 24)),
+                      NutriVietGlassIconTile(
+                        icon: famIcon,
+                        color: isAlreadySelected
+                            ? const Color(0xFFDC2626)
+                            : famColor,
+                        size: 38,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -1178,7 +1226,11 @@ class _AllergyProfileScreenState extends State<AllergyProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(item.emoji, style: const TextStyle(fontSize: 26)),
+                  NutriVietGlassIconTile(
+                    icon: item.icon,
+                    color: active ? const Color(0xFFDC2626) : item.accentColor,
+                    size: 38,
+                  ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     width: 24,

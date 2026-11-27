@@ -10,6 +10,7 @@ import 'package:nutriviet_mobile/screens/allergy_profile_screen.dart';
 import 'package:nutriviet_mobile/screens/community_feed_screen.dart';
 import 'package:nutriviet_mobile/screens/home_screen.dart';
 import 'package:nutriviet_mobile/screens/login_screen.dart';
+import 'package:nutriviet_mobile/screens/register_screen.dart';
 import 'package:nutriviet_mobile/screens/settings_screen.dart';
 import 'package:nutriviet_mobile/services/auth_service.dart';
 import 'package:nutriviet_mobile/services/local_guest_store.dart';
@@ -1114,6 +1115,66 @@ void main() {
     expect(snap['build_avg_ms'], closeTo(4.05, 0.01));
     expect(snap['raster_avg_ms'], closeTo(5.475, 0.01));
   });
+
+  testWidgets(
+    'Design system uses zero-violet clinical teal palette and vector allergen icons',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const NutriVietApp());
+      final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+      expect(app.theme?.colorScheme.secondary, NutriVietGlass.brandTeal);
+      expect(app.theme?.colorScheme.secondary, isNot(const Color(0xFF4F37C8)));
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AllergyProfileScreen(
+            userId: 0,
+            userName: 'Khách',
+            isGuest: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Primary 8 allergen cards must render cohesive Phosphor vector icons,
+      // never raw OS cartoon emoji text.
+      expect(find.byIcon(PhosphorIconsDuotone.acorn), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsDuotone.shrimp), findsOneWidget);
+      expect(find.text('🥜'), findsNothing);
+      expect(find.text('🦐'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'RegisterScreen isolates live password requirements and allows tapping full Terms row',
+    (WidgetTester tester) async {
+      await AppLocale.setLanguage('vi');
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: RegisterScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Password requirements appear reactively when typing without form errors.
+      final passwordField = find.widgetWithText(TextFormField, 'Tối thiểu 8 ký tự');
+      await tester.enterText(passwordField, 'Abc12345');
+      await tester.pump();
+      expect(find.text('8+ ký tự'), findsOneWidget);
+      expect(find.text('Chữ hoa'), findsOneWidget);
+      expect(find.text('Số'), findsOneWidget);
+      expect(find.text('Rất mạnh'), findsOneWidget);
+
+      // Tapping the Terms label text toggles the checkbox cleanly.
+      final termsText = find.text('Tôi đồng ý với Điều khoản & Cam kết bảo mật y tế');
+      await tester.ensureVisible(termsText);
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+      await tester.tap(termsText);
+      await tester.pump();
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 void _noop() {}

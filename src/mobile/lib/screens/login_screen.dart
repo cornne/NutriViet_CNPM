@@ -503,19 +503,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    // Brand identity
+                                    // Crisp editorial brand emblem (zero pulsing glow blob)
                                     const Center(
-                                      child: NutriVietEntranceMotion(
-                                        child: NutriVietPulseHalo(
-                                          glowColor: Color(0xFF14803C),
-                                          size: 84,
-                                          child: NutriVietGlassIconTile(
-                                            icon:
-                                                PhosphorIconsDuotone.shieldCheck,
-                                            color: Color(0xFF14803C),
-                                            size: 84,
-                                          ),
-                                        ),
+                                      child: NutriVietGlassIconTile(
+                                        icon: PhosphorIconsDuotone.shieldCheck,
+                                        color: NutriVietGlass.brandGreen,
+                                        size: 76,
                                       ),
                                     ),
                                     const SizedBox(height: 22),
@@ -939,28 +932,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (mounted) setState(() {});
                     },
                     child: Container(
+                      constraints: const BoxConstraints(minHeight: 44),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
-                        vertical: 9,
+                        vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xF5FFFFFF), Color(0xEBF3F8F5)],
-                        ),
+                        borderRadius: BorderRadius.circular(22),
+                        color: const Color(0xFFFAFDFB),
                         border: Border.all(
-                          color: Colors.white,
-                          width: 1.2,
+                          color: NutriVietGlass.borderSubtle,
+                          width: 1.1,
                         ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x140F172A),
-                            blurRadius: 12,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

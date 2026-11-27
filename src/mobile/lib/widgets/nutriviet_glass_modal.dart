@@ -114,25 +114,16 @@ class _NutriVietGlassSheetSurface extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: radius,
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFAFCFB),
-              Color(0xFFF3F8F5),
-              Color(0xFFF8FBFA),
-            ],
-            stops: [0.0, 0.52, 1.0],
-          ),
+          color: const Color(0xFFFAFDFB),
           border: Border.all(
-            color: const Color(0xFFFFFFFF),
-            width: 1.2,
+            color: const Color(0xFFDDE7E1),
+            width: 1.1,
           ),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x160F172A),
-              blurRadius: 12,
-              offset: Offset(0, -3),
+              color: Color(0x140F172A),
+              blurRadius: 8,
+              offset: Offset(0, -2),
             ),
           ],
         ),
@@ -142,16 +133,15 @@ class _NutriVietGlassSheetSurface extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _TopGlassCatchlight(horizontalMargin: 28),
               if (grabber)
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 10, bottom: 2),
                     child: Container(
                       width: 38,
-                      height: 4.5,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0x381F2937),
+                        color: const Color(0x331F2937),
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
@@ -313,41 +303,24 @@ class NutriVietGlassDialog extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: radius,
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFCFEFD),
-              Color(0xFFF3F8F5),
-              Color(0xFFF8FBFA),
-            ],
-            stops: [0.0, 0.55, 1.0],
-          ),
+          color: const Color(0xFFFAFDFB),
           border: Border.all(
-            color: const Color(0xFFFFFFFF),
-            width: 1.25,
+            color: const Color(0xFFDDE7E1),
+            width: 1.15,
           ),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1C0F172A),
-              blurRadius: 14,
-              offset: Offset(0, 6),
+              color: Color(0x180F172A),
+              blurRadius: 10,
+              offset: Offset(0, 4),
             ),
           ],
         ),
         child: Material(
           type: MaterialType.transparency,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const _TopGlassCatchlight(horizontalMargin: 24),
-              Flexible(
-                child: Padding(
-                  padding: padding,
-                  child: body,
-                ),
-              ),
-            ],
+          child: Padding(
+            padding: padding,
+            child: body,
           ),
         ),
       ),
@@ -381,30 +354,7 @@ class _DialogKeyboardLift extends StatelessWidget {
   }
 }
 
-class _TopGlassCatchlight extends StatelessWidget {
-  final double horizontalMargin;
-
-  const _TopGlassCatchlight({required this.horizontalMargin});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
-      height: 1.5,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0x00FFFFFF),
-            Color(0xE6FFFFFF),
-            Color(0x00FFFFFF),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Tactile frosted Liquid Glass pill button for popup and dialog actions.
+/// Tactile flat editorial pill button for popup and dialog actions.
 class NutriVietGlassPillButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -430,42 +380,23 @@ class NutriVietGlassPillButton extends StatelessWidget {
     final bool disabled = onPressed == null || isLoading;
     final BorderRadius radius = BorderRadius.circular(height / 2);
 
-    final List<Color> gradientColors;
+    final Color fillColor;
     final Color borderColor;
     final Color textColor;
-    final Color shadowColor;
 
     switch (variant) {
       case NutriVietGlassButtonVariant.primary:
-        gradientColors = const [
-          Color(0xFF31A05B),
-          Color(0xFF1A8D45),
-          Color(0xFF147E3C),
-          Color(0xFF106B31),
-        ];
-        borderColor = const Color(0x70FFFFFF);
+        fillColor = const Color(0xFF14803C);
+        borderColor = const Color(0xFF0F6B31);
         textColor = Colors.white;
-        shadowColor = const Color(0x3614803C);
       case NutriVietGlassButtonVariant.danger:
-        gradientColors = const [
-          Color(0xFFF66969),
-          Color(0xFFEF4444),
-          Color(0xFFDC2626),
-          Color(0xFFC41E1E),
-        ];
-        borderColor = const Color(0x70FFFFFF);
+        fillColor = const Color(0xFFDC2626);
+        borderColor = const Color(0xFFB91C1C);
         textColor = Colors.white;
-        shadowColor = const Color(0x36DC2626);
       case NutriVietGlassButtonVariant.neutral:
-        gradientColors = const [
-          Color(0xFFFAFDFB),
-          Color(0xFFF3F7F4),
-          Color(0xFFEAF1ED),
-          Color(0xFFE2EBE6),
-        ];
-        borderColor = const Color(0xFFD5E0DA);
-        textColor = const Color(0xFF1F2937);
-        shadowColor = const Color(0x140F172A);
+        fillColor = const Color(0xFFF1F5F2);
+        borderColor = const Color(0xFFD2DED7);
+        textColor = const Color(0xFF0F172A);
     }
 
     Widget button = AnimatedOpacity(
@@ -476,20 +407,8 @@ class NutriVietGlassPillButton extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           borderRadius: radius,
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: gradientColors,
-            stops: const [0.0, 0.28, 0.68, 1.0],
-          ),
-          border: Border.all(color: borderColor, width: 1.1),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor,
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: fillColor,
+          border: Border.all(color: borderColor, width: 1.05),
         ),
         child: Center(
           child: Padding(
