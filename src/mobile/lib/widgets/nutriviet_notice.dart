@@ -85,10 +85,10 @@ class _NoticeStyle {
         );
       case NutriVietNoticeTone.info:
         return const _NoticeStyle(
-          accent: Color(0xFF4F37C8),
-          badgeBg: Color(0xFFEEEBFC),
-          borderColor: Color(0x474F37C8),
-          tintBg: Color(0xF6FFFFFF),
+          accent: Color(0xFF0F766E),
+          badgeBg: Color(0xFFE6F4F1),
+          borderColor: Color(0x470F766E),
+          tintBg: Color(0xFFFCFEFD),
           icon: PhosphorIconsFill.info,
         );
     }
@@ -111,83 +111,74 @@ class _NutriVietNoticeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        color: style.tintBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: style.borderColor, width: 1.15),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.11),
-            blurRadius: 22,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: style.accent.withValues(alpha: 0.08),
+            color: Color(0x180F172A),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 4),
           ),
         ],
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: style.tintBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: style.borderColor, width: 1.2),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: style.badgeBg,
-                shape: BoxShape.circle,
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: style.badgeBg,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: PhosphorIcon(
+                style.icon,
+                color: style.accent,
+                size: 19,
               ),
-              child: Center(
-                child: PhosphorIcon(
-                  style.icon,
-                  color: style.accent,
-                  size: 19,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                height: 1.36,
+              ),
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(width: 10),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onAction,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: style.badgeBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  actionLabel!,
+                  style: TextStyle(
+                    color: style.accent,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  height: 1.36,
-                ),
-              ),
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: onAction,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: style.badgeBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    actionLabel!,
-                    style: TextStyle(
-                      color: style.accent,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
