@@ -2,18 +2,24 @@ import 'package:flutter/material.dart';
 
 import '../widgets/nutriviet_ui.dart';
 
-/// Shared Frosted Glass palette, atmospheric backdrop, scroll wrapper, and
-/// zero-shader-readback card surface engineered for locked 120 Hz performance
-/// on high-resolution Android & iOS displays.
+/// Shared clinical-botanical palette, single-pass atmospheric backdrop, scroll
+/// wrapper, and zero-shader-readback card surface engineered for locked 120 Hz
+/// performance on high-resolution Android & iOS displays.
 class NutriVietGlass {
   NutriVietGlass._();
 
   static const Color brandGreen = Color(0xFF14803C);
   static const Color brandEmerald = Color(0xFF10B981);
-  static const Color brandPurple = Color(0xFF4F37C8);
+  static const Color brandTeal = Color(0xFF0F766E);
+  static const Color brandTealTint = Color(0xFFE6F4F1);
+  static const Color brandSlate = Color(0xFF1E293B);
+  static const Color brandSlateTint = Color(0xFFE8EEF2);
   static const Color riskRed = Color(0xFFDC2626);
-  static const Color inkPrimary = Color(0xFF111827);
-  static const Color inkSecondary = Color(0xFF4B5563);
+  static const Color riskAmber = Color(0xFFD97706);
+  static const Color inkPrimary = Color(0xFF0F172A);
+  static const Color inkSecondary = Color(0xFF475569);
+  static const Color surfaceCard = Color(0xFFFAFDFB);
+  static const Color borderSubtle = Color(0xFFDDE7E1);
 }
 
 /// Luminous ambient botanical backdrop rendered in a single linear gradient
