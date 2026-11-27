@@ -59,16 +59,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Center(
-                            child: NutriVietEntranceMotion(
-                              child: NutriVietPulseHalo(
-                                glowColor: Color(0xFF14803C),
-                                size: 84,
-                                child: NutriVietGlassIconTile(
-                                  icon: PhosphorIconsDuotone.envelope,
-                                  color: Color(0xFF14803C),
-                                  size: 84,
-                                ),
-                              ),
+                            child: NutriVietGlassIconTile(
+                              icon: PhosphorIconsDuotone.envelope,
+                              color: NutriVietGlass.brandGreen,
+                              size: 76,
                             ),
                           ),
                           const SizedBox(height: 22),
